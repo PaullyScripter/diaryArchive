@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
+import { MenuIcon, MoonIcon, SunIcon, XIcon } from "@/components/shared/icons";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -16,7 +17,7 @@ export function ThemeToggle() {
       aria-label={`Switch to ${next} mode`}
       type="button"
     >
-      {resolvedTheme === "dark" ? "☀" : "☽"}
+      {resolvedTheme === "dark" ? <SunIcon className="inline-block" /> : <MoonIcon className="inline-block" />}
     </button>
   );
 }
@@ -92,9 +93,9 @@ export function NavBar() {
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="text-sm font-semibold text-foreground no-underline hover:underline hover:underline-offset-2 focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+            className="flex items-center gap-2 text-sm font-semibold text-foreground no-underline hover:underline hover:underline-offset-2 focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
           >
-            DiaryArchive
+            <img src="/logo-classic.svg" alt="DiaryArchive" className="h-7 w-auto" />
           </Link>
           <nav className="hidden md:flex items-center h-9">
             <NavLinks />
@@ -177,7 +178,7 @@ export function NavBar() {
             aria-label="Toggle navigation menu"
             type="button"
           >
-            {mobileOpen ? "✕" : "☰"}
+            {mobileOpen ? <XIcon className="inline-block" /> : <MenuIcon className="inline-block" />}
           </button>
         </div>
       </div>

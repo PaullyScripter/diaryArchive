@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LockIcon } from "@/components/shared/icons";
 
 export interface DiaryEntryData {
   id: string;
@@ -63,7 +64,7 @@ export function DiaryEntry({ entry }: { entry: DiaryEntryData }) {
           {!entry.isPublic && (
             <>
               <span className="mx-1">·</span>
-              <span className="text-accent" title="Private">🔒</span>
+              <LockIcon className="inline-block text-accent align-[-0.125em]" />
             </>
           )}
         </div>
