@@ -5,21 +5,24 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 
-function Write-Step($msg) { Write-Host "`n$msg" -ForegroundColor White }
-function Write-OK($msg) { Write-Host "  $([char]0x2713) $msg" -ForegroundColor Green }
-function Write-Info($msg) { Write-Host "  $([char]0x2192) $msg" -ForegroundColor Cyan }
-function Write-Warn($msg) { Write-Host "  $([char]0x26A0) $msg" -ForegroundColor Yellow }
-function Write-Fail($msg) { Write-Host "  $([char]0x2717) $msg" -ForegroundColor Red }
+# ------------------------------------------------------------------
+# Helpers (ASCII only so the script works on PowerShell 5.1 and 7+)
+# ------------------------------------------------------------------
+function Write-Step($msg)  { Write-Host "`n$msg" -ForegroundColor White }
+function Write-OK($msg)   { Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Info($msg) { Write-Host "  -> $msg"   -ForegroundColor Cyan }
+function Write-Warn($msg) { Write-Host "  ! $msg"    -ForegroundColor Yellow }
+function Write-Fail($msg) { Write-Host "  [X] $msg"  -ForegroundColor Red }
 
 Write-Host ""
-Write-Host "  DiaryArchive — Setup" -ForegroundColor Cyan
+Write-Host "  DiaryArchive - Setup" -ForegroundColor Cyan
 Write-Host ""
 
-# ─── Step 1: Verify prerequisites ────────────────────────────────────────────
+# === Step 1: Verify prerequisites =================================
 Write-Step "Checking prerequisites..."
 $errors = 0
 
-# Python
+# --- Python ---
 try {
   $pyVer = python --version 2>&1
   $pyVerStr = ($pyVer -replace 'Python ','' -replace '`n','' -replace '`r','').Trim()
@@ -38,7 +41,7 @@ try {
   $errors++
 }
 
-# Node.js
+# --- Node.js ---
 try {
   $nodeVer = node --version 2>&1
   $nodeVerStr = ($nodeVer -replace 'v','').Trim()
@@ -54,7 +57,7 @@ try {
   $errors++
 }
 
-# Docker
+# --- Docker ---
 try {
   $dockerVer = docker --version 2>&1
   Write-OK $dockerVer
@@ -73,22 +76,21 @@ if ($errors -gt 0) {
   exit 1
 }
 
-# ─── Step 2: Install backend dependencies ────────────────────────────────────
+# === Step 2: Install backend dependencies =========================
 $depsMarker = "$root\backend\.deps_installed"
 Write-Step "Installing backend dependencies..."
 if ((-not (Test-Path $depsMarker)) -or $Force) {
   Write-Info "Running pip install..."
   Push-Location "$root\backend"
-  try {
-    pip install -e ".[dev]" -q 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-      Write-OK "Backend dependencies installed"
-      New-Item -ItemType File -Path $depsMarker -Force | Out-Null
-    } else {
-      throw "pip install failed with exit code $LASTEXITCODE"
-    }
-  } catch {
-    Write-Fail "Failed to install backend dependencies: $_"
+  $ErrorActionPreference = "Continue"
+  pip install -e ".[dev]" -q 2>&1 | Out-Null
+  $pipCode = $LASTEXITCODE
+  $ErrorActionPreference = "Stop"
+  if ($pipCode -eq 0) {
+    Write-OK "Backend dependencies installed"
+    New-Item -ItemType File -Path $depsMarker -Force | Out-Null
+  } else {
+    Write-Fail "Failed to install backend dependencies (pip exit code $pipCode)"
     Pop-Location
     exit 1
   }
@@ -97,20 +99,19 @@ if ((-not (Test-Path $depsMarker)) -or $Force) {
   Write-OK "Backend dependencies cached (use -Force to reinstall)"
 }
 
-# ─── Step 3: Install frontend dependencies ────────────────────────────────────
+# === Step 3: Install frontend dependencies =======================
 Write-Step "Installing frontend dependencies..."
 if ((-not (Test-Path "$root\frontend\node_modules")) -or $Force) {
   Write-Info "Running npm install..."
   Push-Location "$root\frontend"
-  try {
-    npm install --silent 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-      Write-OK "Frontend dependencies installed"
-    } else {
-      throw "npm install failed with exit code $LASTEXITCODE"
-    }
-  } catch {
-    Write-Fail "Failed to install frontend dependencies: $_"
+  $ErrorActionPreference = "Continue"
+  npm install --silent 2>&1 | Out-Null
+  $npmCode = $LASTEXITCODE
+  $ErrorActionPreference = "Stop"
+  if ($npmCode -eq 0) {
+    Write-OK "Frontend dependencies installed"
+  } else {
+    Write-Fail "Failed to install frontend dependencies (npm exit code $npmCode)"
     Pop-Location
     exit 1
   }
@@ -119,7 +120,7 @@ if ((-not (Test-Path "$root\frontend\node_modules")) -or $Force) {
   Write-OK "Frontend dependencies cached (use -Force to reinstall)"
 }
 
-# ─── Step 4: Create .env files if missing ─────────────────────────────────────
+# === Step 4: Create .env files if missing ========================
 Write-Step "Setting up environment files..."
 if (-not (Test-Path "$root\backend\.env")) {
   Copy-Item "$root\backend\.env.development" "$root\backend\.env"
