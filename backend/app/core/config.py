@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
+    email_encryption_key: str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
     model_config = {
