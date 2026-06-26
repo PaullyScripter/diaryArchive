@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
 
-function ThemeToggle() {
+export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const next = resolvedTheme === "dark" ? "light" : "dark";
   return (
@@ -164,7 +164,8 @@ export function NavBar() {
           ) : (
             <Link
               href="/login"
-              className="text-sm text-muted hover:text-foreground no-underline hover:underline hover:underline-offset-2 focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+              className="text-sm px-3 py-1 rounded no-underline transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+              style={{ backgroundColor: "var(--color-foreground)", color: "var(--color-background)" }}
             >
               Log In
             </Link>
