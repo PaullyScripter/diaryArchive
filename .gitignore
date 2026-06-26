@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+
+# Node.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Docker
+.docker/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Project-specific
+frontend/.env
+frontend/.env.local
+backend/.deps_installed
+backend/.dev-stdout.log
+backend/.dev-stderr.log
+frontend/.dev-stdout.log
+frontend/.dev-stderr.log
+*.dev.log
+frontend-dev.log
