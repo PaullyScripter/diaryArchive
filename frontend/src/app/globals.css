@@ -20,7 +20,7 @@
   --color-accent-soft: hsl(15 30% 92%);
   --color-tag-bg: hsl(40 10% 90%);
   --color-selection: hsl(210 60% 90%);
-  --color-overlay: hsl(0 0% 0% / 0.04);
+  --color-overlay: hsl(0 0% 0% / 0.08);
   --color-destructive: hsl(0 52% 53%);
 
   --radius-sm: 0.125rem;
@@ -45,7 +45,7 @@
   --color-accent-soft: hsl(15 30% 20%);
   --color-tag-bg: hsl(40 5% 20%);
   --color-selection: hsl(210 40% 20%);
-  --color-overlay: hsl(0 0% 100% / 0.04);
+  --color-overlay: hsl(0 0% 100% / 0.08);
   --color-destructive: hsl(0 60% 65%);
 }
 
@@ -61,6 +61,7 @@
 .dark .text-destructive { color: hsl(0 60% 65%) !important; }
 
 .dark .bg-background { background-color: hsl(40 5% 12%) !important; }
+.dark .bg-foreground { background-color: hsl(40 5% 82%) !important; }
 .dark .bg-overlay { background-color: hsl(0 0% 100% / 0.04) !important; }
 .dark .bg-tag-bg { background-color: hsl(40 5% 20%) !important; }
 
