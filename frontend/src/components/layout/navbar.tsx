@@ -93,9 +93,14 @@ export function NavBar() {
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm font-semibold text-foreground no-underline hover:underline hover:underline-offset-2 focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+            className="flex items-center no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+            aria-label="DiaryArchive home"
           >
-            <img src="/logo-classic.svg" alt="DiaryArchive" className="h-7 w-auto" />
+            <svg viewBox="0 0 290 48" className="h-7 w-auto" aria-hidden="true">
+              <text x="26" y="34" fontFamily="'Space Mono','Courier New',Courier,monospace" fontSize="32" fontWeight="700" textAnchor="start">
+                <tspan fill="#A0A0A0">Diary</tspan><tspan fill="#A0845C">Archive</tspan>
+              </text>
+            </svg>
           </Link>
           <nav className="hidden md:flex items-center h-9">
             <NavLinks />
@@ -121,7 +126,7 @@ export function NavBar() {
                   <Link
                     href="/me"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     My Diaries
@@ -129,7 +134,7 @@ export function NavBar() {
                   <Link
                     href="/me/bookmarks"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     Bookmarks
@@ -137,7 +142,7 @@ export function NavBar() {
                   <Link
                     href="/me/likes"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     Likes
@@ -145,7 +150,7 @@ export function NavBar() {
                   <Link
                     href="/settings"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     Settings
@@ -184,7 +189,7 @@ export function NavBar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-border px-4 py-3 md:hidden">
+        <div className="border-t-2 border-border px-4 py-3 md:hidden">
           <NavLinks vertical onClick={() => setMobileOpen(false)} />
         </div>
       )}
