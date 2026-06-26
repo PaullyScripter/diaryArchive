@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "DiaryArchive — a place for your thoughts",
+  title: "DiaryArchive",
   description: "Write, share, and discover personal diaries. Public or private, your words find a home here.",
 };
 
