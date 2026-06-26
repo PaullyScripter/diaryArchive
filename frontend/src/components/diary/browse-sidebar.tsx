@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ChevronDownIcon, ChevronRightIcon } from "@/components/shared/icons";
 
 const tags = [
   { name: "life", count: 42 },
@@ -48,7 +49,9 @@ function CollapsibleSection({
         className="flex w-full items-center gap-1.5 text-xs font-medium text-foreground uppercase tracking-wider cursor-pointer"
         type="button"
       >
-        <span className="text-subtle text-[10px]">{open ? "▾" : "▸"}</span>
+        <span className="text-subtle text-[10px]">
+          {open ? <ChevronDownIcon className="inline-block" /> : <ChevronRightIcon className="inline-block" />}
+        </span>
         {title}
       </button>
       {open && <div className="mt-1 ml-3 space-y-0.5">{children}</div>}
@@ -57,15 +60,12 @@ function CollapsibleSection({
 }
 
 export function BrowseSidebar() {
-  const [monthsOpen, setMonthsOpen] = useState(false);
-  const visibleMonths = monthsOpen ? months : months.slice(0, 3);
-
   return (
     <aside className="w-44 shrink-0 hidden lg:block">
       <nav aria-label="Browse the archive">
         <p className="text-[10px] text-subtle uppercase tracking-wider mb-2">Browse</p>
 
-        <CollapsibleSection title="Tags" defaultOpen>
+        <CollapsibleSection title="Tags">
           {tags.map((tag) => (
             <div key={tag.name}>
               <Link
@@ -79,7 +79,7 @@ export function BrowseSidebar() {
           ))}
         </CollapsibleSection>
 
-        <CollapsibleSection title="Emotions" defaultOpen>
+        <CollapsibleSection title="Emotions">
           {emotions.map((emotion) => (
             <div key={emotion.name}>
               <Link
@@ -110,7 +110,7 @@ export function BrowseSidebar() {
           </CollapsibleSection>
 
           <CollapsibleSection title="Months">
-            {visibleMonths.map((month) => (
+            {months.map((month) => (
               <div key={month}>
                 <Link
                   href={`/explore?month=${month.toLowerCase()}`}
@@ -120,15 +120,6 @@ export function BrowseSidebar() {
                 </Link>
               </div>
             ))}
-            {months.length > 3 && !monthsOpen && (
-              <button
-                onClick={() => setMonthsOpen(true)}
-                className="text-xs text-link hover:text-link-hover no-underline hover:underline cursor-pointer"
-                type="button"
-              >
-                +{months.length - 3} more
-              </button>
-            )}
           </CollapsibleSection>
         </div>
       </nav>

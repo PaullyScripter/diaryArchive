@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
+import { MenuIcon, MoonIcon, SunIcon, XIcon } from "@/components/shared/icons";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -16,7 +17,7 @@ export function ThemeToggle() {
       aria-label={`Switch to ${next} mode`}
       type="button"
     >
-      {resolvedTheme === "dark" ? "☀" : "☽"}
+      {resolvedTheme === "dark" ? <SunIcon className="inline-block" /> : <MoonIcon className="inline-block" />}
     </button>
   );
 }
@@ -182,7 +183,7 @@ export function NavBar() {
             aria-label="Toggle navigation menu"
             type="button"
           >
-            {mobileOpen ? "✕" : "☰"}
+            {mobileOpen ? <XIcon className="inline-block" /> : <MenuIcon className="inline-block" />}
           </button>
         </div>
       </div>
