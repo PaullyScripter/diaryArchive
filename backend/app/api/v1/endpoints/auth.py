@@ -1,11 +1,14 @@
+import base64
 import logging
+import os
 from datetime import UTC, datetime
 
-from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import APIRouter, Depends, Request, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, get_db
+from app.core.config import settings
 from app.core.exceptions import (
     AuthenticationException,
     ConflictException,
@@ -33,11 +36,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _encrypt_email(email: str) -> tuple[str, str]:
-    key = Fernet.generate_key()
-    cipher = Fernet(key)
-    encrypted = cipher.encrypt(email.encode())
-    return encrypted.decode(), key.decode()
+def _get_email_aesgcm() -> AESGCM:
+    key = bytes.fromhex(settings.email_encryption_key)
+    if len(key) != 32:
+        raise ValueError("EMAIL_ENCRYPTION_KEY must be 32 bytes (64 hex chars)")
+    return AESGCM(key)
+
+
+def _encrypt_email(email: str) -> str:
+    aesgcm = _get_email_aesgcm()
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, email.encode(), None)
+    return base64.b64encode(nonce + ciphertext).decode()
+
+
+def _decrypt_email(encrypted: str) -> str:
+    aesgcm = _get_email_aesgcm()
+    raw = base64.b64decode(encrypted)
+    nonce = raw[:12]
+    ciphertext = raw[12:]
+    return aesgcm.decrypt(nonce, ciphertext, None).decode()
 
 
 def _fmt_dt(value) -> str | None:
@@ -81,8 +99,8 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key="refresh_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=not settings.debug,
+        samesite="strict" if not settings.debug else "lax",
         path="/api/v1/auth",
         max_age=604800,
     )
@@ -141,12 +159,13 @@ async def register(
     email_hash = None
     if body.email:
         try:
-            encrypted, _ = _encrypt_email(body.email)
-            email_encrypted = encrypted
+            email_encrypted = _encrypt_email(body.email)
             email_hash = hash_token(body.email.lower().strip())
             existing_email = await user_repo.get_by_email_hash(email_hash)
             if existing_email:
                 raise ConflictException("Email is already associated with another account")
+        except ConflictException:
+            raise
         except Exception:
             raise ValidationException("Invalid email format")
 
@@ -155,8 +174,6 @@ async def register(
     user_doc = {
         "username": body.username.lower(),
         "password_hash": password_hash,
-        "email_encrypted": email_encrypted,
-        "email_hash": email_hash,
         "email_verified": False,
         "avatar_path": None,
         "about": None,
@@ -177,6 +194,10 @@ async def register(
         "created_at": datetime.now(UTC),
         "last_login_at": None,
     }
+    if email_encrypted:
+        user_doc["email_encrypted"] = email_encrypted
+    if email_hash:
+        user_doc["email_hash"] = email_hash
 
     user_id = await user_repo.create_user(user_doc)
 
@@ -184,12 +205,12 @@ async def register(
 
     await _generate_tokens(response, user_id)
 
-    return RegisterResponse(
+    return {"data": RegisterResponse(
         id=user_id,
         username=body.username.lower(),
         created_at=user_doc["created_at"].isoformat(),
         access_token=access_token,
-    )
+    )}
 
 
 @router.post("/login")
@@ -222,12 +243,12 @@ async def login(
 
     await _generate_tokens(response, str(user["_id"]))
 
-    return AuthResponse(
+    return {"data": AuthResponse(
         id=str(user["_id"]),
         username=user["username"],
         is_admin=user.get("is_admin", False),
         access_token=access_token,
-    )
+    )}
 
 
 @router.post("/refresh")
@@ -273,7 +294,7 @@ async def refresh(
     )
     await _generate_tokens(response, str(user["_id"]))
 
-    return TokenResponse(access_token=access_token)
+    return {"data": TokenResponse(access_token=access_token)}
 
 
 @router.post("/logout", status_code=204)
