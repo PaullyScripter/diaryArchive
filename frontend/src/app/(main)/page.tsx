@@ -77,7 +77,13 @@ export default function Home() {
 
       <div className="min-w-0 flex-1">
         <div className="mb-5 pb-4 border-b border-border">
-          <h1 className="font-serif text-xl font-semibold text-foreground">Recent Diaries</h1>
+          <div className="flex items-baseline justify-between">
+            <h1 className="font-serif text-xl font-semibold text-foreground">Recent Diaries</h1>
+            <div className="flex gap-3 text-[11px] text-subtle">
+              <button className="text-foreground cursor-pointer">Newest</button>
+              <button className="hover:text-foreground cursor-pointer">Popular</button>
+            </div>
+          </div>
           <p className="text-xs text-muted mt-0.5">
             Public entries from the archive
           </p>
