@@ -33,7 +33,7 @@ function relativeTime(dateStr: string): string {
 
 export function DiaryEntry({ entry }: { entry: DiaryEntryData }) {
   return (
-    <article className="py-3 border-b border-border last:border-b-0 transition-colors hover:bg-overlay -mx-4 px-4 rounded-sm">
+    <article className="py-3 border-b border-border last:border-b-0 border-l-2 border-l-accent transition-colors hover:bg-overlay -mx-4 px-4 rounded-sm">
       <div className="max-w-prose">
         <Link
           href={`/diary/${entry.id}`}
@@ -42,7 +42,7 @@ export function DiaryEntry({ entry }: { entry: DiaryEntryData }) {
           {entry.title}
         </Link>
 
-        <div className="mt-0.5 text-xs text-muted">
+        <div className="mt-0.5 text-xs text-subtle">
           <Link
             href={`/profile/${entry.author.id}`}
             className="text-muted hover:text-foreground no-underline hover:underline"
@@ -89,7 +89,7 @@ export function DiaryEntry({ entry }: { entry: DiaryEntryData }) {
         )}
 
         {entry.excerpt && (
-          <p className="mt-1.5 text-sm text-foreground leading-relaxed line-clamp-2">
+          <p className="mt-2 text-xs text-muted leading-snug line-clamp-2">
             {entry.excerpt}
           </p>
         )}
