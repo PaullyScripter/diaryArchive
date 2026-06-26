@@ -43,3 +43,5 @@ frontend/.dev-stdout.log
 frontend/.dev-stderr.log
 *.dev.log
 frontend-dev.log
+session-ses_0fe7.md
+screenshots/
