@@ -6,9 +6,10 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.sanitize import sanitize_html
-from app.models.diary import VALID_EMOTIONS
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
+
+VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
 
 
 def _fmt_dt(value) -> str | None:
@@ -48,6 +49,7 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
         "is_liked": is_liked,
         "is_bookmarked": is_bookmarked,
         "is_owner": is_owner,
+        "content_warnings": diary.get("content_warnings", []),
         "created_at": _fmt_dt(diary.get("created_at")),
         "updated_at": _fmt_dt(diary.get("updated_at")),
         "published_at": _fmt_dt(diary.get("published_at")),
@@ -66,6 +68,7 @@ def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None 
         "stats": diary.get("stats", {"like_count": 0, "comment_count": 0, "bookmark_count": 0}),
         "is_liked": False,
         "is_bookmarked": False,
+        "content_warnings": diary.get("content_warnings", []),
         "created_at": _fmt_dt(diary.get("created_at")),
         "updated_at": _fmt_dt(diary.get("updated_at")),
         "published_at": _fmt_dt(diary.get("published_at")),
@@ -78,26 +81,24 @@ def _validate_tags(tags: list[str]) -> list[str]:
         tag = tag.lower().strip()
         if not tag:
             continue
-        if len(tag) > 30:
-            raise ValidationException(f"Tag '{tag}' exceeds 30 characters")
+        if len(tag) > 50:
+            raise ValidationException(f"Tag '{tag}' exceeds 50 characters")
         if not all(c.isalnum() or c == "-" for c in tag):
             raise ValidationException(
                 f"Tag '{tag}' contains invalid characters (use a-z, 0-9, hyphens)"
             )
         cleaned.append(tag)
-    if len(cleaned) > 10:
-        raise ValidationException("Maximum 10 tags allowed")
+    if len(cleaned) > 50:
+        raise ValidationException("Maximum 50 tags allowed")
     return cleaned
 
 
 def _validate_emotion(emotion: str | None) -> str | None:
     if emotion is None:
         return None
-    emotion = emotion.lower().strip()
-    if emotion not in VALID_EMOTIONS:
-        raise ValidationException(
-            f"Invalid emotion. Must be one of: {', '.join(sorted(VALID_EMOTIONS))}"
-        )
+    emotion = emotion.strip()
+    if len(emotion) > 50:
+        raise ValidationException("Emotion exceeds 50 characters")
     return emotion
 
 
@@ -129,6 +130,11 @@ async def create_diary(user: dict, data: dict) -> dict:
     tags = _validate_tags(data.get("tags", []))
     emotion = _validate_emotion(data.get("emotion"))
 
+    content_warnings = data.get("content_warnings", [])
+    if not isinstance(content_warnings, list):
+        content_warnings = []
+    content_warnings = [w.lower().strip() for w in content_warnings if w.lower().strip() in VALID_WARNINGS]
+
     now = datetime.now(UTC)
     diary_doc = {
         "user_id": user["_id"],
@@ -138,6 +144,7 @@ async def create_diary(user: dict, data: dict) -> dict:
         "content_text": content_text,
         "tags": tags,
         "emotion": emotion,
+        "content_warnings": content_warnings,
         "comments_enabled": data.get("comments_enabled", True),
         "comments_locked": False,
         "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
@@ -224,6 +231,10 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
 
     if "comments_enabled" in updates and updates["comments_enabled"] is not None:
         set_fields["comments_enabled"] = updates["comments_enabled"]
+
+    if "content_warnings" in updates and updates["content_warnings"] is not None:
+        cw = [w.lower().strip() for w in updates["content_warnings"] if w.lower().strip() in VALID_WARNINGS]
+        set_fields["content_warnings"] = cw
 
     if set_fields:
         set_fields["updated_at"] = datetime.now(UTC)

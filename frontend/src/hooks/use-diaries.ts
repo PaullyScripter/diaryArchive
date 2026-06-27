@@ -26,6 +26,7 @@ export interface DiaryData {
   is_liked: boolean;
   is_bookmarked: boolean;
   is_owner: boolean;
+  content_warnings: string[];
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -95,7 +96,7 @@ async function fetchRandomDiary(): Promise<DiaryData> {
 }
 
 async function fetchPopularTags(): Promise<DiaryTagsResponse[]> {
-  const response = await apiClient.get("/tags/popular", { params: { limit: 30 } });
+  const response = await apiClient.get("/tags/popular", { params: { limit: 100 } });
   return response.data.data;
 }
 

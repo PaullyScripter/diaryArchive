@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Heart, MessageCircle } from "lucide-react";
 import { TagBadge } from "@/components/shared/tag-badge";
-import { EmotionBadge } from "@/components/shared/emotion-badge";
 import { PrivacyBadge } from "@/components/shared/privacy-badge";
 
 export interface DiaryCardData {
@@ -21,6 +20,7 @@ export interface DiaryCardData {
     bookmark_count: number;
   };
   privacy?: string;
+  content_warnings?: string[];
   created_at: string;
   updated_at?: string;
   published_at?: string | null;
@@ -46,39 +46,59 @@ function relativeTime(dateStr: string): string {
 
 export function DiaryCard({ diary }: { diary: DiaryCardData }) {
   return (
-    <article className="p-4 border border-border rounded-lg bg-background hover:border-foreground/20 transition-colors flex flex-col gap-2">
-      <div className="flex items-center gap-2 flex-wrap">
-        {diary.privacy && <PrivacyBadge privacy={diary.privacy} />}
-        {diary.emotion && <EmotionBadge emotion={diary.emotion} />}
-      </div>
+    <article className="py-3 border-b border-border last:border-b-0 border-l-2 border-l-accent transition-colors hover:bg-overlay -mx-4 px-4 rounded-sm">
+      <div className="max-w-prose">
+        <Link
+          href={`/diary/${diary.id}`}
+          className="text-lg font-serif font-semibold text-foreground leading-snug no-underline hover:underline"
+        >
+          {diary.title ?? (diary.privacy === "private" ? "Private Entry" : "Untitled")}
+        </Link>
 
-      <Link
-        href={`/diary/${diary.id}`}
-        className="font-serif text-lg font-semibold text-foreground leading-snug no-underline hover:underline line-clamp-2"
-      >
-        {diary.title ?? (diary.privacy === "private" ? "Private Entry" : "Untitled")}
-      </Link>
-
-      {diary.excerpt && (
-        <p className="text-xs text-muted leading-snug line-clamp-3">
-          {diary.excerpt}
-        </p>
-      )}
-
-      <div className="flex items-center justify-between mt-auto pt-2">
-        <div className="flex items-center gap-2 text-xs text-muted min-w-0">
+        <div className="mt-0.5 text-xs text-subtle">
           <Link
             href={`/profile/${diary.author.username}`}
-            className="text-muted hover:text-foreground no-underline hover:underline truncate"
+            className="text-muted hover:text-foreground no-underline hover:underline"
           >
             {diary.author.username}
           </Link>
-          <span className="text-subtle">·</span>
-          <span className="text-subtle whitespace-nowrap">
-            {relativeTime(diary.created_at)}
-          </span>
+          <span className="mx-1">·</span>
+          <span>{relativeTime(diary.created_at)}</span>
+          {diary.emotion && (
+            <>
+              <span className="mx-1">·</span>
+              <span className="text-[hsl(15,40%,54%)] dark:text-[hsl(15,55%,72%)] font-medium">{diary.emotion}</span>
+            </>
+          )}
+          {diary.content_warnings && diary.content_warnings.length > 0 && (
+            <>
+              <span className="mx-1">·</span>
+              <span className="text-subtle text-[11px]" title={diary.content_warnings.join(", ")}>⚠</span>
+            </>
+          )}
+          {diary.privacy && (
+            <>
+              <span className="mx-1">·</span>
+              <PrivacyBadge privacy={diary.privacy} />
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-subtle">
+
+        {diary.tags.length > 0 && (
+          <div className="mt-1 text-xs">
+            {diary.tags.map((tag) => (
+              <TagBadge key={tag} tag={tag} />
+            ))}{" "}
+          </div>
+        )}
+
+        {diary.excerpt && (
+          <p className="mt-2 text-xs text-muted leading-snug line-clamp-2">
+            {diary.excerpt}
+          </p>
+        )}
+
+        <div className="mt-1.5 flex items-center gap-3 text-xs text-subtle">
           <span className="flex items-center gap-1">
             <Heart className="w-3 h-3" />
             {diary.stats.like_count}
@@ -89,14 +109,6 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
           </span>
         </div>
       </div>
-
-      {diary.tags.length > 0 && (
-        <div className="flex gap-1 flex-wrap">
-          {diary.tags.slice(0, 5).map((tag) => (
-            <TagBadge key={tag} tag={tag} />
-          ))}
-        </div>
-      )}
     </article>
   );
 }

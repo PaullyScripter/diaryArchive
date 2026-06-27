@@ -2,19 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { useAuthStore } from "@/store/auth-store";
-import { useMyDiaries, useDeleteDiary } from "@/hooks/use-diaries";
+import { useMyDiaries } from "@/hooks/use-diaries";
 import { DiaryCard, type DiaryCardData } from "@/components/diary/diary-card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function MyDiariesContent() {
   const user = useAuthStore((s) => s.user);
-  const router = useRouter();
   const [filter, setFilter] = useState("all");
-  const deleteDiary = useDeleteDiary();
 
   const privacy = filter === "all" ? undefined : filter;
   const {
@@ -28,11 +25,6 @@ function MyDiariesContent() {
 
   const allDiaries: DiaryCardData[] =
     data?.pages.flatMap((page) => page.data ?? []) ?? [];
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this diary permanently?")) return;
-    await deleteDiary.mutateAsync(id);
-  };
 
   return (
     <div>
@@ -62,11 +54,11 @@ function MyDiariesContent() {
 
         <TabsContent value={filter}>
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="space-y-0">
+              {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="p-4 border border-border rounded-lg h-48 animate-pulse bg-overlay/10"
+                  className="py-3 border-b border-border last:border-b-0 h-24 animate-pulse bg-overlay/5"
                 />
               ))}
             </div>
@@ -79,9 +71,6 @@ function MyDiariesContent() {
               <p className="text-sm text-muted">
                 No {filter === "all" ? "" : filter} diaries yet.
               </p>
-              <p className="text-xs text-subtle mt-1">
-                The blank page is waiting.
-              </p>
               <Link
                 href="/diary/new"
                 className="inline-block mt-3 text-sm text-link hover:underline"
@@ -91,34 +80,11 @@ function MyDiariesContent() {
             </div>
           ) : (
             <div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {allDiaries.map((diary) => (
-                  <div key={diary.id} className="relative group">
-                    <Link
-                      href={
-                        diary.privacy === "private"
-                          ? `/diary/${diary.id}`
-                          : `/diary/${diary.id}`
-                      }
-                      className="block"
-                    >
-                      <DiaryCard diary={diary} />
-                    </Link>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        handleDelete(diary.id);
-                      }}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-destructive hover:underline cursor-pointer bg-background/80 px-1 rounded"
-                      title="Delete"
-                    >
-                      delete
-                    </button>
-                  </div>
-                ))}
-              </div>
+              {allDiaries.map((diary) => (
+                <DiaryCard key={diary.id} diary={diary} />
+              ))}
               {hasNextPage && (
-                <div className="mt-6 text-center">
+                <div className="mt-4 text-center">
                   <Button
                     variant="ghost"
                     size="sm"
