@@ -133,37 +133,46 @@ export function DiaryForm({
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Privacy</label>
-            <div className="flex gap-2">
+            <label className="block text-xs font-medium text-foreground mb-2">
+              Privacy
+            </label>
+            <div className="space-y-2">
               {[
-                { value: "public", label: "Public" },
-                { value: "draft", label: "Draft" },
+                { value: "public", label: "Public — visible to everyone" },
+                { value: "draft", label: "Draft — only visible to you" },
               ].map(({ value, label }) => (
-                <Button
+                <label
                   key={value}
-                  variant={privacy === value ? "primary" : "secondary"}
-                  size="sm"
-                  onClick={() => setPrivacy(value)}
-                  type="button"
+                  className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
                 >
+                  <input
+                    type="radio"
+                    name="privacy"
+                    checked={privacy === value}
+                    onChange={() => setPrivacy(value)}
+                    className="rounded-full border-border cursor-pointer"
+                  />
                   {label}
-                </Button>
+                </label>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Comments</label>
-            <Button
-              variant={commentsEnabled ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => setCommentsEnabled(!commentsEnabled)}
-              type="button"
-            >
-              {commentsEnabled ? "On" : "Off"}
-            </Button>
+            <label className="block text-xs font-medium text-foreground mb-2">
+              Comments
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={commentsEnabled}
+                onChange={() => setCommentsEnabled(!commentsEnabled)}
+                className="rounded border-border cursor-pointer"
+              />
+              Allow comments on this diary
+            </label>
           </div>
         </div>
 
