@@ -168,33 +168,31 @@ export function DiaryForm({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-muted mb-2">
+          <label className="block text-xs font-medium text-foreground mb-2">
             Content Warnings <span className="text-subtle font-normal">(optional)</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { key: "adut", label: "Adult / Explicit" },
-              { key: "violence", label: "Graphic Violence" },
-              { key: "self-harm", label: "Self-Harm / Suicide" },
-              { key: "substance", label: "Substance Use" },
-            ].map(({ key, label }) => (
-              <label
-                key={key}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs cursor-pointer transition-colors ${
-                  contentWarnings.includes(key)
-                    ? "border-destructive/40 bg-destructive/5 text-destructive"
-                    : "border-border text-muted hover:border-destructive/20"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={contentWarnings.includes(key)}
-                  onChange={() => toggleWarning(key)}
-                  className="rounded"
-                />
-                {label}
-              </label>
-            ))}
+          <div className="border-2 border-[#808080] bg-[#c0c0c0] p-3 shadow-[inset_-1px_-1px_0_#fff,inset_1px_1px_0_#808080]">
+            <div className="grid grid-cols-1 gap-1.5">
+              {[
+                { key: "adut", label: "Adult / Explicit" },
+                { key: "violence", label: "Graphic Violence" },
+                { key: "self-harm", label: "Self-Harm / Suicide" },
+                { key: "substance", label: "Substance Use" },
+              ].map(({ key, label }) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-2 px-2 py-1 text-[13px] text-[#000] cursor-pointer font-[system-ui]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={contentWarnings.includes(key)}
+                    onChange={() => toggleWarning(key)}
+                    className="w-3.5 h-3.5 border-2 border-[#808080] bg-white appearance-none checked:appearance-auto accent-[#000080] cursor-pointer"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
