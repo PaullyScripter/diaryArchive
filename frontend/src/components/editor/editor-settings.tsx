@@ -30,7 +30,7 @@ export function EditorSettings({
   toggleWarning,
 }: EditorSettingsProps) {
   const warnings: Array<{ key: string; label: string }> = [
-    { key: "adut", label: "Adult / Explicit" },
+    { key: "adult", label: "Adult / Explicit" },
     { key: "violence", label: "Graphic Violence" },
     { key: "self-harm", label: "Self-Harm / Suicide" },
     { key: "substance", label: "Substance Use" },

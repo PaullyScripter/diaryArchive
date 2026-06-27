@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const WARNING_LABELS: Record<string, string> = {
-  adut: "Adult / Explicit content",
+  adult: "Adult / Explicit content",
   violence: "Graphic violence",
   "self-harm": "Self-harm or suicide",
   substance: "Substance use",
@@ -18,7 +18,7 @@ interface WarningOverlayProps {
 
 export function WarningOverlay({ warnings, onAcknowledge }: WarningOverlayProps) {
   const [ageConfirmed, setAgeConfirmed] = useState(false);
-  const needsAgeGate = warnings.includes("adut");
+  const needsAgeGate = warnings.includes("adult");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">

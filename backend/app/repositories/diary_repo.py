@@ -1,5 +1,3 @@
-import random as _random
-
 from bson import ObjectId
 
 from app.repositories.base import BaseRepository
@@ -96,16 +94,12 @@ class DiaryRepository(BaseRepository):
         return await self.count(query)
 
     async def find_random_public(self) -> dict | None:
-        count = await self.count_public_feed()
-        if count == 0:
-            return None
-        skip = _random.randint(0, max(0, count - 1))
-        results = await self.find(
-            {"privacy": "public"},
-            sort=[("_id", 1)],
-            skip=skip,
-            limit=1,
-        )
+        pipeline = [
+            {"$match": {"privacy": "public"}},
+            {"$sample": {"size": 1}},
+        ]
+        cursor = self._collection.aggregate(pipeline)
+        results = await cursor.to_list(length=1)
         return results[0] if results else None
 
     async def find_user_diaries(
