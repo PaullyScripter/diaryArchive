@@ -10,6 +10,7 @@ const buttonVariants = cva(
       variant: {
         default: "text-link hover:text-link-hover underline underline-offset-2 decoration-from-font",
         primary: "bg-foreground text-background hover:bg-foreground/90 px-3 py-1.5 no-underline",
+        secondary: "border border-border text-foreground hover:bg-overlay px-3 py-1.5 no-underline",
         ghost: "text-muted hover:text-foreground hover:bg-overlay px-2 py-1.5 no-underline",
         destructive: "text-destructive hover:text-destructive/80 no-underline",
       },
