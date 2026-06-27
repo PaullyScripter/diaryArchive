@@ -9,6 +9,9 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
 import Link from "@tiptap/extension-link";
 import CharacterCount from "@tiptap/extension-character-count";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { FontFamily } from "@tiptap/extension-font-family";
+import { FontSize } from "@/components/editor/extensions/font-size";
 import { useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 
@@ -42,6 +45,9 @@ export function TiptapEditor({
         HTMLAttributes: { rel: "noopener noreferrer" },
       }),
       CharacterCount,
+      TextStyle,
+      FontFamily,
+      FontSize,
     ],
     content,
     editable,
