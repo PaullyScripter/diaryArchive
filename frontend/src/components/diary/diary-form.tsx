@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EMOTION_SUGGESTIONS } from "@/components/shared/emotion-badge";
 
 interface DiaryFormProps {
   initialData?: {
@@ -20,11 +21,6 @@ interface DiaryFormProps {
   submitLabel?: string;
   isSubmitting?: boolean;
 }
-
-const VALID_EMOTIONS = [
-  "happy", "sad", "anxious", "angry", "excited",
-  "grateful", "lonely", "hopeful", "nostalgic", "reflective", "neutral",
-];
 
 export function DiaryForm({
   initialData,
@@ -113,18 +109,19 @@ export function DiaryForm({
 
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Emotion</label>
-            <select
+            <Input
               value={emotion}
               onChange={(e) => setEmotion(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">None</option>
-              {VALID_EMOTIONS.map((e) => (
-                <option key={e} value={e}>
-                  {e.charAt(0).toUpperCase() + e.slice(1)}
-                </option>
+              placeholder="how are you feeling?"
+              maxLength={50}
+              list="emotion-suggestions"
+            />
+            <datalist id="emotion-suggestions">
+              {EMOTION_SUGGESTIONS.map((e) => (
+                <option key={e} value={e} />
               ))}
-            </select>
+            </datalist>
+            <p className="text-xs text-subtle mt-1">{emotion.length}/50</p>
           </div>
         </div>
 
