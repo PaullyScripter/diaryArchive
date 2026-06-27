@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { BrowseSidebar } from "@/components/diary/browse-sidebar";
 import {
@@ -14,6 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TagBadge } from "@/components/shared/tag-badge";
 import { EmotionBadge } from "@/components/shared/emotion-badge";
 
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, n);
+}
+
 export default function Home() {
   const {
     data: diariesData,
@@ -24,6 +34,9 @@ export default function Home() {
   const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
   const { data: popularTags } = usePopularTags();
   const { data: emotions } = useEmotions();
+
+  const randomTags = useMemo(() => pickRandom(popularTags ?? [], 25), [popularTags]);
+  const randomEmotions = useMemo(() => pickRandom(emotions ?? [], 25), [emotions]);
 
   const latestDiaries: DiaryCardData[] =
     diariesData?.pages.flatMap((p) => p.data ?? []) ?? [];
@@ -108,13 +121,13 @@ export default function Home() {
           </div>
         )}
 
-        {popularTags && popularTags.length > 0 && (
+        {randomTags.length > 0 && (
           <div className="mt-12 pt-8 border-t border-border">
             <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
               Browse by Tags
             </h2>
             <div className="flex gap-1.5 flex-wrap">
-              {popularTags.map(({ tag, count }) => (
+              {randomTags.map(({ tag, count }) => (
                 <Link
                   key={tag}
                   href={`/explore?tag=${tag}`}
@@ -129,13 +142,13 @@ export default function Home() {
           </div>
         )}
 
-        {emotions && emotions.length > 0 && (
+        {randomEmotions.length > 0 && (
           <div className="mt-12 pt-8 border-t border-border">
             <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
               Browse by Emotion
             </h2>
             <div className="flex gap-2 flex-wrap">
-              {emotions.map(({ emotion, count }) => (
+              {randomEmotions.map(({ emotion, count }) => (
                 <Link
                   key={emotion}
                   href={`/explore?emotion=${emotion}`}

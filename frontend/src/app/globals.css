@@ -41,8 +41,8 @@
   --color-link: hsl(210 60% 65%);
   --color-link-visited: hsl(270 30% 65%);
   --color-link-hover: hsl(210 60% 75%);
-  --color-accent: hsl(15 50% 66%);
-  --color-accent-soft: hsl(15 30% 20%);
+  --color-accent: hsl(15 55% 72%);
+  --color-accent-soft: hsl(15 25% 26%);
   --color-tag-bg: hsl(40 5% 20%);
   --color-selection: hsl(210 40% 20%);
   --color-overlay: hsl(0 0% 100% / 0.08);
@@ -56,8 +56,8 @@
 .dark .text-link { color: hsl(210 60% 65%) !important; }
 .dark .text-link-visited { color: hsl(270 30% 65%) !important; }
 .dark .text-link-hover { color: hsl(210 60% 75%) !important; }
-.dark .text-accent { color: hsl(15 50% 66%) !important; }
-.dark .text-accent-soft { color: hsl(15 30% 20%) !important; }
+.dark .text-accent { color: hsl(15 55% 72%) !important; }
+.dark .text-accent-soft { color: hsl(15 25% 26%) !important; }
 .dark .text-destructive { color: hsl(0 60% 65%) !important; }
 
 .dark .bg-background { background-color: hsl(40 5% 12%) !important; }
