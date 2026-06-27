@@ -42,8 +42,7 @@ async def get_user_profile(username: str, current_user: dict | None = None) -> d
         raise PermissionDeniedException("This account has been suspended")
 
     is_following = False
-    if current_user:
-        follow_repo = None
+    if current_user and str(current_user["_id"]) != str(user["_id"]):
         try:
             from app.repositories.follow_repo import FollowRepository
             follow_repo = FollowRepository()
@@ -52,7 +51,7 @@ async def get_user_profile(username: str, current_user: dict | None = None) -> d
                 "following_id": user["_id"],
             })
             is_following = existing is not None
-        except Exception:
+        except ImportError:
             pass
 
     return build_public_profile(user, is_following)
