@@ -295,9 +295,22 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
               className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
             />
-            <p className="text-xs text-subtle mt-1">
-              CSS is included in your diary content. Use responsibly.
-            </p>
+            <details className="mt-2 text-xs">
+              <summary className="text-subtle cursor-pointer hover:text-muted">
+                Available CSS variables
+              </summary>
+              <div className="mt-2 p-3 border border-border rounded-md bg-tag-bg font-mono text-xs text-muted space-y-1">
+                <p><span className="text-foreground">var(--color-background)</span> — page background</p>
+                <p><span className="text-foreground">var(--color-foreground)</span> — main text</p>
+                <p><span className="text-foreground">var(--color-accent)</span> — warm terracotta</p>
+                <p><span className="text-foreground">var(--color-border)</span> — divider lines</p>
+                <p><span className="text-foreground">var(--color-subtle)</span> — secondary text</p>
+                <p><span className="text-foreground">var(--color-muted)</span> — muted text</p>
+                <p><span className="text-foreground">var(--color-overlay)</span> — subtle hover</p>
+                <p><span className="text-foreground">var(--color-tag-bg)</span> — code block bg</p>
+                <p className="text-subtle mt-1">These automatically adapt to light/dark mode.</p>
+              </div>
+            </details>
           </div>
         </div>
 
