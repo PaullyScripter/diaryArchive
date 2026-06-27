@@ -32,7 +32,7 @@ export function WarningOverlay({ warnings, onAcknowledge }: WarningOverlayProps)
         </p>
         <ul className="text-sm text-foreground space-y-1.5 mb-6">
           {warnings.map((w) => (
-            <li key={w} className="px-3 py-1.5 bg-destructive/5 border border-destructive/10 rounded-md">
+            <li key={w} className="px-3 py-1.5 bg-[hsl(0,52%,53%,0.08)] dark:bg-[hsl(0,60%,65%,0.12)] border border-[hsl(0,52%,53%,0.2)] dark:border-[hsl(0,60%,65%,0.25)] rounded-md">
               {WARNING_LABELS[w] ?? w}
             </li>
           ))}

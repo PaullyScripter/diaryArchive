@@ -101,7 +101,7 @@ export default function DiaryReaderPage() {
           {diary.content_warnings.map((w: string) => (
             <span
               key={w}
-              className="inline-block px-2 py-0.5 rounded text-[11px] bg-destructive/10 text-destructive border border-destructive/20"
+              className="inline-block px-2 py-0.5 rounded text-[11px] bg-[hsl(0,52%,53%,0.08)] dark:bg-[hsl(0,60%,65%,0.12)] text-destructive border border-[hsl(0,52%,53%,0.2)] dark:border-[hsl(0,60%,65%,0.25)]"
             >
               ⚠ {w}
             </span>

@@ -130,7 +130,6 @@ export function DiaryForm({
                 <option key={e} value={e} />
               ))}
             </datalist>
-            <p className="text-xs text-subtle mt-1">{emotion.length}/50</p>
           </div>
         </div>
 
