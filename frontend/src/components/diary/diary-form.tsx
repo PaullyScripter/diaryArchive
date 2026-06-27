@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EMOTION_SUGGESTIONS } from "@/components/shared/emotion-badge";
 
 interface DiaryFormProps {
   initialData?: {
@@ -15,16 +16,12 @@ interface DiaryFormProps {
     emotion?: string | null;
     privacy?: string;
     comments_enabled?: boolean;
+    content_warnings?: string[];
   };
   onSubmit: (data: Record<string, unknown>) => Promise<{ id: string } | void>;
   submitLabel?: string;
   isSubmitting?: boolean;
 }
-
-const VALID_EMOTIONS = [
-  "happy", "sad", "anxious", "angry", "excited",
-  "grateful", "lonely", "hopeful", "nostalgic", "reflective", "neutral",
-];
 
 export function DiaryForm({
   initialData,
@@ -39,7 +36,14 @@ export function DiaryForm({
   const [emotion, setEmotion] = useState(initialData?.emotion ?? "");
   const [privacy, setPrivacy] = useState(initialData?.privacy ?? "public");
   const [commentsEnabled, setCommentsEnabled] = useState(initialData?.comments_enabled ?? true);
+  const [contentWarnings, setContentWarnings] = useState<string[]>(initialData?.content_warnings ?? []);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleWarning = (w: string) => {
+    setContentWarnings((prev) =>
+      prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]
+    );
+  };
 
   const tags = tagsInput
     .split(",")
@@ -63,6 +67,7 @@ export function DiaryForm({
         tags,
         emotion: emotion || null,
         comments_enabled: commentsEnabled,
+        content_warnings: contentWarnings,
       });
       if (result && "id" in result) {
         router.push(`/diary/${result.id}`);
@@ -113,18 +118,18 @@ export function DiaryForm({
 
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Emotion</label>
-            <select
+            <Input
               value={emotion}
               onChange={(e) => setEmotion(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">None</option>
-              {VALID_EMOTIONS.map((e) => (
-                <option key={e} value={e}>
-                  {e.charAt(0).toUpperCase() + e.slice(1)}
-                </option>
+              placeholder="how are you feeling?"
+              maxLength={50}
+              list="emotion-suggestions"
+            />
+            <datalist id="emotion-suggestions">
+              {EMOTION_SUGGESTIONS.map((e) => (
+                <option key={e} value={e} />
               ))}
-            </select>
+            </datalist>
           </div>
         </div>
 
@@ -159,6 +164,33 @@ export function DiaryForm({
             >
               {commentsEnabled ? "On" : "Off"}
             </Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-2">
+            Content Warnings <span className="text-subtle font-normal">(optional)</span>
+          </label>
+          <div className="space-y-2">
+            {[
+              { key: "adut", label: "Adult / Explicit" },
+              { key: "violence", label: "Graphic Violence" },
+              { key: "self-harm", label: "Self-Harm / Suicide" },
+              { key: "substance", label: "Substance Use" },
+            ].map(({ key, label }) => (
+              <label
+                key={key}
+                className="flex items-center gap-2 text-sm text-foreground cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={contentWarnings.includes(key)}
+                  onChange={() => toggleWarning(key)}
+                  className="rounded border-border cursor-pointer"
+                />
+                {label}
+              </label>
+            ))}
           </div>
         </div>
 

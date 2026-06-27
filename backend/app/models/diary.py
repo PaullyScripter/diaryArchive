@@ -14,9 +14,10 @@ class DiaryCreate(BaseModel):
     title: str | None = Field(None, max_length=200)
     content_html: str | None = Field(None, max_length=102400)
     content_text: str | None = Field(None, max_length=51200)
-    tags: list[str] = Field(default_factory=list, max_length=10)
+    tags: list[str] = Field(default_factory=list, max_length=50)
     emotion: str | None = None
     comments_enabled: bool = True
+    content_warnings: list[str] = Field(default_factory=list)
 
 
 class DiaryUpdate(BaseModel):
@@ -27,6 +28,7 @@ class DiaryUpdate(BaseModel):
     tags: list[str] | None = None
     emotion: str | None = None
     comments_enabled: bool | None = None
+    content_warnings: list[str] | None = None
 
 
 class DiaryStats(BaseModel):
@@ -56,6 +58,7 @@ class DiaryResponse(BaseModel):
     is_liked: bool = False
     is_bookmarked: bool = False
     is_owner: bool = False
+    content_warnings: list[str] = []
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None = None
@@ -71,6 +74,7 @@ class DiaryListItem(BaseModel):
     stats: DiaryStats = DiaryStats()
     is_liked: bool = False
     is_bookmarked: bool = False
+    content_warnings: list[str] = []
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None = None
