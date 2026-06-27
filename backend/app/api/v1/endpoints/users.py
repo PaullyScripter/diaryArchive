@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 
 from app.api.deps import get_current_user
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundException, RateLimitException
+from app.core.security import check_rate_limit
 from app.models.user import EmailUpdate, UserUpdate
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
@@ -56,8 +57,14 @@ async def get_profile(
 @router.put("/me")
 async def update_my_profile(
     body: UserUpdate,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:update_profile:{current_user['_id']}", 30, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many profile updates")
     update_dict = body.model_dump(exclude_unset=True, exclude_none=False)
     profile = await update_user_profile(str(current_user["_id"]), update_dict)
     return {"data": profile}
@@ -66,8 +73,14 @@ async def update_my_profile(
 @router.put("/me/email")
 async def update_my_email(
     body: EmailUpdate,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:update_email:{current_user['_id']}", 5, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many email update attempts")
     result = await update_user_email(str(current_user["_id"]), body.email)
     return {"data": result}
 
