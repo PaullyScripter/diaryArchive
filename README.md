@@ -40,7 +40,8 @@ diaryarchive/
 │   │   ├── core/       # Config, security, database, middleware
 │   │   ├── models/     # Pydantic schemas
 │   │   ├── repositories/  # Data access layer
-│   │   └── schemas/    # MongoDB index definitions
+│   │   ├── schemas/    # MongoDB index definitions
+│   │   └── services/   # Business logic layer
 │   └── tests/          # Backend tests
 ├── frontend/           # Next.js application
 │   └── src/

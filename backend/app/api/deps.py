@@ -7,6 +7,25 @@ from app.core.security import decode_access_token
 from app.repositories.user_repo import UserRepository
 
 
+async def _optional_user(
+    authorization: str = Header(None, alias="Authorization"),
+) -> dict | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        token = authorization.split(" ", 1)[1]
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if user_id:
+            user_repo = UserRepository()
+            user = await user_repo.get_by_id(user_id)
+            if user and not user.get("is_banned"):
+                return user
+    except Exception:
+        pass
+    return None
+
+
 async def get_db() -> AsyncIOMotorDatabase:
     return DatabaseManager.get_db()
 

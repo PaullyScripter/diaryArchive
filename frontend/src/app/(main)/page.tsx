@@ -1,76 +1,33 @@
+"use client";
+
 import Link from "next/link";
 import { BrowseSidebar } from "@/components/diary/browse-sidebar";
-import { DiaryEntry } from "@/components/diary/diary-entry";
-
-const sampleEntries = [
-  {
-    id: "1",
-    title: "The morning light through the window reminds me of grandmother's kitchen",
-    author: { username: "quiet_wanderer", id: "u1" },
-    publishedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    readingTime: 5,
-    commentCount: 12,
-    isPublic: true,
-    tags: ["life", "reflection", "family"],
-    emotion: "grateful",
-    excerpt:
-      "There is a particular quality to the light at 7am in June. It comes in at an angle that catches the dust motes floating in the air, turning them into tiny golden planets orbiting some invisible sun...",
-  },
-  {
-    id: "2",
-    title: "Packing for a trip I never thought I'd take",
-    author: { username: "nomad_heart", id: "u2" },
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    readingTime: 3,
-    commentCount: 8,
-    isPublic: true,
-    tags: ["travel", "life"],
-    emotion: "hopeful",
-    excerpt:
-      "The suitcase is on the bed, open and empty. It has been there for three days now. I keep walking past it, adding things one at a time—a book, a scarf, the charger—as if I am testing...",
-  },
-  {
-    id: "3",
-    title: "On letting go of the person I used to be",
-    author: { username: "ink_and_tears", id: "u3" },
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    readingTime: 7,
-    commentCount: 24,
-    isPublic: false,
-    tags: ["reflection", "mental-health", "poetry"],
-    emotion: "melancholy",
-    excerpt:
-      "I found an old journal yesterday. Not this one—a physical one, with a cracked leather cover and pages yellowed at the edges. Reading it felt like reading the diary of a stranger who happens to share my...",
-  },
-  {
-    id: "4",
-    title: "A recipe passed down through four generations",
-    author: { username: "sourdough_soul", id: "u4" },
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    readingTime: 4,
-    commentCount: 15,
-    isPublic: true,
-    tags: ["life", "family", "art"],
-    emotion: "joyful",
-    excerpt:
-      "My great-grandmother wrote this recipe in 1943, on the back of a ration card. The handwriting is elegant and slightly frantic, as if she was running out of ink. The ingredients are simple—flour, eggs, butter...",
-  },
-  {
-    id: "5",
-    title: "Why I stopped checking the news every morning",
-    author: { username: "slow_living", id: "u5" },
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    readingTime: 6,
-    commentCount: 31,
-    isPublic: true,
-    tags: ["reflection", "life"],
-    emotion: "reflective",
-    excerpt:
-      "It started as an experiment. Thirty days without opening a news app before noon. I expected to feel uninformed. Instead, I found that the world continued to turn, and the things that truly mattered...",
-  },
-];
+import {
+  useDiaries,
+  useRandomDiary,
+  usePopularTags,
+  useEmotions,
+} from "@/hooks/use-diaries";
+import { DiaryCard, type DiaryCardData } from "@/components/diary/diary-card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TagBadge } from "@/components/shared/tag-badge";
+import { EmotionBadge } from "@/components/shared/emotion-badge";
 
 export default function Home() {
+  const {
+    data: diariesData,
+    isLoading: diariesLoading,
+    fetchNextPage,
+    hasNextPage,
+  } = useDiaries({ sort: "latest" });
+  const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
+  const { data: popularTags } = usePopularTags();
+  const { data: emotions } = useEmotions();
+
+  const latestDiaries: DiaryCardData[] =
+    diariesData?.pages.flatMap((p) => p.data ?? []) ?? [];
+
   return (
     <div className="flex gap-8 lg:gap-10">
       <BrowseSidebar />
@@ -78,31 +35,122 @@ export default function Home() {
       <div className="min-w-0 flex-1">
         <div className="mb-5 pb-4 border-b border-border">
           <div className="flex items-baseline justify-between">
-            <h1 className="font-serif text-xl font-semibold text-foreground">Recent Diaries</h1>
-            <div className="flex gap-3 text-[11px] text-subtle">
-              <button className="text-foreground cursor-pointer">Newest</button>
-              <button className="hover:text-foreground cursor-pointer">Popular</button>
-            </div>
+            <h1 className="font-serif text-xl font-semibold text-foreground">
+              Recent Diaries
+            </h1>
           </div>
           <p className="text-xs text-muted mt-0.5">
             Public entries from the archive
           </p>
         </div>
 
-        <div>
-          {sampleEntries.map((entry) => (
-            <DiaryEntry key={entry.id} entry={entry} />
-          ))}
-        </div>
+        {diariesLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="p-4 border border-border rounded-lg space-y-3"
+              >
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : latestDiaries.length > 0 ? (
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {latestDiaries.map((diary) => (
+                <DiaryCard key={diary.id} diary={diary} />
+              ))}
+            </div>
+            {hasNextPage && (
+              <div className="mt-6 text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchNextPage()}
+                >
+                  Load more
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted">
+              No public diaries yet. Be the first to share.
+            </p>
+            <Link
+              href="/diary/new"
+              className="inline-block mt-3 text-sm text-link hover:underline"
+            >
+              Write your first diary
+            </Link>
+          </div>
+        )}
 
-        <div className="mt-4 pt-3 border-t border-border">
-          <Link
-            href="/explore"
-            className="text-sm text-muted hover:text-foreground no-underline hover:underline"
-          >
-            View more diaries →
-          </Link>
-        </div>
+        {randomDiary && (
+          <div className="mt-12 pt-8 border-t border-border">
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="font-serif text-lg font-semibold text-foreground">
+                Random Diary
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => shuffleRandom()}
+              >
+                Shuffle
+              </Button>
+            </div>
+            <DiaryCard diary={randomDiary as unknown as DiaryCardData} />
+          </div>
+        )}
+
+        {popularTags && popularTags.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-border">
+            <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+              Browse by Tags
+            </h2>
+            <div className="flex gap-1.5 flex-wrap">
+              {popularTags.map(({ tag, count }) => (
+                <Link
+                  key={tag}
+                  href={`/explore?tag=${tag}`}
+                  className="inline-block"
+                >
+                  <span className="inline-block px-2 py-1 rounded-sm text-xs bg-tag-bg text-muted hover:text-foreground hover:bg-border transition-colors no-underline">
+                    #{tag} <span className="text-subtle">{count}</span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {emotions && emotions.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-border">
+            <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+              Browse by Emotion
+            </h2>
+            <div className="flex gap-2 flex-wrap">
+              {emotions.map(({ emotion, count }) => (
+                <Link
+                  key={emotion}
+                  href={`/explore?emotion=${emotion}`}
+                  className="no-underline"
+                >
+                  <EmotionBadge emotion={emotion} />
+                  {count > 0 && (
+                    <span className="text-xs text-subtle ml-1">{count}</span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

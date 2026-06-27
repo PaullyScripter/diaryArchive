@@ -1,8 +1,10 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Header, Query, Request
+from datetime import datetime
 
-from app.api.deps import get_current_user
+from fastapi import APIRouter, Depends, Query, Request
+
+from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import NotFoundException, RateLimitException
 from app.core.security import check_rate_limit
 from app.models.user import EmailUpdate, UserUpdate
@@ -23,26 +25,6 @@ def _fmt_dt(value) -> str | None:
     if isinstance(value, datetime):
         return value.isoformat()
     return str(value)
-
-
-async def _optional_user(
-    authorization: str = Header(None, alias="Authorization"),
-):
-    if not authorization or not authorization.startswith("Bearer "):
-        return None
-    try:
-        from app.core.security import decode_access_token
-        token = authorization.split(" ", 1)[1]
-        payload = decode_access_token(token)
-        user_id = payload.get("sub")
-        if user_id:
-            user_repo = UserRepository()
-            user = await user_repo.get_by_id(user_id)
-            if user and not user.get("is_banned"):
-                return user
-    except Exception:
-        pass
-    return None
 
 
 @router.get("/{username}")
