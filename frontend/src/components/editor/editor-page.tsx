@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
@@ -154,7 +154,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  });
+  }, [doSave]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -166,13 +166,6 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty, title, contentText]);
-
-  useEffect(() => {
-    if (!isEditMode) {
-      draft as any;
-      void draft;
-    }
-  }, [title, contentHtml, contentText, tags, emotion, privacy, commentsEnabled, contentWarnings, isEditMode, draft]);
 
   const handleDelete = async () => {
     if (!diaryId) return;

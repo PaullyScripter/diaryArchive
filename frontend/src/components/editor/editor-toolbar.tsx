@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -44,9 +43,6 @@ interface EditorToolbarProps {
 }
 
 export function EditorToolbar({ editor, sourceMode, onToggleSource }: EditorToolbarProps) {
-  const [fontMenu, setFontMenu] = useState(false);
-  const [sizeMenu, setSizeMenu] = useState(false);
-
   if (!editor || editor.isDestroyed) return null;
 
   const activeFont =
