@@ -9,7 +9,7 @@ export { EMOTION_SUGGESTIONS };
 
 export function EmotionBadge({ emotion }: { emotion: string }) {
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-accent-soft text-accent">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-[hsl(15,30%,92%)] text-[hsl(15,40%,54%)] dark:bg-[hsl(15,25%,26%)] dark:text-[hsl(15,55%,72%)]">
       {emotion}
     </span>
   );

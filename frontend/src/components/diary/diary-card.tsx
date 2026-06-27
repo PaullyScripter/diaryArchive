@@ -66,7 +66,7 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
           {diary.emotion && (
             <>
               <span className="mx-1">·</span>
-              <span className="text-accent font-medium">{diary.emotion}</span>
+              <span className="text-[hsl(15,40%,54%)] dark:text-[hsl(15,55%,72%)] font-medium">{diary.emotion}</span>
             </>
           )}
           {diary.privacy && (
