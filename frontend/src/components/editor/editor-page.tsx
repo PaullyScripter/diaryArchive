@@ -49,6 +49,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [contentHtml, setContentHtml] = useState("");
   const [contentText, setContentText] = useState("");
   const [privacy, setPrivacy] = useState("public");
+  const [sourceMode, setSourceMode] = useState(false);
+  const [customCss, setCustomCss] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [emotion, setEmotion] = useState("");
   const [commentsEnabled, setCommentsEnabled] = useState(true);
@@ -112,7 +114,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       const payload = {
         privacy: finalPrivacy,
         title: title.trim() || null,
-        content_html: contentHtml,
+        content_html: customCss ? `<style>${customCss}</style>${contentHtml}` : contentHtml,
         content_text: contentText,
         tags,
         emotion: emotion || null,
@@ -236,15 +238,28 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         />
       </div>
 
-      <EditorToolbar editor={editor} />
+      <EditorToolbar editor={editor} sourceMode={sourceMode} onToggleSource={() => setSourceMode(!sourceMode)} />
 
       <div className="relative">
         <FloatingToolbar editor={editor} />
-        <TiptapEditor
-          content={contentHtml}
-          onChange={onContentChange}
-          onEditorReady={setEditor}
-        />
+        {sourceMode ? (
+          <textarea
+            value={contentHtml}
+            onChange={(e) => {
+              setContentHtml(e.target.value);
+              setContentText(e.target.value.replace(/<[^>]*>/g, ""));
+              setIsDirty(true);
+            }}
+            className="w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+            placeholder="Write HTML directly..."
+          />
+        ) : (
+          <TiptapEditor
+            content={contentHtml}
+            onChange={onContentChange}
+            onEditorReady={setEditor}
+          />
+        )}
       </div>
 
       <EditorStats
@@ -269,6 +284,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             contentWarnings={contentWarnings}
             toggleWarning={toggleWarning}
           />
+
+          <div className="mt-6">
+            <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
+              Custom CSS <span className="text-subtle font-normal">(advanced)</span>
+            </h3>
+            <textarea
+              value={customCss}
+              onChange={(e) => setCustomCss(e.target.value)}
+              placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
+              className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+            />
+            <p className="text-xs text-subtle mt-1">
+              CSS is included in your diary content. Use responsibly.
+            </p>
+          </div>
         </div>
 
         {isEditMode && (
