@@ -124,6 +124,14 @@ export function NavBar() {
                   role="menu"
                 >
                   <Link
+                    href={`/profile/${user?.username}`}
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+                    role="menuitem"
+                  >
+                    Profile
+                  </Link>
+                  <Link
                     href="/me"
                     onClick={() => setMenuOpen(false)}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
