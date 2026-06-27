@@ -47,7 +47,7 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource }: EditorTool
   const [fontMenu, setFontMenu] = useState(false);
   const [sizeMenu, setSizeMenu] = useState(false);
 
-  if (!editor) return null;
+  if (!editor || editor.isDestroyed) return null;
 
   const activeFont =
     (editor.getAttributes("textStyle") as { fontFamily?: string }).fontFamily || "";
