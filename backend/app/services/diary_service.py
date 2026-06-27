@@ -6,7 +6,6 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.sanitize import sanitize_html
-from app.models.diary import VALID_EMOTIONS
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
 
@@ -78,8 +77,8 @@ def _validate_tags(tags: list[str]) -> list[str]:
         tag = tag.lower().strip()
         if not tag:
             continue
-        if len(tag) > 30:
-            raise ValidationException(f"Tag '{tag}' exceeds 30 characters")
+        if len(tag) > 50:
+            raise ValidationException(f"Tag '{tag}' exceeds 50 characters")
         if not all(c.isalnum() or c == "-" for c in tag):
             raise ValidationException(
                 f"Tag '{tag}' contains invalid characters (use a-z, 0-9, hyphens)"
@@ -93,11 +92,9 @@ def _validate_tags(tags: list[str]) -> list[str]:
 def _validate_emotion(emotion: str | None) -> str | None:
     if emotion is None:
         return None
-    emotion = emotion.lower().strip()
-    if emotion not in VALID_EMOTIONS:
-        raise ValidationException(
-            f"Invalid emotion. Must be one of: {', '.join(sorted(VALID_EMOTIONS))}"
-        )
+    emotion = emotion.strip()
+    if len(emotion) > 50:
+        raise ValidationException("Emotion exceeds 50 characters")
     return emotion
 
 

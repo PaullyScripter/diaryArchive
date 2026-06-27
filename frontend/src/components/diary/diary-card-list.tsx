@@ -25,13 +25,15 @@ export function DiaryCardList({
 }: DiaryCardListProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="p-4 border border-border rounded-lg space-y-3">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-5 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
+      <div className="space-y-0">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="py-3 border-b border-border last:border-b-0 space-y-2"
+          >
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-3 w-2/3" />
           </div>
         ))}
       </div>
@@ -70,13 +72,13 @@ export function DiaryCardList({
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div>
         {diaries.map((diary) => (
           <DiaryCard key={diary.id} diary={diary} />
         ))}
       </div>
       {hasNextPage && onLoadMore && (
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <Button
             variant="ghost"
             size="sm"
