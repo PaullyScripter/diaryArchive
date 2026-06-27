@@ -26,6 +26,7 @@ export interface DiaryData {
   is_liked: boolean;
   is_bookmarked: boolean;
   is_owner: boolean;
+  content_warnings: string[];
   created_at: string;
   updated_at: string;
   published_at: string | null;

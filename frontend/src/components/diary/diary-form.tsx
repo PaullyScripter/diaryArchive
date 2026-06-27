@@ -16,6 +16,7 @@ interface DiaryFormProps {
     emotion?: string | null;
     privacy?: string;
     comments_enabled?: boolean;
+    content_warnings?: string[];
   };
   onSubmit: (data: Record<string, unknown>) => Promise<{ id: string } | void>;
   submitLabel?: string;
@@ -35,7 +36,14 @@ export function DiaryForm({
   const [emotion, setEmotion] = useState(initialData?.emotion ?? "");
   const [privacy, setPrivacy] = useState(initialData?.privacy ?? "public");
   const [commentsEnabled, setCommentsEnabled] = useState(initialData?.comments_enabled ?? true);
+  const [contentWarnings, setContentWarnings] = useState<string[]>(initialData?.content_warnings ?? []);
   const [error, setError] = useState<string | null>(null);
+
+  const toggleWarning = (w: string) => {
+    setContentWarnings((prev) =>
+      prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]
+    );
+  };
 
   const tags = tagsInput
     .split(",")
@@ -59,6 +67,7 @@ export function DiaryForm({
         tags,
         emotion: emotion || null,
         comments_enabled: commentsEnabled,
+        content_warnings: contentWarnings,
       });
       if (result && "id" in result) {
         router.push(`/diary/${result.id}`);
@@ -156,6 +165,37 @@ export function DiaryForm({
             >
               {commentsEnabled ? "On" : "Off"}
             </Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-muted mb-2">
+            Content Warnings <span className="text-subtle font-normal">(optional)</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { key: "adut", label: "Adult / Explicit" },
+              { key: "violence", label: "Graphic Violence" },
+              { key: "self-harm", label: "Self-Harm / Suicide" },
+              { key: "substance", label: "Substance Use" },
+            ].map(({ key, label }) => (
+              <label
+                key={key}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs cursor-pointer transition-colors ${
+                  contentWarnings.includes(key)
+                    ? "border-destructive/40 bg-destructive/5 text-destructive"
+                    : "border-border text-muted hover:border-destructive/20"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={contentWarnings.includes(key)}
+                  onChange={() => toggleWarning(key)}
+                  className="rounded"
+                />
+                {label}
+              </label>
+            ))}
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, Bookmark, Share2, Pencil, Trash2 } from "lucide-react";
 
@@ -9,6 +10,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { TagBadge } from "@/components/shared/tag-badge";
 import { EmotionBadge } from "@/components/shared/emotion-badge";
+import { WarningOverlay } from "@/components/diary/diary-warning-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
@@ -19,6 +21,22 @@ export default function DiaryReaderPage() {
   const { data: diary, isLoading, isError } = useDiary(id);
   const deleteDiary = useDeleteDiary();
   const user = useAuthStore((s) => s.user);
+  const [warningAcknowledged, setWarningAcknowledged] = useState(false);
+
+  useEffect(() => {
+    setWarningAcknowledged(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (diary?.content_warnings?.length && sessionStorage.getItem(`cw-${id}`) === "1") {
+      setWarningAcknowledged(true);
+    }
+  }, [diary, id]);
+
+  const handleAcknowledge = () => {
+    sessionStorage.setItem(`cw-${id}`, "1");
+    setWarningAcknowledged(true);
+  };
 
   if (isLoading) {
     return (
@@ -50,6 +68,8 @@ export default function DiaryReaderPage() {
 
   const isOwner = user?.id === diary.author.id;
 
+  const showWarning = diary.content_warnings?.length && !warningAcknowledged && !isOwner;
+
   const handleDelete = async () => {
     if (!confirm("Delete this diary permanently? This cannot be undone.")) return;
     try {
@@ -61,13 +81,33 @@ export default function DiaryReaderPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4">
+    <>
+      {showWarning && diary.content_warnings && (
+        <WarningOverlay
+          warnings={diary.content_warnings}
+          onAcknowledge={handleAcknowledge}
+        />
+      )}
+      <div className="max-w-2xl mx-auto py-8 px-4">
       <Link
         href="/"
         className="text-xs text-muted hover:text-foreground no-underline hover:underline"
       >
         &larr; Back
       </Link>
+
+      {diary.content_warnings && diary.content_warnings.length > 0 && !isOwner && (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {diary.content_warnings.map((w: string) => (
+            <span
+              key={w}
+              className="inline-block px-2 py-0.5 rounded text-[11px] bg-destructive/10 text-destructive border border-destructive/20"
+            >
+              ⚠ {w}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="mt-4 flex items-center gap-3">
         <Link href={`/profile/${diary.author.username}`}>
@@ -168,5 +208,6 @@ export default function DiaryReaderPage() {
         </p>
       </div>
     </div>
+    </>
   );
 }

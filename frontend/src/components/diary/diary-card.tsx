@@ -20,6 +20,7 @@ export interface DiaryCardData {
     bookmark_count: number;
   };
   privacy?: string;
+  content_warnings?: string[];
   created_at: string;
   updated_at?: string;
   published_at?: string | null;
@@ -67,6 +68,12 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
             <>
               <span className="mx-1">·</span>
               <span className="text-[hsl(15,40%,54%)] dark:text-[hsl(15,55%,72%)] font-medium">{diary.emotion}</span>
+            </>
+          )}
+          {diary.content_warnings && diary.content_warnings.length > 0 && (
+            <>
+              <span className="mx-1">·</span>
+              <span className="text-destructive font-medium text-[11px]" title={diary.content_warnings.join(", ")}>⚠</span>
             </>
           )}
           {diary.privacy && (
