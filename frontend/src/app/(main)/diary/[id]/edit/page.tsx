@@ -46,6 +46,7 @@ function EditDiaryContent() {
           emotion: diary.emotion,
           privacy: diary.privacy,
           comments_enabled: diary.comments_enabled,
+          content_warnings: diary.content_warnings,
         }}
         onSubmit={async (data) => {
           await updateDiary.mutateAsync({ id, ...data });
