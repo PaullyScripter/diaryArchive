@@ -15,6 +15,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "DiaryArchive",
   description: "Write, share, and discover personal diaries. Public or private, your words find a home here.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
