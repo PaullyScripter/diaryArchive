@@ -77,8 +77,8 @@ async def search_diaries(
     search_params = {
         "filter": filter_expression,
         "sort": sort_param,
-        "page": page,
-        "hitsPerPage": per_page,
+        "limit": per_page,
+        "offset": (page - 1) * per_page,
         "attributesToHighlight": ["title", "content_text"],
         "attributesToCrop": [{"attribute": "content_text", "cropLength": 300}],
     }
@@ -98,14 +98,18 @@ async def search_diaries(
 
     enriched = await enrich_search_results(result["hits"], current_user)
 
+    total = result.get("estimatedTotalHits", 0)
+    offset_val = result.get("offset", 0)
+    limit_val = result.get("limit", per_page)
+
     return {
         "data": enriched,
         "meta": {
-            "page": result.get("page", page),
-            "per_page": result.get("hitsPerPage", per_page),
-            "total": result.get("totalHits", 0),
-            "has_next": result.get("page", 1) < result.get("totalPages", 1),
-            "has_prev": result.get("page", 1) > 1,
+            "page": (offset_val // limit_val) + 1 if limit_val else 1,
+            "per_page": limit_val,
+            "total": total,
+            "has_next": offset_val + limit_val < total,
+            "has_prev": offset_val > 0,
             "processing_time_ms": result.get("processingTimeMs", 0),
         },
     }
