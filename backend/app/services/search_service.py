@@ -59,7 +59,7 @@ async def search_diaries(
     filter_expression = " AND ".join(filters) if filters else None
 
     sort_field, sort_order = sort.split(":") if ":" in sort else (sort, "desc")
-    sort_param = [{sort_field: sort_order}]
+    sort_param = [f"{sort_field}:{sort_order}"]
 
     try:
         index = get_client().index(PUBLIC_DIARIES_INDEX)
@@ -76,22 +76,19 @@ async def search_diaries(
 
     search_params = {
         "filter": filter_expression,
-        "sort": sort_param,
         "limit": per_page,
         "offset": (page - 1) * per_page,
         "attributesToHighlight": ["title", "content_text"],
         "attributesToCrop": [{"attribute": "content_text", "cropLength": 300}],
     }
+    if sort_field in ("created_at", "updated_at", "like_count", "comment_count"):
+        search_params["sort"] = sort_param
 
     try:
         result = await asyncio.to_thread(_run_search, index, q or "", search_params)
-    except Exception:
-        try:
-            del search_params["sort"]
-            result = await asyncio.to_thread(_run_search, index, q or "", search_params)
-        except Exception:
-            logger.warning("Meilisearch search failed", exc_info=True)
-            return {
+    except Exception as e:
+        logger.warning("Meilisearch search failed: %s", e)
+        return {
             "data": [],
             "meta": {
                 "page": 1, "per_page": per_page, "total": 0,
