@@ -54,13 +54,15 @@ class CommentRepository(BaseRepository):
             return False
         from datetime import UTC, datetime
 
+        now = datetime.now(UTC)
         result = await self._collection.update_one(
             {"_id": ObjectId(comment_id)},
             {
                 "$set": {
                     "is_deleted": True,
-                    "content": "[deleted]",
-                    "updated_at": datetime.now(UTC),
+                    "content": None,
+                    "deleted_at": now,
+                    "updated_at": now,
                 }
             },
         )
@@ -95,3 +97,23 @@ class CommentRepository(BaseRepository):
             "comment_id": ObjectId(comment_id),
             "user_id": ObjectId(user_id),
         })
+
+    async def find_one_and_delete_comment_like(self, comment_id: str, user_id: str) -> dict | None:
+        db = self._collection.database
+        return await db.comment_likes.find_one_and_delete({
+            "comment_id": ObjectId(comment_id),
+            "user_id": ObjectId(user_id),
+        })
+
+    async def batch_has_comment_likes(self, comment_ids: list[str], user_id: str) -> set[str]:
+        if not comment_ids:
+            return set()
+        db = self._collection.database
+        oids = [ObjectId(cid) for cid in comment_ids if ObjectId.is_valid(cid)]
+        if not oids:
+            return set()
+        docs = await db.comment_likes.find({
+            "comment_id": {"$in": oids},
+            "user_id": ObjectId(user_id),
+        }).to_list(length=len(oids))
+        return {str(d["comment_id"]) for d in docs}

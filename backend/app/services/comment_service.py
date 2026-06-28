@@ -185,12 +185,15 @@ async def _enrich_and_format(
         if user:
             author_map[str(user["_id"])] = user
 
+    liked_ids: set[str] = set()
+    if current_user:
+        comment_ids = [str(c["_id"]) for c in comments]
+        liked_ids = await comment_repo.batch_has_comment_likes(comment_ids, str(current_user["_id"]))
+
     data = []
     for comment in comments:
         author = author_map.get(str(comment["user_id"]), {"_id": str(comment["user_id"]), "username": "[deleted]"})
-        is_liked = False
-        if current_user:
-            is_liked = await comment_repo.has_comment_like(str(comment["_id"]), str(current_user["_id"]))
+        is_liked = str(comment["_id"]) in liked_ids
         data.append(_build_comment_response(comment, author, current_user, diary, is_liked=is_liked))
 
     return {
@@ -205,11 +208,14 @@ async def _enrich_and_format(
     }
 
 
-async def delete_comment(comment_id: str, current_user: dict) -> None:
+async def delete_comment(comment_id: str, diary_id: str, current_user: dict) -> None:
     comment_repo = CommentRepository()
     comment = await comment_repo.get_by_id(comment_id)
     if comment is None:
         raise NotFoundException("Comment not found")
+
+    if str(comment["diary_id"]) != diary_id:
+        raise NotFoundException("Comment not found on this diary")
 
     is_author = str(comment["user_id"]) == str(current_user["_id"])
 
@@ -226,10 +232,9 @@ async def delete_comment(comment_id: str, current_user: dict) -> None:
     if parent_id:
         await comment_repo.inc_reply_count(str(parent_id), -1)
 
-    accurate_count = await comment_repo.count_by_diary(str(diary["_id"]))
     await diary_repo._collection.update_one(
         {"_id": diary["_id"]},
-        {"$set": {"stats.comment_count": accurate_count}},
+        {"$inc": {"stats.comment_count": -1}},
     )
 
 
@@ -247,15 +252,18 @@ async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
             raise NotFoundException("Comment not found")
 
     user_id = str(current_user["_id"])
-    liked = await comment_repo.has_comment_like(comment_id, user_id)
 
-    if liked:
-        await comment_repo.remove_comment_like(comment_id, user_id)
+    deleted = await comment_repo.find_one_and_delete_comment_like(comment_id, user_id)
+    if deleted is not None:
         await comment_repo.inc_like_count(comment_id, -1)
         comment = await comment_repo.get_by_id(comment_id)
         return {"is_liked": False, "like_count": comment["like_count"] if comment else 0}
-    else:
+
+    try:
         await comment_repo.add_comment_like(comment_id, user_id)
-        await comment_repo.inc_like_count(comment_id, 1)
+    except Exception:
         comment = await comment_repo.get_by_id(comment_id)
-        return {"is_liked": True, "like_count": comment["like_count"] if comment else 0}
+        return {"is_liked": False, "like_count": comment["like_count"] if comment else 0}
+    await comment_repo.inc_like_count(comment_id, 1)
+    comment = await comment_repo.get_by_id(comment_id)
+    return {"is_liked": True, "like_count": comment["like_count"] if comment else 0}
