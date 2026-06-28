@@ -6,18 +6,11 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.sanitize import sanitize_html
+from app.core.utils import fmt_dt
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
 
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
-
-
-def _fmt_dt(value) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value)
 
 
 def _build_author(user: dict) -> dict:
@@ -50,9 +43,9 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
         "is_bookmarked": is_bookmarked,
         "is_owner": is_owner,
         "content_warnings": diary.get("content_warnings", []),
-        "created_at": _fmt_dt(diary.get("created_at")),
-        "updated_at": _fmt_dt(diary.get("updated_at")),
-        "published_at": _fmt_dt(diary.get("published_at")),
+        "created_at": fmt_dt(diary.get("created_at")),
+        "updated_at": fmt_dt(diary.get("updated_at")),
+        "published_at": fmt_dt(diary.get("published_at")),
     }
     if diary.get("privacy") == "private" and is_owner:
         ed = diary.get("encrypted_data")
@@ -72,12 +65,12 @@ def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None 
         "tags": diary.get("tags", []),
         "emotion": diary.get("emotion"),
         "stats": diary.get("stats", {"like_count": 0, "comment_count": 0, "bookmark_count": 0}),
-        "is_liked": False,
-        "is_bookmarked": False,
+        "is_liked": diary.get("is_liked", False),
+        "is_bookmarked": diary.get("is_bookmarked", False),
         "content_warnings": diary.get("content_warnings", []),
-        "created_at": _fmt_dt(diary.get("created_at")),
-        "updated_at": _fmt_dt(diary.get("updated_at")),
-        "published_at": _fmt_dt(diary.get("published_at")),
+        "created_at": fmt_dt(diary.get("created_at")),
+        "updated_at": fmt_dt(diary.get("updated_at")),
+        "published_at": fmt_dt(diary.get("published_at")),
     }
     if diary.get("privacy") == "private" and is_owner:
         ed = diary.get("encrypted_data")
@@ -208,7 +201,7 @@ async def create_diary(user: dict, data: dict) -> dict:
 
     return {
         "id": str(diary_id),
-        "created_at": _fmt_dt(now),
+        "created_at": fmt_dt(now),
         "message": "Diary created successfully.",
     }
 
@@ -229,7 +222,21 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
     if author is None:
         raise NotFoundException("Author not found")
 
-    return _build_diary_response(diary, author, current_user)
+    is_liked = False
+    is_bookmarked = False
+    if current_user and diary.get("privacy") == "public":
+        from app.repositories.like_repo import LikeRepository
+        from app.repositories.bookmark_repo import BookmarkRepository
+        user_id = str(current_user["_id"])
+        like = await LikeRepository().find_by_user_and_diary(user_id, diary_id)
+        bookmark = await BookmarkRepository().find_by_user_and_diary(user_id, diary_id)
+        is_liked = like is not None
+        is_bookmarked = bookmark is not None
+
+    result = _build_diary_response(diary, author, current_user)
+    result["is_liked"] = is_liked
+    result["is_bookmarked"] = is_bookmarked
+    return result
 
 
 async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict:
@@ -376,9 +383,25 @@ async def list_public_diaries(
         )
         total = await diary_repo.count_public_feed()
 
+    diary_ids = [d["_id"] for d in diaries]
+    comment_counts = await diary_repo._collection.database.comments.aggregate([
+        {"$match": {
+            "diary_id": {"$in": diary_ids},
+            "is_deleted": {"$ne": True},
+            "parent_comment_id": None,
+        }},
+        {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
+    ]).to_list(length=len(diary_ids))
+    count_map = {str(c["_id"]): c["count"] for c in comment_counts}
+
+    from app.services.enrichment_service import enrich_diary_batch
+    diaries = await enrich_diary_batch(diaries, current_user)
+
     author_cache: dict[str, dict] = {}
     data = []
     for diary in diaries:
+        did = str(diary["_id"])
+        diary["stats"]["comment_count"] = count_map.get(did, 0)
         author_id = str(diary["user_id"])
         if author_id not in author_cache:
             author = await user_repo.get_by_id(author_id)

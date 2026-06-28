@@ -1,14 +1,12 @@
-import base64
 import logging
-import os
 from datetime import UTC, datetime
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from fastapi import APIRouter, Depends, Request, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, get_db
 from app.core.config import settings
+from app.core.utils import fmt_dt
 from app.core.exceptions import (
     AuthenticationException,
     ConflictException,
@@ -30,38 +28,11 @@ from app.models.user import UserCreate, UserLogin
 from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 from app.repositories.user_repo import UserRepository
+from app.services.encryption_service import encrypt_email, hash_email
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _get_email_aesgcm() -> AESGCM:
-    key = bytes.fromhex(settings.email_encryption_key)
-    if len(key) != 32:
-        raise ValueError("EMAIL_ENCRYPTION_KEY must be 32 bytes (64 hex chars)")
-    return AESGCM(key)
-
-
-def _encrypt_email(email: str) -> str:
-    aesgcm = _get_email_aesgcm()
-    nonce = os.urandom(12)
-    ciphertext = aesgcm.encrypt(nonce, email.encode(), None)
-    return base64.b64encode(nonce + ciphertext).decode()
-
-
-def _decrypt_email(encrypted: str) -> str:
-    aesgcm = _get_email_aesgcm()
-    raw = base64.b64decode(encrypted)
-    nonce = raw[:12]
-    ciphertext = raw[12:]
-    return aesgcm.decrypt(nonce, ciphertext, None).decode()
-
-
-def _fmt_dt(value) -> str | None:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value) if value else None
 
 
 def _build_user_response(user: dict) -> dict:
@@ -90,8 +61,8 @@ def _build_user_response(user: dict) -> dict:
             "notify_on_follow": True,
             "notify_on_bookmark": False,
         }),
-        "created_at": _fmt_dt(user.get("created_at")),
-        "last_login_at": _fmt_dt(user.get("last_login_at")),
+        "created_at": fmt_dt(user.get("created_at")),
+        "last_login_at": fmt_dt(user.get("last_login_at")),
     }
 
 
@@ -160,8 +131,8 @@ async def register(
     email_hash = None
     if body.email:
         try:
-            email_encrypted = _encrypt_email(body.email)
-            email_hash = hash_token(body.email.lower().strip())
+            email_encrypted = encrypt_email(body.email)
+            email_hash = hash_email(body.email)
             existing_email = await user_repo.get_by_email_hash(email_hash)
             if existing_email:
                 raise ConflictException("Email is already associated with another account")
