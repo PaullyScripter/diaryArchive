@@ -8,6 +8,7 @@ import { Heart, Bookmark, Share2, Pencil, Trash2, Lock, Shield } from "lucide-re
 import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
 import { useMasterKey } from "@/hooks/use-master-key";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { decryptDiary, type DiaryEncryptedPayload } from "@/lib/crypto";
 import { Avatar } from "@/components/shared/avatar";
 import { TagBadge } from "@/components/shared/tag-badge";
@@ -317,7 +318,7 @@ export default function DiaryReaderPage() {
       {(!isPrivate || (isPrivate && isOwner && decrypted)) && (
         <article
           className="mt-6 font-serif text-base leading-relaxed text-foreground max-w-prose [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_hr]:border-border [&_hr]:my-4 [&_style]:block"
-          dangerouslySetInnerHTML={{ __html: displayHtml }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayHtml) }}
         />
       )}
 
