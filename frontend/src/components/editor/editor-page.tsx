@@ -342,6 +342,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             toggleWarning={toggleWarning}
             hasMasterKey={isMasterKeyAvailable}
             isEditMode={isEditMode}
+            onSetupEncryption={() => setShowKeySetup(true)}
           />
 
           <div className="mt-6">
@@ -535,6 +536,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                     onClick={async () => {
                       try {
                         await setupMasterKey(keySetupPassword);
+                        setPrivacy("private");
                         setShowKeySetup(false);
                         setKeySetupPassword("");
                         setKeySetupError("");
