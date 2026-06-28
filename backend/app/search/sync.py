@@ -10,8 +10,14 @@ logger = logging.getLogger(__name__)
 
 async def full_reindex() -> int:
     logger.info("Starting full Meilisearch re-index...")
-    indexer = DiaryIndexer()
 
+    try:
+        get_client().get_or_create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+    except Exception:
+        logger.warning("Meilisearch not available — reindex skipped")
+        return 0
+
+    indexer = DiaryIndexer()
     await indexer.clear_index()
 
     db = DatabaseManager.get_db()
