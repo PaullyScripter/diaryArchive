@@ -288,3 +288,105 @@ class TestMyLikes:
     async def test_my_likes_requires_auth(self, client: AsyncClient):
         response = await client.get("/api/v1/me/likes")
         assert response.status_code == 401
+
+
+class TestThreadedReplies:
+    async def test_create_reply(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Parent comment"},
+        )
+        parent_id = create_resp.json()["data"]["id"]
+
+        reply_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "A reply", "parent_comment_id": parent_id},
+        )
+        assert reply_resp.status_code == 201
+        reply = reply_resp.json()["data"]
+        assert reply["parent_comment_id"] == parent_id
+        assert reply["depth"] == 1
+
+    async def test_list_replies(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Parent"},
+        )
+        parent_id = create_resp.json()["data"]["id"]
+
+        await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Reply 1", "parent_comment_id": parent_id},
+        )
+        await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Reply 2", "parent_comment_id": parent_id},
+        )
+
+        response = await client.get(f"/api/v1/comments/{parent_id}/replies")
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["data"]) == 2
+
+    async def test_reply_increments_reply_count(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Parent"},
+        )
+        parent_id = create_resp.json()["data"]["id"]
+
+        await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Reply", "parent_comment_id": parent_id},
+        )
+
+        response = await client.get(f"/api/v1/diaries/{public_diary}/comments")
+        comments = response.json()["data"]
+        parent = next(c for c in comments if c["id"] == parent_id)
+        assert parent["reply_count"] >= 1
+
+
+class TestCommentLikes:
+    async def test_toggle_comment_like(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Like me"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        response = await client.post(
+            f"/api/v1/comments/{comment_id}/like",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["is_liked"] is True
+        assert data["like_count"] == 1
+
+    async def test_comment_like_toggle(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Toggle me"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        await client.post(
+            f"/api/v1/comments/{comment_id}/like",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        response = await client.post(
+            f"/api/v1/comments/{comment_id}/like",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        data = response.json()["data"]
+        assert data["is_liked"] is False
+        assert data["like_count"] == 0

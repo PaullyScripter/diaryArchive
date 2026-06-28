@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 
 export interface CommentData {
@@ -14,6 +14,11 @@ export interface CommentData {
   is_deleted: boolean;
   is_owner: boolean;
   is_diary_owner: boolean;
+  parent_comment_id: string | null;
+  depth: number;
+  reply_count: number;
+  like_count: number;
+  is_liked: boolean;
   created_at: string;
   updated_at: string | null;
 }
@@ -42,8 +47,10 @@ async function fetchComments(diaryId: string, pageParam = 1) {
   return response.data;
 }
 
-async function createComment(diaryId: string, content: string) {
-  const response = await apiClient.post(`/diaries/${diaryId}/comments`, { content });
+async function createComment(diaryId: string, content: string, parentCommentId?: string) {
+  const payload: Record<string, string> = { content };
+  if (parentCommentId) payload.parent_comment_id = parentCommentId;
+  const response = await apiClient.post(`/diaries/${diaryId}/comments`, payload);
   return response.data.data;
 }
 
@@ -94,6 +101,18 @@ async function fetchFollowing(username: string, pageParam = 1) {
   return response.data;
 }
 
+async function fetchReplies(commentId: string, pageParam = 1) {
+  const response = await apiClient.get(`/comments/${commentId}/replies`, {
+    params: { page: pageParam, per_page: 10 },
+  });
+  return response.data;
+}
+
+async function toggleCommentLike(commentId: string) {
+  const response = await apiClient.post(`/comments/${commentId}/like`);
+  return response.data.data;
+}
+
 export function useComments(diaryId: string) {
   return useInfiniteQuery({
     queryKey: ["comments", diaryId],
@@ -108,9 +127,13 @@ export function useComments(diaryId: string) {
 export function useCreateComment(diaryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) => createComment(diaryId, content),
-    onSuccess: () => {
+    mutationFn: ({ content, parentId }: { content: string; parentId?: string }) =>
+      createComment(diaryId, content, parentId),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["comments", diaryId] });
+      if (variables.parentId) {
+        queryClient.invalidateQueries({ queryKey: ["replies", variables.parentId] });
+      }
       queryClient.invalidateQueries({ queryKey: ["diary", diaryId] });
     },
   });
@@ -199,5 +222,27 @@ export function useFollowing(username: string) {
     getNextPageParam: (lastPage) =>
       lastPage.meta?.has_next ? lastPage.meta.page + 1 : undefined,
     enabled: !!username,
+  });
+}
+
+export function useReplies(commentId: string) {
+  return useInfiniteQuery({
+    queryKey: ["replies", commentId],
+    queryFn: ({ pageParam }) => fetchReplies(commentId, pageParam as number),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta?.has_next ? lastPage.meta.page + 1 : undefined,
+    enabled: !!commentId,
+  });
+}
+
+export function useToggleCommentLike(commentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => toggleCommentLike(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comments"] });
+      queryClient.invalidateQueries({ queryKey: ["replies"] });
+    },
   });
 }

@@ -13,14 +13,37 @@ class CommentRepository(BaseRepository):
         limit: int = 20,
     ) -> list[dict]:
         return await self.find(
-            {"diary_id": ObjectId(diary_id)},
+            {"diary_id": ObjectId(diary_id), "parent_comment_id": None},
             sort=[("created_at", 1)],
             skip=skip,
             limit=limit,
         )
 
+    async def find_replies(self, parent_id: str, skip: int = 0, limit: int = 10) -> list[dict]:
+        return await self.find(
+            {"parent_comment_id": ObjectId(parent_id)},
+            sort=[("created_at", 1)],
+            skip=skip,
+            limit=limit,
+        )
+
+    async def count_replies(self, parent_id: str) -> int:
+        return await self.count({"parent_comment_id": ObjectId(parent_id)})
+
     async def count_by_diary(self, diary_id: str) -> int:
         return await self.count({"diary_id": ObjectId(diary_id)})
+
+    async def inc_reply_count(self, comment_id: str, delta: int) -> None:
+        await self._collection.update_one(
+            {"_id": ObjectId(comment_id)},
+            {"$inc": {"reply_count": delta}},
+        )
+
+    async def inc_like_count(self, comment_id: str, delta: int) -> None:
+        await self._collection.update_one(
+            {"_id": ObjectId(comment_id)},
+            {"$inc": {"like_count": delta}},
+        )
 
     async def soft_delete(self, comment_id: str) -> bool:
         if not ObjectId.is_valid(comment_id):
@@ -44,3 +67,27 @@ class CommentRepository(BaseRepository):
             {"diary_id": ObjectId(diary_id)}
         )
         return result.deleted_count
+
+    async def has_comment_like(self, comment_id: str, user_id: str) -> bool:
+        db = self._collection.database
+        doc = await db.comment_likes.find_one({
+            "comment_id": ObjectId(comment_id),
+            "user_id": ObjectId(user_id),
+        })
+        return doc is not None
+
+    async def add_comment_like(self, comment_id: str, user_id: str) -> None:
+        from datetime import UTC, datetime
+        db = self._collection.database
+        await db.comment_likes.insert_one({
+            "comment_id": ObjectId(comment_id),
+            "user_id": ObjectId(user_id),
+            "created_at": datetime.now(UTC),
+        })
+
+    async def remove_comment_like(self, comment_id: str, user_id: str) -> None:
+        db = self._collection.database
+        await db.comment_likes.delete_one({
+            "comment_id": ObjectId(comment_id),
+            "user_id": ObjectId(user_id),
+        })

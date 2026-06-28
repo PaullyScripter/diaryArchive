@@ -8,6 +8,8 @@ from app.services.comment_service import (
     create_comment,
     delete_comment,
     list_comments,
+    list_replies,
+    toggle_comment_like,
 )
 
 router = APIRouter(tags=["comments"])
@@ -25,7 +27,7 @@ async def create(
     )
     if is_limited:
         raise RateLimitException("Too many comment attempts")
-    result = await create_comment(diary_id, body.content, current_user)
+    result = await create_comment(diary_id, body.content, current_user, parent_comment_id=body.parent_comment_id)
     return {"data": result}
 
 
@@ -42,6 +44,30 @@ async def list_all(
         current_user = await _optional_user(authorization=auth_header)
     result = await list_comments(diary_id, page=page, per_page=per_page, current_user=current_user)
     return result
+
+
+@router.get("/comments/{comment_id}/replies")
+async def get_replies(
+    comment_id: str,
+    request: Request,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=50),
+):
+    auth_header = request.headers.get("Authorization", "")
+    current_user = None
+    if auth_header:
+        current_user = await _optional_user(authorization=auth_header)
+    result = await list_replies(comment_id, page=page, per_page=per_page, current_user=current_user)
+    return result
+
+
+@router.post("/comments/{comment_id}/like")
+async def like_comment(
+    comment_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    result = await toggle_comment_like(comment_id, current_user)
+    return {"data": result}
 
 
 @router.delete("/diaries/{diary_id}/comments/{comment_id}", status_code=204)
