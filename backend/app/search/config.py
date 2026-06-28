@@ -19,8 +19,6 @@ INDEX_SETTINGS = {
     "rankingRules": [
         "words", "typo", "proximity", "attribute", "sort", "exactness"
     ],
-    "highlightPreTag": "<em>",
-    "highlightPostTag": "</em>",
 }
 
 _client: Client | None = None
