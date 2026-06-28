@@ -19,6 +19,7 @@ interface EditorSettingsProps {
   toggleWarning: (w: string) => void;
   hasMasterKey: boolean;
   isEditMode: boolean;
+  onSetupEncryption: () => void;
 }
 
 export function EditorSettings({
@@ -34,6 +35,7 @@ export function EditorSettings({
   toggleWarning,
   hasMasterKey,
   isEditMode,
+  onSetupEncryption,
 }: EditorSettingsProps) {
   const warnings: Array<{ key: string; label: string }> = [
     { key: "adult", label: "Adult / Explicit" },
@@ -53,7 +55,8 @@ export function EditorSettings({
             { value: "draft", label: "Draft — only visible to you" },
           ].map(({ value, label }) => {
             const isPrivate = value === "private";
-            const disabled = isEditMode || (isPrivate && !hasMasterKey);
+            const disabled = isEditMode;
+            const needsSetup = isPrivate && !hasMasterKey && !isEditMode;
             return (
               <label
                 key={value}
@@ -65,7 +68,13 @@ export function EditorSettings({
                   type="radio"
                   name="editor-privacy"
                   checked={privacy === value}
-                  onChange={() => setPrivacy(value)}
+                  onChange={() => {
+                    if (needsSetup) {
+                      onSetupEncryption();
+                    } else {
+                      setPrivacy(value);
+                    }
+                  }}
                   disabled={disabled}
                   className="rounded-full border-border cursor-pointer disabled:cursor-not-allowed"
                 />
@@ -73,6 +82,18 @@ export function EditorSettings({
                 <span className={isPrivate ? "text-foreground" : ""}>
                   {label}
                 </span>
+                {needsSetup && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSetupEncryption();
+                    }}
+                    className="ml-auto text-xs text-link hover:underline cursor-pointer"
+                  >
+                    Set up encryption
+                  </button>
+                )}
               </label>
             );
           })}
