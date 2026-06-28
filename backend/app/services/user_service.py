@@ -2,14 +2,9 @@ from datetime import UTC, datetime
 
 from app.core.exceptions import ConflictException, PermissionDeniedException
 from app.core.security import hash_token
+from app.core.utils import fmt_dt
 from app.repositories.user_repo import UserRepository
 from app.services.encryption_service import encrypt_email, hash_email
-
-
-def _fmt_dt(value) -> str | None:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value) if value else None
 
 
 def build_public_profile(user: dict, is_following: bool = False) -> dict:
@@ -25,7 +20,7 @@ def build_public_profile(user: dict, is_following: bool = False) -> dict:
             "follower_count": 0,
             "following_count": 0,
         }),
-        "created_at": _fmt_dt(user.get("created_at")),
+        "created_at": fmt_dt(user.get("created_at")),
         "is_following": is_following,
     }
 

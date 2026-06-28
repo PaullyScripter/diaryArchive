@@ -1,12 +1,11 @@
 from datetime import datetime
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import NotFoundException, RateLimitException
 from app.core.security import check_rate_limit
+from app.core.utils import fmt_dt
 from app.models.user import EmailUpdate, EncryptionKeyUpdate, UserUpdate
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
@@ -18,14 +17,6 @@ from app.services.user_service import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-
-def _fmt_dt(value) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value)
 
 
 @router.get("/{username}")
@@ -137,9 +128,9 @@ async def get_user_diaries(
                 "comment_count": 0,
                 "bookmark_count": 0,
             }),
-            "created_at": _fmt_dt(diary.get("created_at")),
-            "updated_at": _fmt_dt(diary.get("updated_at")),
-            "published_at": _fmt_dt(diary.get("published_at")),
+            "created_at": fmt_dt(diary.get("created_at")),
+            "updated_at": fmt_dt(diary.get("updated_at")),
+            "published_at": fmt_dt(diary.get("published_at")),
         })
 
     return {

@@ -21,5 +21,13 @@ def encrypt_email(email: str) -> str:
     return base64.b64encode(nonce + ciphertext).decode()
 
 
+def decrypt_email(encrypted: str) -> str:
+    aesgcm = _get_email_aesgcm()
+    raw = base64.b64decode(encrypted)
+    nonce = raw[:12]
+    ciphertext = raw[12:]
+    return aesgcm.decrypt(nonce, ciphertext, None).decode()
+
+
 def hash_email(email: str) -> str:
     return hashlib.sha256(email.lower().strip().encode()).hexdigest()

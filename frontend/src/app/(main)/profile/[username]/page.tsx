@@ -12,24 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
-function relativeTime(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diff = now - then;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks}wk ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
-}
+import { FollowButton } from "@/components/social/follow-button";
+import { relativeTime } from "@/lib/utils";
 
 export default function ProfilePage() {
   const params = useParams();
@@ -115,9 +99,10 @@ export default function ProfilePage() {
               </Button>
             </Link>
           ) : (
-            <Button variant="primary" size="sm" disabled title="Follow functionality coming in a future milestone">
-              {profile.is_following ? "Following" : "Follow"}
-            </Button>
+            <FollowButton
+              username={profile.username}
+              initialIsFollowing={profile.is_following}
+            />
           )}
         </div>
       </div>

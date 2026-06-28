@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Heart, Bookmark, Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
+import { Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
 
 import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
@@ -17,6 +17,9 @@ import { WarningOverlay } from "@/components/diary/diary-warning-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { LikeButton } from "@/components/social/like-button";
+import { BookmarkButton } from "@/components/social/bookmark-button";
+import { CommentSection } from "@/components/social/comment-section";
 
 export default function DiaryReaderPage() {
   const params = useParams();
@@ -332,14 +335,15 @@ export default function DiaryReaderPage() {
 
       {!isPrivate && (
         <div className="mt-6 flex items-center gap-4">
-          <Button variant="ghost" size="sm" disabled title="Likes coming in a future update">
-            <Heart className="w-4 h-4" />
-            <span className="text-xs">{diary.stats.like_count}</span>
-          </Button>
-          <Button variant="ghost" size="sm" disabled title="Bookmarks coming in a future update">
-            <Bookmark className="w-4 h-4" />
-            <span className="text-xs">{diary.stats.bookmark_count}</span>
-          </Button>
+          <LikeButton
+            diaryId={id}
+            initialCount={diary.stats.like_count}
+            initialIsLiked={diary.is_liked}
+          />
+          <BookmarkButton
+            diaryId={id}
+            initialIsBookmarked={diary.is_bookmarked}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -372,16 +376,7 @@ export default function DiaryReaderPage() {
         </div>
       )}
 
-      {!isPrivate && (
-        <div className="mt-8 pt-6 border-t border-border">
-          <h2 className="text-sm font-medium text-foreground mb-3">
-            Comments ({diary.stats.comment_count})
-          </h2>
-          <p className="text-xs text-muted">
-            Comments will be available in a future update.
-          </p>
-        </div>
-      )}
+      {!isPrivate && <CommentSection diaryId={id} />}
     </div>
     </>
   );
