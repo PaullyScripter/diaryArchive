@@ -55,8 +55,21 @@ async def search(
 
 @router.post("/search/reindex")
 async def reindex():
+    from app.core.database import DatabaseManager
+    db = DatabaseManager.get_db()
+    total = await db.diaries.count_documents({})
+    public = await db.diaries.count_documents({"privacy": "public"})
+    draft = await db.diaries.count_documents({"privacy": "draft"})
+    private = await db.diaries.count_documents({"privacy": "private"})
+
     count = await full_reindex()
-    return {"data": {"indexed": count, "message": f"Re-indexed {count} public diaries"}}
+    return {
+        "data": {
+            "indexed": count,
+            "db_counts": {"total": total, "public": public, "draft": draft, "private": private},
+            "message": f"Re-indexed {count} public diaries",
+        }
+    }
 
 
 @router.get("/search/health")
