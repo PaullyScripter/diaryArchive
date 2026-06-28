@@ -64,8 +64,14 @@ async def get_replies(
 @router.post("/comments/{comment_id}/like")
 async def like_comment(
     comment_id: str,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:comment_like:{current_user['_id']}", 30, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many comment like attempts")
     result = await toggle_comment_like(comment_id, current_user)
     return {"data": result}
 
