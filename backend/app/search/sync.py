@@ -17,7 +17,8 @@ async def full_reindex() -> int:
             idx = client.get_index(PUBLIC_DIARIES_INDEX)
         except Exception:
             idx = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
-        idx.update_settings(INDEX_SETTINGS)
+        await asyncio.to_thread(lambda: idx.update_settings(INDEX_SETTINGS))
+        logger.info("Index settings applied")
     except Exception as e:
         logger.warning("Meilisearch not available — reindex skipped: %s", e)
         return 0
@@ -43,10 +44,12 @@ async def full_reindex() -> int:
         if len(batch) >= 100:
             await indexer.bulk_index(batch)
             total += len(batch)
+            logger.info("Indexed batch of %d, running total: %d", len(batch), total)
             batch = []
     if batch:
         await indexer.bulk_index(batch)
         total += len(batch)
+        logger.info("Indexed final batch of %d, total: %d", len(batch), total)
 
     mongo_count = await db.diaries.count_documents({"privacy": "public"})
     index_stats = await asyncio.to_thread(
