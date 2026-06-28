@@ -1,18 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useComments, useCreateComment, useDeleteComment } from "@/hooks/use-social";
+import { useComments, useCreateComment } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
+import { CommentItem } from "@/components/social/comment-item";
 import { Avatar } from "@/components/shared/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2 } from "lucide-react";
 
 export function CommentSection({ diaryId }: { diaryId: string }) {
   const user = useAuthStore((s) => s.user);
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useComments(diaryId);
   const createComment = useCreateComment(diaryId);
-  const deleteComment = useDeleteComment(diaryId);
 
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,7 +23,7 @@ export function CommentSection({ diaryId }: { diaryId: string }) {
     if (!content.trim()) return;
     setIsSubmitting(true);
     try {
-      await createComment.mutateAsync(content.trim());
+      await createComment.mutateAsync({ content: content.trim() });
       setContent("");
     } finally {
       setIsSubmitting(false);
@@ -76,7 +75,7 @@ export function CommentSection({ diaryId }: { diaryId: string }) {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex gap-3">
-              <Skeleton className="w-7 h-7 rounded-full" />
+              <Skeleton className="w-7 h-7 rounded-full shrink-0" />
               <div className="flex-1 space-y-1.5">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-3 w-full" />
@@ -89,48 +88,13 @@ export function CommentSection({ diaryId }: { diaryId: string }) {
           No comments yet. Be the first to share your thoughts.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-0">
           {comments.map((comment) => (
-            <div key={comment.id} className="flex gap-3">
-              <Avatar
-                src={comment.author.avatar_path}
-                alt={comment.is_deleted ? "deleted" : comment.author.username}
-                size="sm"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-foreground">
-                    {comment.is_deleted
-                      ? "[deleted]"
-                      : comment.author.username}
-                  </span>
-                  <span className="text-xs text-subtle">
-                    {new Date(comment.created_at).toLocaleDateString()}
-                  </span>
-                  {(comment.is_owner || comment.is_diary_owner) &&
-                    !comment.is_deleted && (
-                      <button
-                        onClick={() => deleteComment.mutate(comment.id)}
-                        className="ml-auto text-xs text-muted hover:text-destructive cursor-pointer"
-                        aria-label="Delete comment"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                </div>
-                <p className="text-sm text-foreground mt-0.5 break-words">
-                  {comment.is_deleted ? (
-                    <span className="italic text-muted">[deleted]</span>
-                  ) : (
-                    comment.content
-                  )}
-                </p>
-              </div>
-            </div>
+            <CommentItem key={comment.id} comment={comment} diaryId={diaryId} />
           ))}
 
           {hasNextPage && (
-            <div className="text-center">
+            <div className="text-center mt-4">
               <Button
                 variant="ghost"
                 size="sm"
