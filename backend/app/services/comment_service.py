@@ -138,7 +138,7 @@ async def list_comments(
     comment_repo = CommentRepository()
     skip = (page - 1) * per_page
     comments = await comment_repo.find_by_diary(diary_id, skip=skip, limit=per_page)
-    total = await comment_repo.count_by_diary(diary_id)
+    total = diary.get("stats", {}).get("comment_count", 0)
 
     return await _enrich_and_format(comments, current_user, diary, page, per_page, total)
 
@@ -223,6 +223,10 @@ async def delete_comment(comment_id: str, current_user: dict) -> None:
     await comment_repo.soft_delete(comment_id)
     if parent_id:
         await comment_repo.inc_reply_count(str(parent_id), -1)
+    await diary_repo._collection.update_one(
+        {"_id": diary["_id"]},
+        {"$inc": {"stats.comment_count": -1}},
+    )
 
 
 async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
