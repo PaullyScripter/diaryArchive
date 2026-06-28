@@ -145,6 +145,7 @@ export function useDeleteComment(diaryId: string) {
     mutationFn: (commentId: string) => deleteComment(diaryId, commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", diaryId] });
+      queryClient.invalidateQueries({ queryKey: ["replies"] });
     },
   });
 }
