@@ -219,7 +219,10 @@ async def delete_comment(comment_id: str, current_user: dict) -> None:
     if not is_author and not is_diary_owner and not is_admin:
         raise PermissionDeniedException("You do not have permission to delete this comment")
 
+    parent_id = comment.get("parent_comment_id")
     await comment_repo.soft_delete(comment_id)
+    if parent_id:
+        await comment_repo.inc_reply_count(str(parent_id), -1)
 
 
 async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
