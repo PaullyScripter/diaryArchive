@@ -91,6 +91,8 @@ async def create_comment(
         if str(parent["diary_id"]) != diary_id:
             raise ValidationException("Parent comment does not belong to this diary")
         depth = parent.get("depth", 0) + 1
+        if depth > MAX_DEPTH:
+            raise ValidationException("Maximum reply depth reached")
         root_id = parent.get("root_comment_id") or parent["_id"]
 
     now = datetime.now(UTC)
@@ -236,6 +238,13 @@ async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
     comment = await comment_repo.get_by_id(comment_id)
     if comment is None:
         raise NotFoundException("Comment not found")
+
+    diary_repo = DiaryRepository()
+    diary = await diary_repo.get_by_id(str(comment["diary_id"]))
+    if diary is None or diary.get("privacy") != "public":
+        is_owner = diary and str(diary["user_id"]) == str(current_user["_id"])
+        if not is_owner:
+            raise NotFoundException("Comment not found")
 
     user_id = str(current_user["_id"])
     liked = await comment_repo.has_comment_like(comment_id, user_id)

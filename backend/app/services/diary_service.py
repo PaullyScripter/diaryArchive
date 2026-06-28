@@ -65,8 +65,8 @@ def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None 
         "tags": diary.get("tags", []),
         "emotion": diary.get("emotion"),
         "stats": diary.get("stats", {"like_count": 0, "comment_count": 0, "bookmark_count": 0}),
-        "is_liked": False,
-        "is_bookmarked": False,
+        "is_liked": diary.get("is_liked", False),
+        "is_bookmarked": diary.get("is_bookmarked", False),
         "content_warnings": diary.get("content_warnings", []),
         "created_at": fmt_dt(diary.get("created_at")),
         "updated_at": fmt_dt(diary.get("updated_at")),
@@ -393,6 +393,9 @@ async def list_public_diaries(
         {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
     ]).to_list(length=len(diary_ids))
     count_map = {str(c["_id"]): c["count"] for c in comment_counts}
+
+    from app.services.enrichment_service import enrich_diary_batch
+    diaries = await enrich_diary_batch(diaries, current_user)
 
     author_cache: dict[str, dict] = {}
     data = []

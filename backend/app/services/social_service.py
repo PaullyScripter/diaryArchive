@@ -280,6 +280,8 @@ async def list_my_likes(
             diaries.append(diary)
 
     await _sync_comment_counts(diaries)
+    from app.services.enrichment_service import enrich_diary_batch
+    diaries = await enrich_diary_batch(diaries, current_user)
 
     data = []
     for diary in diaries:
@@ -322,6 +324,8 @@ async def list_my_bookmarks(
             diaries.append(diary)
 
     await _sync_comment_counts(diaries)
+    from app.services.enrichment_service import enrich_diary_batch
+    diaries = await enrich_diary_batch(diaries, current_user)
 
     data = []
     for diary in diaries:
