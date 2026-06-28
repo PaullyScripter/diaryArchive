@@ -82,6 +82,7 @@ export function useMasterKey(): MasterKeyState & {
           error: "Incorrect password or corrupted key data",
           isLoading: false,
         }));
+        throw new Error("Incorrect password or corrupted key data");
       }
     },
     [userId]
@@ -115,11 +116,13 @@ export function useMasterKey(): MasterKeyState & {
         });
         setState({ masterKey: mk, isLoading: false, error: null });
       } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to set up encryption";
         setState((s) => ({
           ...s,
-          error: err instanceof Error ? err.message : "Failed to set up encryption",
+          error: message,
           isLoading: false,
         }));
+        throw err;
       }
     },
     [userId]
