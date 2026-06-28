@@ -18,25 +18,18 @@ interface CommentItemProps {
   comment: CommentData;
   diaryId: string;
   depth?: number;
-  onReply?: () => void;
 }
 
-export function CommentItem({ comment, diaryId, depth = 0, onReply }: CommentItemProps) {
+export function CommentItem({ comment, diaryId, depth = 0 }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleted, setIsDeleted] = useState(false);
 
   const createComment = useCreateComment(diaryId);
   const deleteComment = useDeleteComment(diaryId);
   const toggleCommentLike = useToggleCommentLike(comment.id);
-
-  const indentClass =
-    depth >= MAX_VISIBLE_DEPTH
-      ? `ml-[48px]`
-      : depth === 0
-      ? ""
-      : `ml-${depth * 3 + 1}`;
 
   const handleReply = async () => {
     if (!replyContent.trim()) return;
@@ -49,10 +42,6 @@ export function CommentItem({ comment, diaryId, depth = 0, onReply }: CommentIte
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleLike = () => {
-    toggleCommentLike.mutate();
   };
 
   const [optimisticLiked, setOptimisticLiked] = useState(comment.is_liked);
@@ -71,34 +60,39 @@ export function CommentItem({ comment, diaryId, depth = 0, onReply }: CommentIte
     });
   };
 
+  const handleDelete = () => {
+    setIsDeleted(true);
+    deleteComment.mutate(comment.id);
+  };
+
   const effectiveDepth = depth >= MAX_VISIBLE_DEPTH ? MAX_VISIBLE_DEPTH : depth;
   const connectorColor = depth >= MAX_VISIBLE_DEPTH ? "border-subtle/40" : "border-border";
+  const isEffectivelyDeleted = isDeleted || comment.is_deleted;
 
   return (
     <div className={`${effectiveDepth > 0 ? `ml-3 sm:ml-6 border-l-2 ${connectorColor} pl-3 sm:pl-4` : ""}`}>
       <div className="flex gap-2.5 py-2.5">
         <Avatar
           src={comment.author.avatar_path}
-          alt={comment.is_deleted ? "deleted" : comment.author.username}
+          alt={isEffectivelyDeleted ? "deleted" : comment.author.username}
           size="sm"
           className="shrink-0"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-medium text-foreground">
-              {comment.is_deleted ? "[deleted]" : comment.author.username}
+              {isEffectivelyDeleted ? "[deleted]" : comment.author.username}
             </span>
             <span className="text-xs text-subtle">
               {new Date(comment.created_at).toLocaleDateString()}
             </span>
+            {isEffectivelyDeleted && (
+              <span className="text-xs italic text-muted">deleted</span>
+            )}
           </div>
 
-          <p className="text-sm text-foreground mt-0.5 break-words leading-relaxed">
-            {comment.is_deleted ? (
-              <span className="italic text-muted">[deleted]</span>
-            ) : (
-              comment.content
-            )}
+          <p className={`text-sm mt-0.5 break-words leading-relaxed ${isEffectivelyDeleted ? "italic text-muted" : "text-foreground"}`}>
+            {isEffectivelyDeleted ? "[deleted]" : comment.content}
           </p>
 
           <div className="flex items-center gap-3 mt-1.5">
@@ -115,7 +109,7 @@ export function CommentItem({ comment, diaryId, depth = 0, onReply }: CommentIte
               {optimisticLikes > 0 && <span>{optimisticLikes}</span>}
             </button>
 
-            {depth < MAX_VISIBLE_DEPTH && !comment.is_deleted && (
+            {!isEffectivelyDeleted && (
               <button
                 onClick={() => setShowReplyForm(!showReplyForm)}
                 className="inline-flex items-center gap-1 text-xs text-subtle hover:text-foreground cursor-pointer transition-colors"
@@ -125,9 +119,9 @@ export function CommentItem({ comment, diaryId, depth = 0, onReply }: CommentIte
               </button>
             )}
 
-            {(comment.is_owner || comment.is_diary_owner) && !comment.is_deleted && (
+            {(comment.is_owner || comment.is_diary_owner) && !isEffectivelyDeleted && (
               <button
-                onClick={() => deleteComment.mutate(comment.id)}
+                onClick={handleDelete}
                 className="inline-flex items-center gap-1 text-xs text-subtle hover:text-destructive cursor-pointer transition-colors"
                 aria-label="Delete comment"
               >
@@ -175,11 +169,7 @@ export function CommentItem({ comment, diaryId, depth = 0, onReply }: CommentIte
         </button>
       )}
 
-      {showReplies && depth < MAX_VISIBLE_DEPTH && (
-        <RepliesList commentId={comment.id} diaryId={diaryId} depth={depth + 1} />
-      )}
-
-      {showReplies && depth >= MAX_VISIBLE_DEPTH && (
+      {showReplies && (
         <RepliesList commentId={comment.id} diaryId={diaryId} depth={depth + 1} />
       )}
     </div>
