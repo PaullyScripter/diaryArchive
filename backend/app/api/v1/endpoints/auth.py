@@ -1,11 +1,12 @@
 import logging
 from datetime import UTC, datetime
 
-from cryptography.fernet import Fernet
 from fastapi import APIRouter, Depends, Request, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, get_db
+from app.core.config import settings
+from app.core.utils import fmt_dt
 from app.core.exceptions import (
     AuthenticationException,
     ConflictException,
@@ -18,32 +19,20 @@ from app.core.security import (
     create_access_token,
     create_email_verification_token,
     generate_refresh_token,
-    hash_password,
+    hash_password_async,
     hash_token,
-    verify_password,
+    verify_password_async,
 )
 from app.models.token import AuthResponse, RegisterResponse, TokenResponse
 from app.models.user import UserCreate, UserLogin
 from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 from app.repositories.user_repo import UserRepository
+from app.services.encryption_service import encrypt_email, hash_email
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _encrypt_email(email: str) -> tuple[str, str]:
-    key = Fernet.generate_key()
-    cipher = Fernet(key)
-    encrypted = cipher.encrypt(email.encode())
-    return encrypted.decode(), key.decode()
-
-
-def _fmt_dt(value) -> str | None:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value) if value else None
 
 
 def _build_user_response(user: dict) -> dict:
@@ -62,6 +51,7 @@ def _build_user_response(user: dict) -> dict:
         "is_admin": user.get("is_admin", False),
         "has_email": bool(user.get("email_encrypted")),
         "email_verified": user.get("email_verified", False),
+        "has_master_key": bool(user.get("encrypted_master_key")),
         "preferences": user.get("preferences", {
             "theme": "system",
             "comments_disabled": False,
@@ -71,8 +61,8 @@ def _build_user_response(user: dict) -> dict:
             "notify_on_follow": True,
             "notify_on_bookmark": False,
         }),
-        "created_at": _fmt_dt(user.get("created_at")),
-        "last_login_at": _fmt_dt(user.get("last_login_at")),
+        "created_at": fmt_dt(user.get("created_at")),
+        "last_login_at": fmt_dt(user.get("last_login_at")),
     }
 
 
@@ -81,8 +71,8 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key="refresh_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=not settings.debug,
+        samesite="strict" if not settings.debug else "lax",
         path="/api/v1/auth",
         max_age=604800,
     )
@@ -141,22 +131,21 @@ async def register(
     email_hash = None
     if body.email:
         try:
-            encrypted, _ = _encrypt_email(body.email)
-            email_encrypted = encrypted
-            email_hash = hash_token(body.email.lower().strip())
+            email_encrypted = encrypt_email(body.email)
+            email_hash = hash_email(body.email)
             existing_email = await user_repo.get_by_email_hash(email_hash)
             if existing_email:
                 raise ConflictException("Email is already associated with another account")
+        except ConflictException:
+            raise
         except Exception:
             raise ValidationException("Invalid email format")
 
-    password_hash = hash_password(body.password)
+    password_hash = await hash_password_async(body.password)
 
     user_doc = {
         "username": body.username.lower(),
         "password_hash": password_hash,
-        "email_encrypted": email_encrypted,
-        "email_hash": email_hash,
         "email_verified": False,
         "avatar_path": None,
         "about": None,
@@ -177,6 +166,10 @@ async def register(
         "created_at": datetime.now(UTC),
         "last_login_at": None,
     }
+    if email_encrypted:
+        user_doc["email_encrypted"] = email_encrypted
+    if email_hash:
+        user_doc["email_hash"] = email_hash
 
     user_id = await user_repo.create_user(user_doc)
 
@@ -184,12 +177,12 @@ async def register(
 
     await _generate_tokens(response, user_id)
 
-    return RegisterResponse(
+    return {"data": RegisterResponse(
         id=user_id,
         username=body.username.lower(),
         created_at=user_doc["created_at"].isoformat(),
         access_token=access_token,
-    )
+    )}
 
 
 @router.post("/login")
@@ -208,7 +201,7 @@ async def login(
     user_repo = UserRepository()
     user = await user_repo.get_by_username(body.username.lower())
 
-    if user is None or not verify_password(body.password, user["password_hash"]):
+    if user is None or not await verify_password_async(body.password, user["password_hash"]):
         raise AuthenticationException("Invalid username or password")
 
     if user.get("is_banned"):
@@ -222,12 +215,12 @@ async def login(
 
     await _generate_tokens(response, str(user["_id"]))
 
-    return AuthResponse(
+    return {"data": AuthResponse(
         id=str(user["_id"]),
         username=user["username"],
         is_admin=user.get("is_admin", False),
         access_token=access_token,
-    )
+    )}
 
 
 @router.post("/refresh")
@@ -273,7 +266,7 @@ async def refresh(
     )
     await _generate_tokens(response, str(user["_id"]))
 
-    return TokenResponse(access_token=access_token)
+    return {"data": TokenResponse(access_token=access_token)}
 
 
 @router.post("/logout", status_code=204)
@@ -310,14 +303,26 @@ async def change_password(
     if not current_password or not new_password:
         raise ValidationException("Both current_password and new_password are required")
 
-    if not verify_password(current_password, current_user["password_hash"]):
+    if not await verify_password_async(current_password, current_user["password_hash"]):
         raise AuthenticationException("Current password is incorrect")
 
     _validate_password(new_password)
 
     user_repo = UserRepository()
-    new_hash = hash_password(new_password)
-    await user_repo.update(str(current_user["_id"]), {"password_hash": new_hash})
+    update_fields = {"password_hash": await hash_password_async(new_password)}
+
+    if "new_encrypted_master_key" in body and "new_master_key_salt" in body:
+        if body.get("new_encrypted_master_key") and body.get("new_master_key_salt"):
+            update_fields["encrypted_master_key"] = body["new_encrypted_master_key"]
+            update_fields["master_key_salt"] = body["new_master_key_salt"]
+            if "new_master_key_iv" in body:
+                update_fields["master_key_iv"] = body["new_master_key_iv"]
+        elif current_user.get("encrypted_master_key"):
+            update_fields["encrypted_master_key"] = None
+            update_fields["master_key_salt"] = None
+            update_fields["master_key_iv"] = None
+
+    await user_repo.update(str(current_user["_id"]), update_fields)
 
     refresh_repo = RefreshTokenRepository()
     revoked = await refresh_repo.delete_all_for_user(str(current_user["_id"]))
@@ -394,11 +399,12 @@ async def reset_password(
     if user is None:
         raise AuthenticationException("User not found")
 
-    new_hash = hash_password(new_password)
+    new_hash = await hash_password_async(new_password)
     await user_repo.update(str(user["_id"]), {
         "password_hash": new_hash,
         "encrypted_master_key": None,
         "master_key_salt": None,
+        "master_key_iv": None,
     })
 
     await reset_repo.mark_used(token_hash)

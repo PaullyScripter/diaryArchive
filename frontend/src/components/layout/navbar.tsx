@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
+import { MenuIcon, MoonIcon, SunIcon, XIcon } from "@/components/shared/icons";
 
-function ThemeToggle() {
+export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const next = resolvedTheme === "dark" ? "light" : "dark";
   return (
@@ -16,7 +17,7 @@ function ThemeToggle() {
       aria-label={`Switch to ${next} mode`}
       type="button"
     >
-      {resolvedTheme === "dark" ? "☀" : "☽"}
+      {resolvedTheme === "dark" ? <SunIcon className="inline-block" /> : <MoonIcon className="inline-block" />}
     </button>
   );
 }
@@ -92,9 +93,14 @@ export function NavBar() {
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="text-sm font-semibold text-foreground no-underline hover:underline hover:underline-offset-2 focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+            className="flex items-center no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+            aria-label="DiaryArchive home"
           >
-            DiaryArchive
+            <svg viewBox="0 0 290 48" className="h-7 w-auto" aria-hidden="true">
+              <text x="26" y="34" fontFamily="'Space Mono','Courier New',Courier,monospace" fontSize="32" fontWeight="700" textAnchor="start">
+                <tspan fill="#A0A0A0">Diary</tspan><tspan fill="#A0845C">Archive</tspan>
+              </text>
+            </svg>
           </Link>
           <nav className="hidden md:flex items-center h-9">
             <NavLinks />
@@ -118,9 +124,17 @@ export function NavBar() {
                   role="menu"
                 >
                   <Link
+                    href={`/profile/${user?.username}`}
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+                    role="menuitem"
+                  >
+                    Profile
+                  </Link>
+                  <Link
                     href="/me"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     My Diaries
@@ -128,7 +142,7 @@ export function NavBar() {
                   <Link
                     href="/me/bookmarks"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     Bookmarks
@@ -136,7 +150,7 @@ export function NavBar() {
                   <Link
                     href="/me/likes"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     Likes
@@ -144,7 +158,7 @@ export function NavBar() {
                   <Link
                     href="/settings"
                     onClick={() => setMenuOpen(false)}
-                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline"
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
                     Settings
@@ -164,7 +178,8 @@ export function NavBar() {
           ) : (
             <Link
               href="/login"
-              className="text-sm text-muted hover:text-foreground no-underline hover:underline hover:underline-offset-2 focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+              className="text-sm px-3 py-1 rounded no-underline transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+              style={{ backgroundColor: "var(--color-foreground)", color: "var(--color-background)" }}
             >
               Log In
             </Link>
@@ -176,13 +191,13 @@ export function NavBar() {
             aria-label="Toggle navigation menu"
             type="button"
           >
-            {mobileOpen ? "✕" : "☰"}
+            {mobileOpen ? <XIcon className="inline-block" /> : <MenuIcon className="inline-block" />}
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-border px-4 py-3 md:hidden">
+        <div className="border-t-2 border-border px-4 py-3 md:hidden">
           <NavLinks vertical onClick={() => setMobileOpen(false)} />
         </div>
       )}

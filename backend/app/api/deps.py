@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Depends, Header
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -5,6 +7,30 @@ from app.core.database import DatabaseManager
 from app.core.exceptions import AuthenticationException, PermissionDeniedException
 from app.core.security import decode_access_token
 from app.repositories.user_repo import UserRepository
+
+logger = logging.getLogger(__name__)
+
+
+async def _optional_user(
+    authorization: str = Header(None, alias="Authorization"),
+) -> dict | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        token = authorization.split(" ", 1)[1]
+        payload = decode_access_token(token)
+        user_id = payload.get("sub")
+        if user_id:
+            user_repo = UserRepository()
+            user = await user_repo.get_by_id(user_id)
+            if user and not user.get("is_banned"):
+                return user
+    except AuthenticationException:
+        return None
+    except Exception:
+        logger.warning("Unexpected error in _optional_user", exc_info=True)
+        return None
+    return None
 
 
 async def get_db() -> AsyncIOMotorDatabase:

@@ -5,7 +5,7 @@
 
 @theme inline {
   --font-sans: "Inter", system-ui, sans-serif;
-  --font-serif: Georgia, Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  --font-serif: "Times New Roman", Times, serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   --color-background: hsl(40 20% 96%);
@@ -20,7 +20,7 @@
   --color-accent-soft: hsl(15 30% 92%);
   --color-tag-bg: hsl(40 10% 90%);
   --color-selection: hsl(210 60% 90%);
-  --color-overlay: hsl(0 0% 0% / 0.04);
+  --color-overlay: hsl(0 0% 0% / 0.08);
   --color-destructive: hsl(0 52% 53%);
 
   --radius-sm: 0.125rem;
@@ -41,11 +41,11 @@
   --color-link: hsl(210 60% 65%);
   --color-link-visited: hsl(270 30% 65%);
   --color-link-hover: hsl(210 60% 75%);
-  --color-accent: hsl(15 50% 66%);
-  --color-accent-soft: hsl(15 30% 20%);
+  --color-accent: hsl(15 55% 72%);
+  --color-accent-soft: hsl(15 25% 26%);
   --color-tag-bg: hsl(40 5% 20%);
   --color-selection: hsl(210 40% 20%);
-  --color-overlay: hsl(0 0% 100% / 0.04);
+  --color-overlay: hsl(0 0% 100% / 0.08);
   --color-destructive: hsl(0 60% 65%);
 }
 
@@ -56,11 +56,12 @@
 .dark .text-link { color: hsl(210 60% 65%) !important; }
 .dark .text-link-visited { color: hsl(270 30% 65%) !important; }
 .dark .text-link-hover { color: hsl(210 60% 75%) !important; }
-.dark .text-accent { color: hsl(15 50% 66%) !important; }
-.dark .text-accent-soft { color: hsl(15 30% 20%) !important; }
+.dark .text-accent { color: hsl(15 55% 72%) !important; }
+.dark .text-accent-soft { color: hsl(15 25% 26%) !important; }
 .dark .text-destructive { color: hsl(0 60% 65%) !important; }
 
 .dark .bg-background { background-color: hsl(40 5% 12%) !important; }
+.dark .bg-foreground { background-color: hsl(40 5% 82%) !important; }
 .dark .bg-overlay { background-color: hsl(0 0% 100% / 0.04) !important; }
 .dark .bg-tag-bg { background-color: hsl(40 5% 20%) !important; }
 
@@ -112,3 +113,29 @@ a:visited:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+.ProseMirror {
+  outline: none;
+  min-height: 300px;
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--color-subtle);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+[style*="font-family: Arial"], [style*="font-family:Arial"] { font-family: Arial, sans-serif; }
+[style*="font-family: Georgia"], [style*="font-family:Georgia"] { font-family: Georgia, serif; }
+[style*="font-family: Times New Roman"], [style*="font-family:Times New Roman"] { font-family: "Times New Roman", serif; }
+[style*="font-family: Courier New"], [style*="font-family:Courier New"] { font-family: "Courier New", monospace; }
+[style*="font-family: Verdana"], [style*="font-family:Verdana"] { font-family: Verdana, sans-serif; }
+[style*="font-family: serif"] { font-family: serif; }
+[style*="font-family: sans-serif"] { font-family: sans-serif; }
+[style*="font-family: monospace"] { font-family: monospace; }
+
+style { display: none; }

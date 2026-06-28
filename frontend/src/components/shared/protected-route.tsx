@@ -5,8 +5,14 @@ import { useEffect } from "react";
 
 import { useAuthStore } from "@/store/auth-store";
 
-export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+export function ProtectedRoute({
+  children,
+  adminOnly = false,
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}) {
+  const { isAuthenticated, isLoading, user } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,6 +32,14 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  if (adminOnly && !user?.is_admin) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-sm text-muted">Access denied. Admin only.</p>
+      </div>
+    );
   }
 
   return <>{children}</>;

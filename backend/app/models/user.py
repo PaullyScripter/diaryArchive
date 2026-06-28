@@ -55,3 +55,25 @@ class UserUpdate(BaseModel):
     favorite_quote: str | None = Field(None, max_length=300)
     currently_feeling: str | None = Field(None, max_length=50)
     preferences: UserPreferences | None = None
+
+
+class UserPublicProfile(BaseModel):
+    id: str
+    username: str
+    avatar_path: str | None = None
+    about: str | None = None
+    favorite_quote: str | None = None
+    currently_feeling: str | None = None
+    stats: UserStats = UserStats()
+    created_at: datetime
+    is_following: bool = False
+
+
+class EmailUpdate(BaseModel):
+    email: str | None = Field(None, max_length=254)
+
+
+class EncryptionKeyUpdate(BaseModel):
+    encrypted_master_key: str = Field(..., min_length=1)
+    master_key_salt: str = Field(..., min_length=1)
+    master_key_iv: str = Field(..., min_length=1)

@@ -67,7 +67,8 @@ services:
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_API_KEY: ${MEILI_MASTER_KEY:-dev-master-key}
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-prod}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-only-for-local-development}
+      EMAIL_ENCRYPTION_KEY: ${EMAIL_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       CORS_ORIGINS: '["http://localhost:3000"]'
       DEBUG: "true"
     volumes:
