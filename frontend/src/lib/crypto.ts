@@ -26,7 +26,7 @@ export async function deriveKeyFromPassword(
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
   );
 }
 
