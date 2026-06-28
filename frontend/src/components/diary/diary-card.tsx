@@ -4,6 +4,8 @@ import { TagBadge } from "@/components/shared/tag-badge";
 import { PrivacyBadge } from "@/components/shared/privacy-badge";
 import { relativeTime } from "@/lib/utils";
 
+import { sanitizeHtml } from "@/lib/sanitize";
+
 export interface DiaryCardData {
   id: string;
   title: string | null;
@@ -30,9 +32,12 @@ export interface DiaryCardData {
   created_at: string;
   updated_at?: string;
   published_at?: string | null;
+  highlight?: boolean;
 }
 
 export function DiaryCard({ diary }: { diary: DiaryCardData }) {
+  const titleContent = diary.title ?? (diary.privacy === "private" ? "Private Entry" : "Untitled");
+  const isHighlighted = diary.highlight === true && typeof diary.title === "string" && diary.title.includes("<em>");
   return (
     <article className="py-3 border-b border-border last:border-b-0 border-l-2 border-l-accent transition-colors hover:bg-overlay -mx-4 px-4 rounded-sm">
       <div className="max-w-prose">
@@ -40,7 +45,11 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
           href={`/diary/${diary.id}`}
           className="text-lg font-serif font-semibold text-foreground leading-snug no-underline hover:underline"
         >
-          {diary.title ?? (diary.privacy === "private" ? "Private Entry" : "Untitled")}
+          {isHighlighted ? (
+            <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleContent) }} />
+          ) : (
+            titleContent
+          )}
         </Link>
 
         <div className="mt-0.5 text-xs text-subtle">
@@ -82,7 +91,11 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
 
         {diary.excerpt && (
           <p className="mt-2 text-xs text-muted leading-snug line-clamp-2">
-            {diary.excerpt}
+            {isHighlighted ? (
+              <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(diary.excerpt!) }} />
+            ) : (
+              diary.excerpt
+            )}
           </p>
         )}
 

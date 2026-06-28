@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 from app.core.exceptions import (
@@ -9,6 +10,33 @@ from app.core.sanitize import sanitize_html
 from app.core.utils import fmt_dt
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
+
+logger = logging.getLogger(__name__)
+
+
+def _index_diary_async(diary: dict) -> None:
+    async def _do_index():
+        try:
+            from app.search.indexer import DiaryIndexer
+            indexer = DiaryIndexer()
+            await indexer.index_diary(diary)
+        except Exception:
+            logger.warning("Async indexing failed for diary %s", diary.get("_id"))
+    import asyncio
+    asyncio.create_task(_do_index())
+
+
+def _remove_from_index_async(diary_id: str) -> None:
+    async def _do_remove():
+        try:
+            from app.search.indexer import DiaryIndexer
+            indexer = DiaryIndexer()
+            await indexer.remove_diary(diary_id)
+        except Exception:
+            logger.warning("Async index removal failed for diary %s", diary_id)
+    import asyncio
+    asyncio.create_task(_do_remove())
+
 
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
 
@@ -199,6 +227,10 @@ async def create_diary(user: dict, data: dict) -> dict:
     diary_id = await diary_repo.create(diary_doc)
     await user_repo.update_stats(str(user["_id"]), "diary_count", 1)
 
+    if privacy == "public":
+        diary_doc["_id"] = diary_id
+        _index_diary_async(diary_doc)
+
     return {
         "id": str(diary_id),
         "created_at": fmt_dt(now),
@@ -314,6 +346,12 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
     updated_diary = await diary_repo.get_by_id(diary_id)
     user_repo = UserRepository()
     author = await user_repo.get_by_id(str(diary["user_id"]))
+
+    if updated_diary.get("privacy") == "public":
+        _index_diary_async(updated_diary)
+    elif "privacy" in updates and updates["privacy"] is not None:
+        _remove_from_index_async(diary_id)
+
     return _build_diary_response(updated_diary, author, current_user)
 
 
@@ -332,6 +370,7 @@ async def delete_diary(diary_id: str, current_user: dict) -> None:
     if deleted > 0:
         user_repo = UserRepository()
         await user_repo.update_stats(str(diary["user_id"]), "diary_count", -1)
+        _remove_from_index_async(diary_id)
 
 
 async def list_public_diaries(

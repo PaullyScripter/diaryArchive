@@ -46,3 +46,29 @@ class FollowRepository(BaseRepository):
             "following_id": ObjectId(following_id),
         })
         return result.deleted_count
+
+    async def find_one_and_delete(self, follower_id: str, following_id: str) -> dict | None:
+        return await self._collection.find_one_and_delete({
+            "follower_id": ObjectId(follower_id),
+            "following_id": ObjectId(following_id),
+        })
+
+    async def get_following_ids(self, follower_id: str, limit: int = 1000) -> list[str]:
+        docs = await self.find(
+            {"follower_id": ObjectId(follower_id)},
+            sort=[("created_at", -1)],
+            limit=limit,
+        )
+        return [str(d["following_id"]) for d in docs]
+
+    async def find_following_by_ids(self, follower_id: str, following_ids: list[str]) -> set[str]:
+        if not following_ids:
+            return set()
+        oids = [ObjectId(fid) for fid in following_ids if ObjectId.is_valid(fid)]
+        if not oids:
+            return set()
+        docs = await self.find({
+            "follower_id": ObjectId(follower_id),
+            "following_id": {"$in": oids},
+        }, limit=len(oids))
+        return {str(d["following_id"]) for d in docs}

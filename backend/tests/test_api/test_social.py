@@ -390,3 +390,233 @@ class TestCommentLikes:
         data = response.json()["data"]
         assert data["is_liked"] is False
         assert data["like_count"] == 0
+
+
+class TestFollowingFeed:
+    async def test_following_feed_empty(self, client: AsyncClient, auth_token: str):
+        response = await client.get(
+            "/api/v1/me/following/feed",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["data"]) == 0
+        assert body["meta"]["total"] == 0
+
+    async def test_following_feed_with_content(self, client: AsyncClient, auth_token: str):
+        await client.post(
+            "/api/v1/auth/register",
+            json={"username": "writer1", "password": "ValidPass123"},
+        )
+        login_resp = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "writer1", "password": "ValidPass123"},
+        )
+        writer_token = login_resp.json()["data"]["access_token"]
+
+        await client.post(
+            "/api/v1/diaries",
+            headers={"Authorization": f"Bearer {writer_token}"},
+            json={
+                "privacy": "public",
+                "title": "Writer diary",
+                "content_html": "<p>Content</p>",
+                "content_text": "Content",
+                "tags": ["writing"],
+            },
+        )
+
+        await client.post(
+            "/api/v1/users/writer1/follow",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        response = await client.get(
+            "/api/v1/me/following/feed",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["data"]) >= 1
+        assert body["data"][0]["author"]["username"] == "writer1"
+
+    async def test_following_feed_requires_auth(self, client: AsyncClient):
+        response = await client.get("/api/v1/me/following/feed")
+        assert response.status_code == 401
+
+
+class TestCommentsDisabled:
+    async def test_create_comment_comments_disabled(self, client: AsyncClient, auth_token: str):
+        create_resp = await client.post(
+            "/api/v1/diaries",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={
+                "privacy": "public",
+                "title": "No Comments",
+                "content_html": "<p>Test</p>",
+                "content_text": "Test",
+                "tags": ["test"],
+                "comments_enabled": False,
+            },
+        )
+        diary_id = create_resp.json()["data"]["id"]
+
+        response = await client.post(
+            f"/api/v1/diaries/{diary_id}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Should fail"},
+        )
+        assert response.status_code == 422
+
+
+class TestCommentDiaryIdValidation:
+    async def test_delete_comment_wrong_diary_id(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Test comment"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        response = await client.delete(
+            f"/api/v1/diaries/aaaaaaaaaaaaaaaaaaaaaaaa/comments/{comment_id}",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 404
+
+
+class TestDeleteCommentAuthorization:
+    async def test_delete_comment_non_author_non_owner(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "My comment"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        await client.post(
+            "/api/v1/auth/register",
+            json={"username": "otheruser", "password": "ValidPass123"},
+        )
+        login_resp = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "otheruser", "password": "ValidPass123"},
+        )
+        other_token = login_resp.json()["data"]["access_token"]
+
+        response = await client.delete(
+            f"/api/v1/diaries/{public_diary}/comments/{comment_id}",
+            headers={"Authorization": f"Bearer {other_token}"},
+        )
+        assert response.status_code == 403
+
+    async def test_delete_comment_as_diary_owner(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Diary owner's comment"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        response = await client.delete(
+            f"/api/v1/diaries/{public_diary}/comments/{comment_id}",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 204
+
+
+class TestDeletedCommentContent:
+    async def test_deleted_comment_has_null_content(self, client: AsyncClient, auth_token: str, public_diary: str):
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Will be deleted"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        await client.delete(
+            f"/api/v1/diaries/{public_diary}/comments/{comment_id}",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        db = DatabaseManager.get_db()
+        from bson import ObjectId
+        doc = await db.comments.find_one({"_id": ObjectId(comment_id)})
+        assert doc is not None
+        assert doc["is_deleted"] is True
+        assert doc["content"] is None
+        assert "deleted_at" in doc
+
+
+class TestCommentCountIntegrity:
+    async def test_delete_comment_decrements_count(self, client: AsyncClient, auth_token: str, public_diary: str):
+        await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Comment 1"},
+        )
+        create_resp = await client.post(
+            f"/api/v1/diaries/{public_diary}/comments",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"content": "Comment 2"},
+        )
+        comment_id = create_resp.json()["data"]["id"]
+
+        diary_before = await client.get(f"/api/v1/diaries/{public_diary}")
+        assert diary_before.json()["data"]["stats"]["comment_count"] == 2
+
+        await client.delete(
+            f"/api/v1/diaries/{public_diary}/comments/{comment_id}",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        diary_after = await client.get(f"/api/v1/diaries/{public_diary}")
+        assert diary_after.json()["data"]["stats"]["comment_count"] == 1
+
+
+class TestIsFollowingInLists:
+    async def test_is_following_in_followers_list(self, client: AsyncClient, auth_token: str):
+        await client.post(
+            "/api/v1/auth/register",
+            json={"username": "followed_user", "password": "ValidPass123"},
+        )
+        await client.post(
+            "/api/v1/users/followed_user/follow",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        login_resp = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "followed_user", "password": "ValidPass123"},
+        )
+        target_token = login_resp.json()["data"]["access_token"]
+
+        response = await client.get(
+            "/api/v1/users/followed_user/followers",
+            headers={"Authorization": f"Bearer {target_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["data"]) >= 1
+        assert body["data"][0]["is_following"] is False
+
+
+class TestIdempotentToggle:
+    async def test_like_toggle_idempotent(self, client: AsyncClient, auth_token: str, public_diary: str):
+        resp1 = await client.post(
+            f"/api/v1/diaries/{public_diary}/like",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        resp2 = await client.post(
+            f"/api/v1/diaries/{public_diary}/like",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        resp3 = await client.post(
+            f"/api/v1/diaries/{public_diary}/like",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+
+        assert resp1.json()["data"]["is_liked"] is True
+        assert resp2.json()["data"]["is_liked"] is False
+        assert resp3.json()["data"]["is_liked"] is True
+        assert resp3.json()["data"]["like_count"] == 1

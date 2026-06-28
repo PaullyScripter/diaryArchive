@@ -6,6 +6,7 @@ from app.core.security import check_rate_limit
 from app.services.social_service import (
     list_followers,
     list_following,
+    list_following_feed,
     list_my_bookmarks,
     list_my_likes,
     toggle_bookmark,
@@ -111,3 +112,13 @@ async def get_my_bookmarks(
 ):
     result = await list_my_bookmarks(current_user, page=page, per_page=per_page)
     return result
+
+
+@router.get("/me/following/feed")
+async def get_following_feed(
+    request: Request,
+    limit: int = Query(6, ge=1, le=20),
+    current_user: dict = Depends(get_current_user),
+):
+    result = await list_following_feed(current_user, limit=limit)
+    return {"data": result["data"], "meta": result["meta"]}

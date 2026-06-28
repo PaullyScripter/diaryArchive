@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { Users } from "lucide-react";
 import { BrowseSidebar } from "@/components/diary/browse-sidebar";
 import {
   useDiaries,
@@ -9,6 +10,8 @@ import {
   usePopularTags,
   useEmotions,
 } from "@/hooks/use-diaries";
+import { useFollowingFeed } from "@/hooks/use-social";
+import { useAuthStore } from "@/store/auth-store";
 import { DiaryCard, type DiaryCardData } from "@/components/diary/diary-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,12 +35,16 @@ export default function Home() {
   const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
   const { data: popularTags } = usePopularTags();
   const { data: emotions } = useEmotions();
+  const { data: followingFeed } = useFollowingFeed();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const randomTags = useMemo(() => pickRandom(popularTags ?? [], 25), [popularTags]);
   const randomEmotions = useMemo(() => pickRandom(emotions ?? [], 25), [emotions]);
 
   const latestDiaries: DiaryCardData[] =
     diariesData?.pages.flatMap((p) => p.data ?? []) ?? [];
+
+  const followingDiaries: DiaryCardData[] = followingFeed?.data ?? [];
 
   return (
     <div className="flex gap-8 lg:gap-10">
@@ -88,6 +95,20 @@ export default function Home() {
           </div>
         )}
 
+        {isAuthenticated && followingDiaries.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-border">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-4 h-4 text-muted" />
+              <h2 className="font-serif text-lg font-semibold text-foreground">
+                From People You Follow
+              </h2>
+            </div>
+            {followingDiaries.map((diary) => (
+              <DiaryCard key={diary.id} diary={diary} />
+            ))}
+          </div>
+        )}
+
         {randomDiary && (
           <div className="mt-12 pt-8 border-t border-border">
             <div className="flex items-baseline justify-between mb-4">
@@ -115,7 +136,7 @@ export default function Home() {
               {randomTags.map(({ tag, count }) => (
                 <Link
                   key={tag}
-                  href={`/explore?tag=${tag}`}
+                  href={`/explore?tags=${tag}`}
                   className="inline-block"
                 >
                   <span className="inline-block px-2 py-1 rounded-sm text-xs bg-tag-bg text-muted hover:text-foreground hover:bg-border transition-colors no-underline">
@@ -148,6 +169,28 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        <div className="mt-12 pt-8 border-t border-border">
+          <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+            Browse by Year
+          </h2>
+          <div className="flex gap-2 flex-wrap">
+            {Array.from(
+              { length: new Date().getFullYear() - 2024 + 1 },
+              (_, i) => 2024 + i
+            )
+              .reverse()
+              .map((year) => (
+                <Link
+                  key={year}
+                  href={`/explore?year=${year}`}
+                  className="px-3 py-1 rounded text-xs border border-border text-muted hover:text-foreground hover:border-foreground/30 transition-colors no-underline"
+                >
+                  {year}
+                </Link>
+              ))}
+          </div>
+        </div>
       </div>
     </div>
   );

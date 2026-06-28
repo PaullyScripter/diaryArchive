@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 from app.core.exceptions import ConflictException
 from app.repositories.base import BaseRepository
 
@@ -10,6 +12,14 @@ class UserRepository(BaseRepository):
 
     async def get_by_email_hash(self, email_hash: str) -> dict | None:
         return await self.find_one({"email_hash": email_hash})
+
+    async def find_by_ids(self, ids: list[str]) -> list[dict]:
+        if not ids:
+            return []
+        oids = [ObjectId(uid) for uid in ids if ObjectId.is_valid(uid)]
+        if not oids:
+            return []
+        return await self.find({"_id": {"$in": oids}}, limit=len(oids))
 
     async def create_user(self, data: dict) -> str:
         username = data.get("username", "").lower()
@@ -31,5 +41,4 @@ class UserRepository(BaseRepository):
         )
 
     def _to_object_id(self, id: str):
-        from bson import ObjectId
         return ObjectId(id)
