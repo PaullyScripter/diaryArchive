@@ -17,6 +17,7 @@ export interface User {
   is_admin: boolean;
   has_email: boolean;
   email_verified: boolean;
+  has_master_key: boolean;
   preferences: {
     theme: string;
     comments_disabled: boolean;
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         is_admin: data.is_admin || false,
         has_email: false,
         email_verified: false,
+        has_master_key: false,
         preferences: {
           theme: "system",
           comments_disabled: false,
@@ -82,9 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
       isLoading: false,
     });
-    if (data.access_token) {
-      get().refreshAuth();
-    }
+    get().refreshAuth();
   },
 
   register: async (username: string, password: string, email?: string) => {
@@ -107,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         is_admin: false,
         has_email: false,
         email_verified: false,
+        has_master_key: false,
         preferences: {
           theme: "system",
           comments_disabled: false,
@@ -148,12 +149,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const meData = meResponse.data.data || meResponse.data;
       set({ user: meData, isAuthenticated: true, isLoading: false });
     } catch {
-      set({
-        user: null,
-        accessToken: null,
-        isAuthenticated: false,
-        isLoading: false,
-      });
+      set({ isLoading: false });
     }
   },
 

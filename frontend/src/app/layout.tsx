@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,8 +13,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "DiaryArchive — a place for your thoughts",
+  title: "DiaryArchive",
   description: "Write, share, and discover personal diaries. Public or private, your words find a home here.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -43,7 +48,9 @@ export default function RootLayout({
       </head>
       <body className="bg-background text-foreground font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <QueryProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

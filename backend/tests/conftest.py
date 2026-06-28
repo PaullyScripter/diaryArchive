@@ -1,3 +1,11 @@
+import os
+
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only")
+os.environ.setdefault(
+    "EMAIL_ENCRYPTION_KEY",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+)
+
 import asyncio
 
 import pytest_asyncio

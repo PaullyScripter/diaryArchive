@@ -48,4 +48,15 @@ app.add_middleware(CSPSecurityMiddleware)
 
 app.add_exception_handler(DiaryArchiveException, diaryarchive_exception_handler)
 
+
+@app.get("/")
+async def root():
+    return {
+        "app": settings.app_name,
+        "version": "0.1.0",
+        "docs": "/docs",
+        "api": "/api/v1",
+    }
+
+
 app.include_router(api_router, prefix="/api/v1")
