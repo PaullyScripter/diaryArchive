@@ -222,7 +222,21 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
     if author is None:
         raise NotFoundException("Author not found")
 
-    return _build_diary_response(diary, author, current_user)
+    is_liked = False
+    is_bookmarked = False
+    if current_user and diary.get("privacy") == "public":
+        from app.repositories.like_repo import LikeRepository
+        from app.repositories.bookmark_repo import BookmarkRepository
+        user_id = str(current_user["_id"])
+        like = await LikeRepository().find_by_user_and_diary(user_id, diary_id)
+        bookmark = await BookmarkRepository().find_by_user_and_diary(user_id, diary_id)
+        is_liked = like is not None
+        is_bookmarked = bookmark is not None
+
+    result = _build_diary_response(diary, author, current_user)
+    result["is_liked"] = is_liked
+    result["is_bookmarked"] = is_bookmarked
+    return result
 
 
 async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict:

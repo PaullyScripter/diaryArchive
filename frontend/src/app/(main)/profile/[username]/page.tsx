@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { FollowButton } from "@/components/social/follow-button";
 import { relativeTime } from "@/lib/utils";
 
 export default function ProfilePage() {
@@ -98,9 +99,10 @@ export default function ProfilePage() {
               </Button>
             </Link>
           ) : (
-            <Button variant="primary" size="sm" disabled title="Follow functionality coming in a future milestone">
-              {profile.is_following ? "Following" : "Follow"}
-            </Button>
+            <FollowButton
+              username={profile.username}
+              initialIsFollowing={profile.is_following}
+            />
           )}
         </div>
       </div>
