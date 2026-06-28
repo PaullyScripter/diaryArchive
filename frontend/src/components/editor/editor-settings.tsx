@@ -78,7 +78,7 @@ export function EditorSettings({
                   disabled={disabled}
                   className="rounded-full border-border cursor-pointer disabled:cursor-not-allowed"
                 />
-                {isPrivate && <Lock className="w-3 h-3 text-destructive" />}
+                {isPrivate && <Lock className="w-3 h-3 text-muted" />}
                 <span className={isPrivate ? "text-foreground" : ""}>
                   {label}
                 </span>
