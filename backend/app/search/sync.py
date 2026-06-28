@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from app.core.database import DatabaseManager
@@ -37,7 +38,9 @@ async def full_reindex() -> int:
         total += len(batch)
 
     mongo_count = await db.diaries.count_documents({"privacy": "public"})
-    index_stats = get_client().index(PUBLIC_DIARIES_INDEX).get_stats()
+    index_stats = await asyncio.to_thread(
+        lambda: get_client().index(PUBLIC_DIARIES_INDEX).get_stats()
+    )
     index_count = index_stats.number_of_documents
 
     logger.info(
