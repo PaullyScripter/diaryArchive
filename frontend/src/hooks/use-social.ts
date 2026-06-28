@@ -248,3 +248,16 @@ export function useToggleCommentLike(commentId: string) {
     },
   });
 }
+
+async function fetchFollowingFeed() {
+  const response = await apiClient.get("/me/following/feed");
+  return response.data;
+}
+
+export function useFollowingFeed() {
+  return useQuery({
+    queryKey: ["followingFeed"],
+    queryFn: fetchFollowingFeed,
+    staleTime: 60 * 1000,
+  });
+}

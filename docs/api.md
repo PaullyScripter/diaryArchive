@@ -1128,9 +1128,14 @@ List comments on a diary.
         "username": "starreader",
         "avatar_path": null
       },
+      "is_deleted": false,
       "is_owner": false,
       "is_diary_owner": false,
-      "is_deleted": false,
+      "parent_comment_id": null,
+      "depth": 0,
+      "reply_count": 3,
+      "like_count": 5,
+      "is_liked": false,
       "created_at": "2026-06-25T09:15:00Z",
       "updated_at": "2026-06-25T09:15:00Z"
     }
@@ -1145,6 +1150,11 @@ List comments on a diary.
 |-------|-----------|
 | `is_owner` | Only if authenticated. Whether the requesting user wrote this comment. |
 | `is_diary_owner` | Only if authenticated. Whether the requesting user owns the diary. |
+| `is_liked` | Only if authenticated. Whether the current user has liked this comment. |
+| `depth` | 0 for root comments, 1 for first-level replies, capped at 4. |
+| `reply_count` | Number of direct replies to this comment. |
+| `like_count` | Number of likes on this comment. |
+| `parent_comment_id` | ID of the parent comment for replies; null for root comments. |
 
 ---
 
@@ -1157,25 +1167,42 @@ Add a comment to a diary.
 **Request body:**
 ```json
 {
-  "content": "This really resonates with me."
+  "content": "This really resonates with me.",
+  "parent_comment_id": null
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | Yes | 1-2000 characters. Plain text only. |
+| `parent_comment_id` | string | No | ID of parent comment for threaded replies. |
 
 **Validation:**
 
 | Field | Rules |
 |-------|-------|
 | `content` | Required. 1-2000 chars. Plain text only. |
+| `parent_comment_id` | If provided, must be a valid comment on the same diary. Max reply depth is 4. |
 
 **Success (201):**
 ```json
 {
   "data": {
     "id": "665b1c2d3e4f5a6b7c8d9e0f",
+    "content": "This really resonates with me.",
+    "author": { "id": "...", "username": "starreader", "avatar_path": null },
+    "is_deleted": false,
+    "is_owner": true,
+    "parent_comment_id": null,
+    "depth": 0,
+    "reply_count": 0,
+    "like_count": 0,
     "created_at": "2026-06-25T09:15:00Z"
   }
 }
 ```
+
+**Rate Limit:** 10 requests per minute per user.
 
 **Errors:**
 
@@ -1183,16 +1210,14 @@ Add a comment to a diary.
 |------|--------|-----------|
 | `unauthorized` | 401 | Missing or invalid access token |
 | `not_found` | 404 | Diary does not exist |
-| `comments_disabled` | 403 | Diary has comments disabled |
-| `comments_locked` | 403 | Diary comments are locked |
-| `diary_not_public` | 403 | Cannot comment on private diaries |
-| `validation_error` | 422 | Invalid content |
+| `validation_error` | 422 | Invalid content, disabled/locked comments, max depth reached |
+| `rate_limited` | 429 | Too many requests |
 
 ---
 
-### DELETE /api/v1/comments/{id}
+### DELETE /api/v1/diaries/{diary_id}/comments/{comment_id}
 
-Delete a comment. Soft delete — content is replaced with `"[deleted]"`.
+Soft-delete a comment.
 
 **Auth:** Bearer access token
 **Authorization:** Must be the comment author, the diary owner, or an admin
@@ -1205,46 +1230,67 @@ Delete a comment. Soft delete — content is replaced with `"[deleted]"`.
 |------|--------|-----------|
 | `unauthorized` | 401 | Missing or invalid access token |
 | `forbidden` | 403 | Not authorized to delete this comment |
-| `not_found` | 404 | Comment does not exist |
+| `not_found` | 404 | Comment does not exist or does not belong to this diary |
 
 ---
 
-## 7. Likes
+### GET /api/v1/comments/{comment_id}/replies
 
-### GET /api/v1/diaries/{id}/likes
+List replies to a comment (threaded).
 
-List users who liked a diary.
+**Auth:** Optional (diary must be public)
 
-**Auth:** Optional
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | int | 1 | Page number |
+| `per_page` | int | 10 | Max 50 |
 
 **Success (200):**
 ```json
 {
-  "data": [
-    {
-      "id": "665a1b2c3d4e5f6a7b8c9d0f",
-      "username": "starreader",
-      "avatar_path": null,
-      "liked_at": "2026-06-25T10:00:00Z"
-    }
-  ],
-  "meta": { "page": 1, "per_page": 20, "total": 12, "has_next": false, "has_prev": false }
+  "data": [ /* same shape as comment objects above */ ],
+  "meta": { "page": 1, "per_page": 10, "total": 2, "has_next": false, "has_prev": false }
 }
 ```
 
 ---
 
-### POST /api/v1/diaries/{id}/likes
+### POST /api/v1/comments/{comment_id}/like
 
-Like a diary.
+Toggle like on a comment.
 
 **Auth:** Bearer access token
+**Rate Limit:** 30 requests per minute per user.
 
-**Success (201):**
+**Success (200):**
 ```json
 {
   "data": {
-    "message": "Diary liked."
+    "is_liked": true,
+    "like_count": 5
+  }
+}
+```
+
+---
+
+## 7. Likes
+
+### POST /api/v1/diaries/{id}/like
+
+Toggle like on a diary.
+
+**Auth:** Bearer access token
+**Rate Limit:** 30 requests per minute per user.
+
+**Success (200):**
+```json
+{
+  "data": {
+    "is_liked": true,
+    "like_count": 5
   }
 }
 ```
@@ -1254,56 +1300,73 @@ Like a diary.
 | Code | Status | Condition |
 |------|--------|-----------|
 | `unauthorized` | 401 | Missing or invalid access token |
-| `not_found` | 404 | Diary does not exist |
-| `already_liked` | 409 | User already liked this diary |
-| `diary_not_public` | 403 | Cannot like private diaries |
+| `not_found` | 404 | Diary does not exist or is not public |
+| `forbidden` | 403 | Account is banned |
+| `rate_limited` | 429 | Too many requests |
 
 ---
 
-### DELETE /api/v1/diaries/{id}/likes
+### GET /api/v1/me/likes
 
-Remove a like.
+List diaries the current user has liked.
 
 **Auth:** Bearer access token
 
-**Success (204):** No content.
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | int | 1 | Page number |
+| `per_page` | int | 20 | Max 100 |
+
+**Success (200):** Returns standard paginated diary list enriched with `is_liked`, `is_bookmarked`, and `is_owner` flags.
+
+---
+
+## 8. Bookmarks
+
+### POST /api/v1/diaries/{id}/bookmark
+
+Toggle bookmark on a diary.
+
+**Auth:** Bearer access token
+**Rate Limit:** 30 requests per minute per user.
+
+**Success (200):**
+```json
+{
+  "data": {
+    "is_bookmarked": true,
+    "bookmark_count": 3
+  }
+}
+```
 
 **Errors:**
 
 | Code | Status | Condition |
 |------|--------|-----------|
 | `unauthorized` | 401 | Missing or invalid access token |
-| `not_found` | 404 | Like does not exist |
+| `not_found` | 404 | Diary does not exist or is not public |
+| `forbidden` | 403 | Account is banned |
+| `rate_limited` | 429 | Too many requests |
 
 ---
 
-## 8. Bookmarks
+### GET /api/v1/me/bookmarks
 
-### GET /api/v1/diaries/{id}/bookmarks
-
-List users who bookmarked a diary.
-
-Identical structure to likes.
-
----
-
-### POST /api/v1/diaries/{id}/bookmarks
-
-Bookmark a diary.
+List diaries the current user has bookmarked.
 
 **Auth:** Bearer access token
 
-**Errors:**
+**Query Parameters:**
 
-| Code | Status | Condition |
-|------|--------|-----------|
-| `already_bookmarked` | 409 | User already bookmarked this diary |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | int | 1 | Page number |
+| `per_page` | int | 20 | Max 100 |
 
----
-
-### DELETE /api/v1/diaries/{id}/bookmarks
-
-Remove a bookmark.
+**Success (200):** Returns standard paginated diary list enriched with `is_liked`, `is_bookmarked`, and `is_owner` flags.
 
 ---
 
@@ -1311,19 +1374,17 @@ Remove a bookmark.
 
 ### POST /api/v1/users/{username}/follow
 
-Follow a user.
+Toggle follow on a user.
 
 **Auth:** Bearer access token
+**Rate Limit:** 20 requests per minute per user.
 
-**Validation:**
-
-- Cannot follow yourself.
-
-**Success (201):**
+**Success (200):**
 ```json
 {
   "data": {
-    "message": "Now following moonwriter."
+    "is_following": true,
+    "follower_count": 42
   }
 }
 ```
@@ -1334,25 +1395,64 @@ Follow a user.
 |------|--------|-----------|
 | `unauthorized` | 401 | Missing or invalid access token |
 | `not_found` | 404 | User does not exist |
-| `cannot_follow_self` | 400 | Cannot follow yourself |
-| `already_following` | 409 | Already following this user |
+| `validation_error` | 422 | Self-follow prevented |
+| `forbidden` | 403 | Target user or requester is banned |
+| `rate_limited` | 429 | Too many requests |
 
 ---
 
-### DELETE /api/v1/users/{username}/follow
+### GET /api/v1/users/{username}/followers
 
-Unfollow a user.
+List followers of a user.
+
+**Auth:** Optional. When authenticated, `is_following` is populated.
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | int | 1 | Page number |
+| `per_page` | int | 20 | Max 100 |
+
+**Success (200):**
+```json
+{
+  "data": [
+    {
+      "id": "665a1b...",
+      "username": "reader42",
+      "avatar_path": null,
+      "about": "Just someone who loves journals",
+      "is_following": false
+    }
+  ],
+  "meta": { "page": 1, "per_page": 20, "total": 42, "has_next": true, "has_prev": false }
+}
+```
+
+---
+
+### GET /api/v1/users/{username}/following
+
+List users a user is following.
+
+**Auth:** Optional. Same structure as followers.
+
+---
+
+### GET /api/v1/me/following/feed
+
+Get recent public diaries from users the current user follows.
 
 **Auth:** Bearer access token
 
-**Success (204):** No content.
+**Query Parameters:**
 
-**Errors:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | int | 6 | Max 20 |
 
-| Code | Status | Condition |
-|------|--------|-----------|
-| `unauthorized` | 401 | Missing or invalid access token |
-| `not_found` | 404 | Follow relationship does not exist |
+**Success (200):** Returns standard diary list items enriched with `is_liked` and `is_bookmarked`.
 
 ---
 

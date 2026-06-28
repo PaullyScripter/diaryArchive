@@ -9,6 +9,14 @@ class DiaryRepository(BaseRepository):
     def _oid(self, id_str: str) -> ObjectId:
         return ObjectId(id_str)
 
+    async def find_by_ids(self, ids: list[str]) -> list[dict]:
+        if not ids:
+            return []
+        oids = [self._oid(id_str) for id_str in ids if ObjectId.is_valid(id_str)]
+        if not oids:
+            return []
+        return await self.find({"_id": {"$in": oids}}, limit=len(oids))
+
     async def find_public_by_user(
         self,
         user_id: str,
@@ -30,6 +38,25 @@ class DiaryRepository(BaseRepository):
             "user_id": self._oid(user_id),
             "privacy": "public",
         })
+
+    async def find_public_by_user_ids(
+        self,
+        user_ids: list[str],
+        sort: list[tuple] | None = None,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> list[dict]:
+        if not user_ids:
+            return []
+        if sort is None:
+            sort = [("created_at", -1)]
+        oids = [self._oid(uid) for uid in user_ids]
+        return await self.find(
+            {"user_id": {"$in": oids}, "privacy": "public"},
+            sort=sort,
+            skip=skip,
+            limit=limit,
+        )
 
     async def find_public_feed(
         self,

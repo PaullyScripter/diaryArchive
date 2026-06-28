@@ -41,6 +41,12 @@ class BookmarkRepository(BaseRepository):
         })
         return result.deleted_count
 
+    async def find_one_and_delete(self, user_id: str, diary_id: str) -> dict | None:
+        return await self._collection.find_one_and_delete({
+            "user_id": ObjectId(user_id),
+            "diary_id": ObjectId(diary_id),
+        })
+
     async def delete_by_diary(self, diary_id: str) -> int:
         result = await self._collection.delete_many(
             {"diary_id": ObjectId(diary_id)}

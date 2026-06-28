@@ -82,4 +82,4 @@ async def delete(
     comment_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    await delete_comment(comment_id, current_user)
+    await delete_comment(comment_id, diary_id, current_user)

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { BookOpen, Users, UserPlus } from "lucide-react";
 
 import { useUserDiaries, useUserProfile } from "@/hooks/use-user";
+import { useFollowers, useFollowing } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -226,17 +227,76 @@ export default function ProfilePage() {
         </TabsContent>
 
         <TabsContent value="followers">
-          <div className="text-center py-12 text-sm text-muted">
-            Followers will be displayed here in a future update.
-          </div>
+          <FollowersList username={profile.username} currentUsername={currentUser?.username ?? ""} />
         </TabsContent>
 
         <TabsContent value="following">
-          <div className="text-center py-12 text-sm text-muted">
-            Following will be displayed here in a future update.
-          </div>
+          <FollowingList username={profile.username} currentUsername={currentUser?.username ?? ""} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function FollowersList({ username, currentUsername }: { username: string; currentUsername: string }) {
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFollowers(username);
+  const users = data?.pages.flatMap((p) => p.data ?? []) ?? [];
+
+  if (isLoading) return <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
+  if (users.length === 0) return <div className="text-center py-12"><p className="text-sm text-muted">No followers yet.</p></div>;
+
+  return (
+    <div className="space-y-0">
+      {users.map((u) => (
+        <UserListItem key={u.id} user={u} isSelf={u.username === currentUsername} />
+      ))}
+      {hasNextPage && (
+        <div className="pt-4 text-center">
+          <Button variant="ghost" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+            {isFetchingNextPage ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FollowingList({ username, currentUsername }: { username: string; currentUsername: string }) {
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFollowing(username);
+  const users = data?.pages.flatMap((p) => p.data ?? []) ?? [];
+
+  if (isLoading) return <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}</div>;
+  if (users.length === 0) return <div className="text-center py-12"><p className="text-sm text-muted">{username === currentUsername ? "You aren't following anyone yet." : "Not following anyone yet."}</p></div>;
+
+  return (
+    <div className="space-y-0">
+      {users.map((u) => (
+        <UserListItem key={u.id} user={u} isSelf={u.username === currentUsername} />
+      ))}
+      {hasNextPage && (
+        <div className="pt-4 text-center">
+          <Button variant="ghost" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+            {isFetchingNextPage ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserListItem({ user, isSelf }: { user: { id: string; username: string; avatar_path: string | null; about: string | null; is_following: boolean }; isSelf: boolean }) {
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-border last:border-b-0">
+      <Link href={`/profile/${user.username}`}>
+        <Avatar src={user.avatar_path} alt={user.username} size="md" />
+      </Link>
+      <div className="flex-1 min-w-0">
+        <Link href={`/profile/${user.username}`} className="text-sm font-medium text-foreground no-underline hover:underline">
+          {user.username}
+        </Link>
+        {user.about && <p className="text-xs text-muted truncate">{user.about}</p>}
+      </div>
+      {!isSelf && <FollowButton username={user.username} initialIsFollowing={user.is_following} size="sm" />}
     </div>
   );
 }
