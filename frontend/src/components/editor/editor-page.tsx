@@ -541,10 +541,12 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                         setKeySetupPassword("");
                         setKeySetupError("");
                         setKeySetupStep("explain");
-                      } catch {
-                        setKeySetupError(
-                          "Failed to set up encryption. Check your password."
-                        );
+                      } catch (err: unknown) {
+                        const msg =
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to set up encryption";
+                        setKeySetupError(msg);
                       }
                     }}
                   >

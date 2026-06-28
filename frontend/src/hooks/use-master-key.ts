@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AxiosError } from "axios";
 
 import { apiClient } from "@/lib/api/client";
 import {
@@ -9,6 +10,18 @@ import {
   generateMasterKey,
 } from "@/lib/crypto";
 import { useAuthStore } from "@/store/auth-store";
+
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    const apiMsg = err.response?.data?.error?.message;
+    if (apiMsg) return apiMsg;
+    if (err.response?.status === 401) return "Authentication failed. Please log in again.";
+    if (err.response?.status) return `Server error (${err.response.status}). Please try again.`;
+    return err.message || fallback;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
 
 interface MasterKeyState {
   masterKey: CryptoKey | null;
@@ -76,13 +89,14 @@ export function useMasterKey(): MasterKeyState & {
         );
         masterKeyMap.set(userId, mk);
         setState({ masterKey: mk, isLoading: false, error: null });
-      } catch {
+      } catch (err: unknown) {
+        const message = extractErrorMessage(err, "Incorrect password or corrupted key data");
         setState((s) => ({
           ...s,
-          error: "Incorrect password or corrupted key data",
+          error: message,
           isLoading: false,
         }));
-        throw new Error("Incorrect password or corrupted key data");
+        throw new Error(message);
       }
     },
     [userId]
@@ -115,8 +129,8 @@ export function useMasterKey(): MasterKeyState & {
           has_master_key: true,
         });
         setState({ masterKey: mk, isLoading: false, error: null });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to set up encryption";
+      } catch (err: unknown) {
+        const message = extractErrorMessage(err, "Failed to set up encryption");
         setState((s) => ({
           ...s,
           error: message,
