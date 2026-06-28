@@ -383,9 +383,22 @@ async def list_public_diaries(
         )
         total = await diary_repo.count_public_feed()
 
+    diary_ids = [d["_id"] for d in diaries]
+    comment_counts = await diary_repo._collection.database.comments.aggregate([
+        {"$match": {
+            "diary_id": {"$in": diary_ids},
+            "is_deleted": {"$ne": True},
+            "parent_comment_id": None,
+        }},
+        {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
+    ]).to_list(length=len(diary_ids))
+    count_map = {str(c["_id"]): c["count"] for c in comment_counts}
+
     author_cache: dict[str, dict] = {}
     data = []
     for diary in diaries:
+        did = str(diary["_id"])
+        diary["stats"]["comment_count"] = count_map.get(did, 0)
         author_id = str(diary["user_id"])
         if author_id not in author_cache:
             author = await user_repo.get_by_id(author_id)
