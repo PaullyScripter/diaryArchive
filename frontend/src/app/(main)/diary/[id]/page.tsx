@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Heart, Bookmark, Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
+import { Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
 
 import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
