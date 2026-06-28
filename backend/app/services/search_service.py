@@ -58,6 +58,9 @@ async def search_diaries(
 
     filter_expression = " AND ".join(filters) if filters else None
 
+    sort_field, sort_order = sort.split(":") if ":" in sort else (sort, "desc")
+    sort_param = [f"{sort_field}:{sort_order}"]
+
     try:
         index = get_client().index(PUBLIC_DIARIES_INDEX)
     except Exception:
@@ -77,7 +80,11 @@ async def search_diaries(
         "offset": (page - 1) * per_page,
         "attributesToHighlight": ["title", "content_text"],
         "attributesToCrop": ["content_text"],
+        "highlightPreTag": "<em>",
+        "highlightPostTag": "</em>",
     }
+    if sort_field in ("created_at", "updated_at", "like_count", "comment_count"):
+        search_params["sort"] = sort_param
 
     try:
         result = await asyncio.to_thread(_run_search, index, q or "", search_params)
