@@ -69,7 +69,7 @@ function MyDiariesContent() {
   });
 
   return (
-    <div>
+    <div className="max-w-2xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-border">
         <div>
           <h1 className="font-serif text-xl font-semibold text-foreground">
@@ -121,23 +121,23 @@ function MyDiariesContent() {
               </Link>
             </div>
           ) : (
-    <div className="max-w-2xl mx-auto py-8 px-4">
-              {enrichedDiaries.map((diary) => (
-                <DiaryCard key={diary.id} diary={diary} />
-              ))}
-              {hasNextPage && (
-                <div className="mt-4 text-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
-                  >
-                    {isFetchingNextPage ? "Loading..." : "Load more"}
-                  </Button>
-                </div>
-              )}
-            </div>
+              <>
+                {enrichedDiaries.map((diary) => (
+                  <DiaryCard key={diary.id} diary={diary} />
+                ))}
+                {hasNextPage && (
+                  <div className="mt-4 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                    >
+                      {isFetchingNextPage ? "Loading..." : "Load more"}
+                    </Button>
+                  </div>
+                )}
+              </>
           )}
         </TabsContent>
       </Tabs>

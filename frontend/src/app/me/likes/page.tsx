@@ -1,19 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { Heart } from "lucide-react";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 
 function LikesContent() {
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">
-      <Link
-        href="/me"
-        className="text-xs text-muted hover:text-foreground no-underline hover:underline block mb-4"
-      >
-        &larr; Back to My Diaries
-      </Link>
-
       <div className="mb-5 pb-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Heart className="w-4 h-4 text-muted" />
