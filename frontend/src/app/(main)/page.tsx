@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { Users } from "lucide-react";
 import { BrowseSidebar } from "@/components/diary/browse-sidebar";
 import {
   useDiaries,
@@ -9,6 +10,8 @@ import {
   usePopularTags,
   useEmotions,
 } from "@/hooks/use-diaries";
+import { useFollowingFeed } from "@/hooks/use-social";
+import { useAuthStore } from "@/store/auth-store";
 import { DiaryCard, type DiaryCardData } from "@/components/diary/diary-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,12 +35,16 @@ export default function Home() {
   const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
   const { data: popularTags } = usePopularTags();
   const { data: emotions } = useEmotions();
+  const { data: followingFeed } = useFollowingFeed();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const randomTags = useMemo(() => pickRandom(popularTags ?? [], 25), [popularTags]);
   const randomEmotions = useMemo(() => pickRandom(emotions ?? [], 25), [emotions]);
 
   const latestDiaries: DiaryCardData[] =
     diariesData?.pages.flatMap((p) => p.data ?? []) ?? [];
+
+  const followingDiaries: DiaryCardData[] = followingFeed?.data ?? [];
 
   return (
     <div className="flex gap-8 lg:gap-10">
@@ -85,6 +92,20 @@ export default function Home() {
             >
               Write your first diary
             </Link>
+          </div>
+        )}
+
+        {isAuthenticated && followingDiaries.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-border">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-4 h-4 text-muted" />
+              <h2 className="font-serif text-lg font-semibold text-foreground">
+                From People You Follow
+              </h2>
+            </div>
+            {followingDiaries.map((diary) => (
+              <DiaryCard key={diary.id} diary={diary} />
+            ))}
           </div>
         )}
 
