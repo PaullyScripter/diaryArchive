@@ -29,7 +29,7 @@ export default function DiaryReaderPage() {
   const { masterKey, loadMasterKey, isAvailable: masterKeyAvailable, isLoading: isKeyLoading } = useMasterKey();
 
   const [passwordPrompt, setPasswordPrompt] = useState(false);
-  const [passphrase, setPassphrase] = useState("");
+  const [decryptInput, setDecryptInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
   const [decrypted, setDecrypted] = useState<{
@@ -46,7 +46,7 @@ export default function DiaryReaderPage() {
     setWarningAcknowledged(false);
     setDecrypted(null);
     setDecryptError("");
-    setPassphrase("");
+    setDecryptInput("");
     setPasswordError("");
   }, [id]);
 
@@ -81,10 +81,10 @@ export default function DiaryReaderPage() {
   }, [diary, isPrivate, isOwner, masterKey, decrypted, decryptError]);
 
   const handleKeyLoad = async () => {
-    if (!passphrase) return;
+    if (!decryptInput) return;
     setPasswordError("");
     try {
-      await loadMasterKey(passphrase);
+      await loadMasterKey(decryptInput);
     } catch {
       setPasswordError("Incorrect password or corrupted key data.");
     }
@@ -206,9 +206,9 @@ export default function DiaryReaderPage() {
             </p>
             <Input
               type="password"
-              value={passphrase}
+              value={decryptInput}
               onChange={(e) => {
-                setPassphrase(e.target.value);
+                setDecryptInput(e.target.value);
                 setPasswordError("");
               }}
               placeholder="Your account password"
@@ -229,7 +229,7 @@ export default function DiaryReaderPage() {
               <Button
                 variant="primary"
                 size="sm"
-                disabled={!passphrase || isKeyLoading}
+                disabled={!decryptInput || isKeyLoading}
                 onClick={handleKeyLoad}
               >
                 {isKeyLoading ? "Decrypting..." : "Decrypt"}

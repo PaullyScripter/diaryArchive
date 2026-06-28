@@ -70,8 +70,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showKeySetup, setShowKeySetup] = useState(false);
-  const [keySetupPassword, setKeySetupPassword] = useState("");
-  const [keySetupError, setKeySetupError] = useState("");
+  const [setupInput, setSetupInput] = useState("");
+  const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
 
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
@@ -510,16 +510,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </p>
                 <Input
                   type="password"
-                  value={keySetupPassword}
+                  value={setupInput}
                   onChange={(e) => {
-                    setKeySetupPassword(e.target.value);
-                    setKeySetupError("");
+                    setSetupInput(e.target.value);
+                    setSetupError("");
                   }}
                   placeholder="Your account password"
                   className="mb-2"
                 />
-                {keySetupError && (
-                  <p className="text-xs text-destructive mb-2">{keySetupError}</p>
+                {setupError && (
+                  <p className="text-xs text-destructive mb-2">{setupError}</p>
                 )}
                 <div className="flex gap-3 mt-4">
                   <Button
@@ -532,21 +532,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                   <Button
                     variant="primary"
                     size="sm"
-                    disabled={!keySetupPassword || isKeyLoading}
+                    disabled={!setupInput || isKeyLoading}
                     onClick={async () => {
                       try {
-                        await setupMasterKey(keySetupPassword);
+                        await setupMasterKey(setupInput);
                         setPrivacy("private");
                         setShowKeySetup(false);
-                        setKeySetupPassword("");
-                        setKeySetupError("");
+                        setSetupInput("");
+                        setSetupError("");
                         setKeySetupStep("explain");
                       } catch (err: unknown) {
                         const msg =
                           err instanceof Error
                             ? err.message
                             : "Failed to set up encryption";
-                        setKeySetupError(msg);
+                        setSetupError(msg);
                       }
                     }}
                   >
