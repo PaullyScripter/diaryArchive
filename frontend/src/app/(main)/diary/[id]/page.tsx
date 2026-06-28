@@ -29,7 +29,7 @@ export default function DiaryReaderPage() {
   const { masterKey, loadMasterKey, isAvailable: masterKeyAvailable, isLoading: isKeyLoading } = useMasterKey();
 
   const [passwordPrompt, setPasswordPrompt] = useState(false);
-  const [password, setPassword] = useState("");
+  const [passphrase, setPassphrase] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
   const [decrypted, setDecrypted] = useState<{
@@ -46,7 +46,7 @@ export default function DiaryReaderPage() {
     setWarningAcknowledged(false);
     setDecrypted(null);
     setDecryptError("");
-    setPassword("");
+    setPassphrase("");
     setPasswordError("");
   }, [id]);
 
@@ -81,10 +81,10 @@ export default function DiaryReaderPage() {
   }, [diary, isPrivate, isOwner, masterKey, decrypted, decryptError]);
 
   const handleKeyLoad = async () => {
-    if (!password) return;
+    if (!passphrase) return;
     setPasswordError("");
     try {
-      await loadMasterKey(password);
+      await loadMasterKey(passphrase);
     } catch {
       setPasswordError("Incorrect password or corrupted key data.");
     }
@@ -206,9 +206,9 @@ export default function DiaryReaderPage() {
             </p>
             <Input
               type="password"
-              value={password}
+              value={passphrase}
               onChange={(e) => {
-                setPassword(e.target.value);
+                setPassphrase(e.target.value);
                 setPasswordError("");
               }}
               placeholder="Your account password"
@@ -229,7 +229,7 @@ export default function DiaryReaderPage() {
               <Button
                 variant="primary"
                 size="sm"
-                disabled={!password || isKeyLoading}
+                disabled={!passphrase || isKeyLoading}
                 onClick={handleKeyLoad}
               >
                 {isKeyLoading ? "Decrypting..." : "Decrypt"}
@@ -242,7 +242,7 @@ export default function DiaryReaderPage() {
       <div className="max-w-2xl mx-auto py-8 px-4">
       <Link
         href="/"
-        className="text-xs text-muted hover:text-foreground no-underline hover:underline"
+        className="text-xs text-muted hover:text-foreground no-underline hover:underline block mb-3"
       >
         &larr; Back
       </Link>
