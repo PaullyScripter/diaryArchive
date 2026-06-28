@@ -69,7 +69,7 @@ export function BrowseSidebar() {
           {tags.map((tag) => (
             <div key={tag.name}>
               <Link
-                href={`/explore?tag=${tag.name}`}
+                href={`/explore?tags=${tag.name}`}
                 className="text-xs text-muted hover:text-foreground no-underline hover:underline"
               >
                 {tag.name}
@@ -110,12 +110,12 @@ export function BrowseSidebar() {
           </CollapsibleSection>
 
           <CollapsibleSection title="Months">
-            {months.map((month) => (
-              <div key={month}>
-                <Link
-                  href={`/explore?month=${month.toLowerCase()}`}
-                  className="text-xs text-muted hover:text-foreground no-underline hover:underline"
-                >
+              {months.map((month, idx) => (
+                <div key={month}>
+                  <Link
+                    href={`/explore?year=2026&month=${idx + 1}`}
+                    className="text-xs text-muted hover:text-foreground no-underline hover:underline"
+                  >
                   {month}
                 </Link>
               </div>

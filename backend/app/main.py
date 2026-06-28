@@ -11,6 +11,7 @@ from app.core.error_handlers import diaryarchive_exception_handler
 from app.core.exceptions import DiaryArchiveException
 from app.core.indexes import create_indexes
 from app.core.middleware import CSPSecurityMiddleware, RequestIDMiddleware
+from app.search.config import initialize_search_indexes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ async def lifespan(app: FastAPI):
     await DatabaseManager.connect_mongo()
     await DatabaseManager.connect_redis()
     await create_indexes()
+    await initialize_search_indexes()
     logger.info("Startup complete")
     yield
     logger.info("Shutting down...")
