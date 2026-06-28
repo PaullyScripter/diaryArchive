@@ -2,7 +2,7 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY tsconfig.json next.config.ts postcss.config.mjs eslint.config.mjs ./

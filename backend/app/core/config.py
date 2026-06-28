@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -20,13 +21,29 @@ class Settings(BaseSettings):
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = ""
 
-    secret_key: str = "change-me-in-production"
+    secret_key: str = ""
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
-    email_encryption_key: str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    email_encryption_key: str = ""
 
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    @field_validator("secret_key")
+    @classmethod
+    def secret_key_required(cls, v: str) -> str:
+        if not v or v == "change-me-in-production":
+            raise ValueError("SECRET_KEY must be set to a secure random value")
+        return v
+
+    @field_validator("email_encryption_key")
+    @classmethod
+    def email_encryption_key_required(cls, v: str) -> str:
+        if not v or v == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef":
+            raise ValueError("EMAIL_ENCRYPTION_KEY must be set to a secure random 64-char hex value")
+        if len(v) != 64:
+            raise ValueError("EMAIL_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)")
+        return v
 
     model_config = {
         "env_file": (".env.development", ".env"),

@@ -6,18 +6,11 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.sanitize import sanitize_html
+from app.core.utils import fmt_dt
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
 
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
-
-
-def _fmt_dt(value) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value)
 
 
 def _build_author(user: dict) -> dict:
@@ -50,9 +43,9 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
         "is_bookmarked": is_bookmarked,
         "is_owner": is_owner,
         "content_warnings": diary.get("content_warnings", []),
-        "created_at": _fmt_dt(diary.get("created_at")),
-        "updated_at": _fmt_dt(diary.get("updated_at")),
-        "published_at": _fmt_dt(diary.get("published_at")),
+        "created_at": fmt_dt(diary.get("created_at")),
+        "updated_at": fmt_dt(diary.get("updated_at")),
+        "published_at": fmt_dt(diary.get("published_at")),
     }
     if diary.get("privacy") == "private" and is_owner:
         ed = diary.get("encrypted_data")
@@ -75,9 +68,9 @@ def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None 
         "is_liked": False,
         "is_bookmarked": False,
         "content_warnings": diary.get("content_warnings", []),
-        "created_at": _fmt_dt(diary.get("created_at")),
-        "updated_at": _fmt_dt(diary.get("updated_at")),
-        "published_at": _fmt_dt(diary.get("published_at")),
+        "created_at": fmt_dt(diary.get("created_at")),
+        "updated_at": fmt_dt(diary.get("updated_at")),
+        "published_at": fmt_dt(diary.get("published_at")),
     }
     if diary.get("privacy") == "private" and is_owner:
         ed = diary.get("encrypted_data")
@@ -208,7 +201,7 @@ async def create_diary(user: dict, data: dict) -> dict:
 
     return {
         "id": str(diary_id),
-        "created_at": _fmt_dt(now),
+        "created_at": fmt_dt(now),
         "message": "Diary created successfully.",
     }
 
