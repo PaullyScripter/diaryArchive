@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,7 @@ from app.core.exceptions import DiaryArchiveException
 from app.core.indexes import create_indexes
 from app.core.middleware import CSPSecurityMiddleware, RequestIDMiddleware
 from app.search.config import initialize_search_indexes
+from app.search.sync import full_reindex
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,6 +26,16 @@ async def lifespan(app: FastAPI):
     await DatabaseManager.connect_redis()
     await create_indexes()
     await initialize_search_indexes()
+
+    async def _initial_reindex():
+        try:
+            count = await full_reindex()
+            logger.info("Initial Meilisearch re-index complete: %d diaries indexed", count)
+        except Exception:
+            logger.warning("Initial Meilisearch re-index skipped (search unavailable)")
+
+    asyncio.create_task(_initial_reindex())
+
     logger.info("Startup complete")
     yield
     logger.info("Shutting down...")
