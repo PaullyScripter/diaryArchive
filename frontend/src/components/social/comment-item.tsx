@@ -17,10 +17,11 @@ interface CommentItemProps {
   comment: CommentData;
   diaryId: string;
   parentAuthor?: string;
+  parentContent?: string;
   isReply?: boolean;
 }
 
-export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }: CommentItemProps) {
+export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
@@ -87,6 +88,13 @@ export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }:
                 >
                   @{parentAuthor}
                 </Link>
+                {parentContent && (
+                  <span className="text-subtle">
+                    : {parentContent.length > 15
+                      ? parentContent.slice(0, 15).trim() + "\u2026"
+                      : parentContent}
+                  </span>
+                )}
               </p>
             )}
 
@@ -183,6 +191,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }:
           commentId={comment.id}
           diaryId={diaryId}
           parentAuthor={comment.author.username}
+          parentContent={comment.content ?? undefined}
         />
       )}
     </div>
@@ -193,10 +202,12 @@ function RepliesList({
   commentId,
   diaryId,
   parentAuthor,
+  parentContent,
 }: {
   commentId: string;
   diaryId: string;
   parentAuthor: string;
+  parentContent?: string;
 }) {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useReplies(commentId);
   const replies = data?.pages.flatMap((p) => p.data ?? []) ?? [];
@@ -221,6 +232,7 @@ function RepliesList({
           comment={reply}
           diaryId={diaryId}
           parentAuthor={parentAuthor}
+          parentContent={parentContent}
           isReply
         />
       ))}
