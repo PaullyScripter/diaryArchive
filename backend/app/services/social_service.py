@@ -12,6 +12,25 @@ from app.repositories.like_repo import LikeRepository
 from app.repositories.user_repo import UserRepository
 
 
+async def _sync_comment_counts(diaries: list[dict]) -> None:
+    if not diaries:
+        return
+    from bson import ObjectId
+    diary_ids = [d["_id"] for d in diaries]
+    repo = DiaryRepository()
+    counts = await repo._collection.database.comments.aggregate([
+        {"$match": {
+            "diary_id": {"$in": diary_ids},
+            "is_deleted": {"$ne": True},
+            "parent_comment_id": None,
+        }},
+        {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
+    ]).to_list(length=len(diary_ids))
+    count_map = {str(c["_id"]): c["count"] for c in counts}
+    for d in diaries:
+        d["stats"]["comment_count"] = count_map.get(str(d["_id"]), 0)
+
+
 async def toggle_like(diary_id: str, current_user: dict) -> dict:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
@@ -253,18 +272,25 @@ async def list_my_likes(
     diary_ids = [str(like["diary_id"]) for like in likes]
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
-    data = []
+
+    diaries = []
     for did in diary_ids:
         diary = await diary_repo.get_by_id(did)
         if diary and diary.get("privacy") == "public":
-            author = await user_repo.get_by_id(str(diary["user_id"]))
-            from app.services.diary_service import _build_diary_list_item
-            item = _build_diary_list_item(
-                diary,
-                author or {"_id": str(diary["user_id"]), "username": "unknown"},
-                current_user,
-            )
-            data.append(item)
+            diaries.append(diary)
+
+    await _sync_comment_counts(diaries)
+
+    data = []
+    for diary in diaries:
+        author = await user_repo.get_by_id(str(diary["user_id"]))
+        from app.services.diary_service import _build_diary_list_item
+        item = _build_diary_list_item(
+            diary,
+            author or {"_id": str(diary["user_id"]), "username": "unknown"},
+            current_user,
+        )
+        data.append(item)
 
     return {
         "data": data,
@@ -288,18 +314,25 @@ async def list_my_bookmarks(
     diary_ids = [str(bm["diary_id"]) for bm in bookmarks]
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
-    data = []
+
+    diaries = []
     for did in diary_ids:
         diary = await diary_repo.get_by_id(did)
         if diary and diary.get("privacy") == "public":
-            author = await user_repo.get_by_id(str(diary["user_id"]))
-            from app.services.diary_service import _build_diary_list_item
-            item = _build_diary_list_item(
-                diary,
-                author or {"_id": str(diary["user_id"]), "username": "unknown"},
-                current_user,
-            )
-            data.append(item)
+            diaries.append(diary)
+
+    await _sync_comment_counts(diaries)
+
+    data = []
+    for diary in diaries:
+        author = await user_repo.get_by_id(str(diary["user_id"]))
+        from app.services.diary_service import _build_diary_list_item
+        item = _build_diary_list_item(
+            diary,
+            author or {"_id": str(diary["user_id"]), "username": "unknown"},
+            current_user,
+        )
+        data.append(item)
 
     return {
         "data": data,
