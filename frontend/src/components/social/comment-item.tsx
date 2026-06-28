@@ -65,7 +65,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }:
     deleteComment.mutate(comment.id);
   };
 
-  const isEffectivelyDeleted = isDeleted || comment.is_deleted;
+  if (isDeleted || comment.is_deleted) return null;
 
   return (
     <div>
@@ -73,7 +73,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }:
         <div className="flex gap-2.5 py-2.5">
           <Avatar
             src={comment.author.avatar_path}
-            alt={isEffectivelyDeleted ? "deleted" : comment.author.username}
+            alt={comment.author.username}
             size="sm"
             className="shrink-0"
           />
@@ -92,18 +92,15 @@ export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }:
 
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-medium text-foreground">
-                {isEffectivelyDeleted ? "[deleted]" : comment.author.username}
+                {comment.author.username}
               </span>
               <span className="text-xs text-subtle">
                 {new Date(comment.created_at).toLocaleDateString()}
               </span>
-              {isEffectivelyDeleted && (
-                <span className="text-xs italic text-muted">deleted</span>
-              )}
             </div>
 
-            <p className={`text-sm mt-0.5 break-words leading-relaxed ${isEffectivelyDeleted ? "italic text-muted" : "text-foreground"}`}>
-              {isEffectivelyDeleted ? "[deleted]" : comment.content}
+            <p className="text-sm mt-0.5 break-words leading-relaxed text-foreground">
+              {comment.content}
             </p>
 
             <div className="flex items-center gap-3 mt-1.5">
@@ -120,22 +117,20 @@ export function CommentItem({ comment, diaryId, parentAuthor, isReply = false }:
                 {optimisticLikes > 0 && <span>{optimisticLikes}</span>}
               </button>
 
-              {!isEffectivelyDeleted && (
-                <button
-                  onClick={() => setShowReplyForm(!showReplyForm)}
-                  className="inline-flex items-center gap-1 text-xs text-subtle hover:text-foreground cursor-pointer transition-colors"
-                >
-                  <MessageCircle className="w-3 h-3" />
-                  Reply
-                </button>
-              )}
+              <button
+                onClick={() => setShowReplyForm(!showReplyForm)}
+                className="inline-flex items-center gap-1 text-xs text-subtle hover:text-foreground cursor-pointer transition-colors"
+              >
+                <MessageCircle className="w-3 h-3" />
+                Reply
+              </button>
 
-              {(comment.is_owner || comment.is_diary_owner) && !isEffectivelyDeleted && (
-                <button
-                  onClick={handleDelete}
-                  className="inline-flex items-center gap-1 text-xs text-subtle hover:text-destructive cursor-pointer transition-colors"
-                  aria-label="Delete comment"
-                >
+            {(comment.is_owner || comment.is_diary_owner) && (
+              <button
+                onClick={handleDelete}
+                className="inline-flex items-center gap-1 text-xs text-subtle hover:text-destructive cursor-pointer transition-colors"
+                aria-label="Delete comment"
+              >
                   <Trash2 className="w-3 h-3" />
                 </button>
               )}
