@@ -357,3 +357,105 @@ class TestGetUserDiaries:
         assert len(body["data"]) == 1
         assert body["meta"]["total"] == 1
         assert body["data"][0]["title"] == "Visible Diary"
+
+
+class TestEncryptionKeyManagement:
+    async def test_store_encryption_key(self, client: AsyncClient, auth_token: str):
+        response = await client.put(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={
+                "encrypted_master_key": "ab12cd34ef56",
+                "master_key_salt": "a1b2c3d4e5f6",
+                "master_key_iv": "iv12iv34iv56",
+            },
+        )
+        assert response.status_code == 200
+        body = response.json()
+        data = body.get("data", body)
+        assert data["has_master_key"] is True
+
+    async def test_retrieve_encryption_key(self, client: AsyncClient, auth_token: str):
+        await client.put(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={
+                "encrypted_master_key": "ab12cd34ef56",
+                "master_key_salt": "a1b2c3d4e5f6",
+                "master_key_iv": "iv12iv34iv56",
+            },
+        )
+        response = await client.get(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        data = body.get("data", body)
+        assert data["encrypted_master_key"] == "ab12cd34ef56"
+        assert data["master_key_salt"] == "a1b2c3d4e5f6"
+        assert data["master_key_iv"] == "iv12iv34iv56"
+        assert data["has_master_key"] is True
+
+    async def test_encryption_key_requires_auth(self, client: AsyncClient):
+        response = await client.put(
+            "/api/v1/users/me/encryption-key",
+            json={
+                "encrypted_master_key": "ab12cd34ef56",
+                "master_key_salt": "a1b2c3d4e5f6",
+                "master_key_iv": "iv12iv34iv56",
+            },
+        )
+        assert response.status_code == 401
+
+    async def test_encryption_key_missing_fields(self, client: AsyncClient, auth_token: str):
+        response = await client.put(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"encrypted_master_key": "ab12"},
+        )
+        assert response.status_code == 422
+
+    async def test_encryption_key_empty_when_not_set(self, client: AsyncClient, auth_token: str):
+        response = await client.get(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        data = body.get("data", body)
+        assert data["encrypted_master_key"] is None
+        assert data["master_key_salt"] is None
+        assert data["master_key_iv"] is None
+        assert data["has_master_key"] is False
+
+    async def test_overwrite_encryption_key(self, client: AsyncClient, auth_token: str):
+        await client.put(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={
+                "encrypted_master_key": "firstkey",
+                "master_key_salt": "firstsalt",
+                "master_key_iv": "firstiv",
+            },
+        )
+        response = await client.put(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={
+                "encrypted_master_key": "secondkey",
+                "master_key_salt": "secondsalt",
+                "master_key_iv": "secondiv",
+            },
+        )
+        assert response.status_code == 200
+
+        response = await client.get(
+            "/api/v1/users/me/encryption-key",
+            headers={"Authorization": f"Bearer {auth_token}"},
+        )
+        body = response.json()
+        data = body.get("data", body)
+        assert data["encrypted_master_key"] == "secondkey"
+        assert data["master_key_salt"] == "secondsalt"
+        assert data["master_key_iv"] == "secondiv"
