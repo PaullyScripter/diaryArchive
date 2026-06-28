@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from app.api.deps import _optional_user
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
+from app.search.sync import full_reindex
 from app.services.search_service import search_diaries
 
 router = APIRouter(tags=["search"])
@@ -49,3 +50,9 @@ async def search(
         current_user=current_user,
     )
     return result
+
+
+@router.post("/search/reindex")
+async def reindex():
+    count = await full_reindex()
+    return {"data": {"indexed": count, "message": f"Re-indexed {count} public diaries"}}
