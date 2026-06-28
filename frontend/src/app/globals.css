@@ -5,7 +5,7 @@
 
 @theme inline {
   --font-sans: "Inter", system-ui, sans-serif;
-  --font-serif: Georgia, Palatino, "Palatino Linotype", "Book Antiqua", serif;
+  --font-serif: "Times New Roman", Times, serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   --color-background: hsl(40 20% 96%);
