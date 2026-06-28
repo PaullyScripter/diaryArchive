@@ -1569,20 +1569,22 @@ Mark all unread notifications as read.
 
 Full-text search across public diaries using Meilisearch.
 
-**Auth:** Optional
-**Rate limit:** 30 per minute
+**Auth:** Optional (authenticated users get `is_liked` and `is_bookmarked` flags)
+**Rate limit:** 30/min (authenticated), 60/min (anonymous)
 
 **Query Parameters:**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `q` | string | — | Search query (required, min 1 char) |
-| `tags` | string | — | Comma-separated tag filter (AND or OR — uses Meilisearch filter) |
-| `emotion` | string | — | Emotion filter |
-| `sort` | string | `relevance` | Sort: `relevance`, `created_at`, `updated_at` |
-| `order` | string | `desc` | Sort order |
+| `q` | string | `""` | Full-text search query (empty = browse all) |
+| `tags` | string | — | Comma-separated tag filter (OR logic) |
+| `emotion` | string | — | Single emotion filter |
+| `year` | int | — | Filter by year |
+| `month` | int | — | Filter by month (requires `year`) |
+| `sort` | string | `created_at:desc` | Sort field and order (`created_at:desc`, `like_count:desc`, etc.) |
 | `page` | int | 1 | Page number |
-| `per_page` | int | 20 | Items per page |
+| `per_page` | int | 20 | Results per page (max 50) |
+| `author` | string | — | Filter by username |
 
 **Success (200):**
 ```json
@@ -1592,35 +1594,89 @@ Full-text search across public diaries using Meilisearch.
       "id": "665a2b3c4d5e6f7a8b9c0d1e",
       "title": "A Walk in the Rain",
       "excerpt": "Today I walked in the <em>rain</em> and felt alive.",
+      "content_html": "<p>Today I walked in the <em>rain</em>...</p>",
+      "tags": ["life", "weather"],
+      "emotion": "hopeful",
       "author": {
         "id": "665a1b2c3d4e5f6a7b8c9d0e",
         "username": "moonwriter",
         "avatar_path": null
       },
-      "tags": ["life", "weather", "reflection"],
-      "emotion": "hopeful",
       "stats": { "like_count": 12, "comment_count": 3, "bookmark_count": 5 },
-      "created_at": "2026-06-25T08:30:00Z"
+      "is_liked": false,
+      "is_bookmarked": false,
+      "is_owner": false,
+      "created_at": "2026-06-25T08:30:00Z",
+      "highlights": {
+        "title": "A Walk in the <em>Rain</em>",
+        "content_text": "Today I walked in the <em>rain</em>..."
+      }
     }
   ],
   "meta": {
     "page": 1,
     "per_page": 20,
     "total": 5,
-    "query": "rain",
+    "has_next": false,
+    "has_prev": false,
     "processing_time_ms": 12
   }
 }
 ```
 
-**Searchable fields:** title, content_text, tags, author_username.
+**Searchable fields:** `title`, `content_text`, `tags`  
+**Filterable fields:** `tags`, `emotion`, `year`, `month`, `author_id`, `created_at`  
+**Sortable fields:** `created_at`, `updated_at`, `like_count`, `comment_count`
 
 **Errors:**
 
 | Code | Status | Condition |
 |------|--------|-----------|
-| `validation_error` | 422 | Missing `q` parameter |
 | `rate_limited` | 429 | Too many requests |
+
+---
+
+### GET /api/v1/tags/popular
+
+Return most-used tags from recent public diaries, cached for 5 minutes.
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | int | 50 | Max 100 |
+| `days` | int | 90 | Lookback window in days |
+
+**Response:** `{ "data": [ { "tag": "life", "count": 42 }, ... ] }`
+
+---
+
+### GET /api/v1/emotions
+
+Return available emotions with diary counts from recent public diaries, cached for 5 minutes.
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `days` | int | 90 | Lookback window in days |
+
+**Response:** `{ "data": [ { "emotion": "hopeful", "count": 87 }, ... ] }`
+
+---
+
+### GET /api/v1/tags/search
+
+Search for tags by prefix (MongoDB regex).
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `q` | string | Required | Prefix to search |
+| `limit` | int | 10 | Max results |
+
+**Response:** `{ "data": [ { "tag": "life", "count": 42 }, ... ] }`
 
 ---
 

@@ -136,7 +136,7 @@ export default function Home() {
               {randomTags.map(({ tag, count }) => (
                 <Link
                   key={tag}
-                  href={`/explore?tag=${tag}`}
+                  href={`/explore?tags=${tag}`}
                   className="inline-block"
                 >
                   <span className="inline-block px-2 py-1 rounded-sm text-xs bg-tag-bg text-muted hover:text-foreground hover:bg-border transition-colors no-underline">
@@ -169,6 +169,28 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        <div className="mt-12 pt-8 border-t border-border">
+          <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+            Browse by Year
+          </h2>
+          <div className="flex gap-2 flex-wrap">
+            {Array.from(
+              { length: new Date().getFullYear() - 2024 + 1 },
+              (_, i) => 2024 + i
+            )
+              .reverse()
+              .map((year) => (
+                <Link
+                  key={year}
+                  href={`/explore?year=${year}`}
+                  className="px-3 py-1 rounded text-xs border border-border text-muted hover:text-foreground hover:border-foreground/30 transition-colors no-underline"
+                >
+                  {year}
+                </Link>
+              ))}
+          </div>
+        </div>
       </div>
     </div>
   );
