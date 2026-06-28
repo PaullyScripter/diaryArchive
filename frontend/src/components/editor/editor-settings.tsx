@@ -1,5 +1,7 @@
 "use client";
 
+import { Lock } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
 import { TagsAutocomplete } from "@/components/editor/tags-autocomplete";
 import { EMOTION_SUGGESTIONS } from "@/components/shared/emotion-badge";
@@ -15,6 +17,9 @@ interface EditorSettingsProps {
   setCommentsEnabled: (v: boolean) => void;
   contentWarnings: string[];
   toggleWarning: (w: string) => void;
+  hasMasterKey: boolean;
+  isEditMode: boolean;
+  onSetupEncryption: () => void;
 }
 
 export function EditorSettings({
@@ -28,6 +33,9 @@ export function EditorSettings({
   setCommentsEnabled,
   contentWarnings,
   toggleWarning,
+  hasMasterKey,
+  isEditMode,
+  onSetupEncryption,
 }: EditorSettingsProps) {
   const warnings: Array<{ key: string; label: string }> = [
     { key: "adult", label: "Adult / Explicit" },
@@ -43,74 +51,141 @@ export function EditorSettings({
         <div className="space-y-2">
           {[
             { value: "public", label: "Public — visible to everyone" },
+            { value: "private", label: "Private — end-to-end encrypted, only you can read" },
             { value: "draft", label: "Draft — only visible to you" },
-          ].map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-              <input
-                type="radio"
-                name="editor-privacy"
-                checked={privacy === value}
-                onChange={() => setPrivacy(value)}
-                className="rounded-full border-border cursor-pointer"
-              />
-              {label}
-            </label>
-          ))}
+          ].map(({ value, label }) => {
+            const isPrivate = value === "private";
+            const disabled = isEditMode;
+            const needsSetup = isPrivate && !hasMasterKey && !isEditMode;
+            return (
+              <label
+                key={value}
+                className={`flex items-center gap-2 text-sm cursor-pointer ${
+                  disabled ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="editor-privacy"
+                  checked={privacy === value}
+                  onChange={() => {
+                    if (needsSetup) {
+                      onSetupEncryption();
+                    } else {
+                      setPrivacy(value);
+                    }
+                  }}
+                  disabled={disabled}
+                  className="rounded-full border-border cursor-pointer disabled:cursor-not-allowed"
+                />
+                {isPrivate && <Lock className="w-3 h-3 text-muted" />}
+                <span className={isPrivate ? "text-foreground" : ""}>
+                  {label}
+                </span>
+                {needsSetup && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSetupEncryption();
+                    }}
+                    className="ml-auto text-xs text-link hover:underline cursor-pointer"
+                  >
+                    Set up encryption
+                  </button>
+                )}
+              </label>
+            );
+          })}
         </div>
+        {isEditMode && (
+          <p className="text-xs text-muted mt-1">
+            Privacy cannot be changed after creation.
+          </p>
+        )}
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-foreground mb-2">Tags</label>
-        <TagsAutocomplete value={tags} onChange={setTags} max={50} />
-      </div>
+      {privacy !== "private" && (
+        <>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">Tags</label>
+            <TagsAutocomplete value={tags} onChange={setTags} max={50} />
+          </div>
 
-      <div>
-        <label className="block text-xs font-medium text-foreground mb-2">Emotion</label>
-        <Input
-          value={emotion}
-          onChange={(e) => setEmotion(e.target.value)}
-          placeholder="how are you feeling?"
-          maxLength={50}
-          list="editor-emotion-suggestions"
-        />
-        <datalist id="editor-emotion-suggestions">
-          {EMOTION_SUGGESTIONS.map((e) => (
-            <option key={e} value={e} />
-          ))}
-        </datalist>
-      </div>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">Emotion</label>
+            <Input
+              value={emotion}
+              onChange={(e) => setEmotion(e.target.value)}
+              placeholder="how are you feeling?"
+              maxLength={50}
+              list="editor-emotion-suggestions"
+            />
+            <datalist id="editor-emotion-suggestions">
+              {EMOTION_SUGGESTIONS.map((e) => (
+                <option key={e} value={e} />
+              ))}
+            </datalist>
+          </div>
 
-      <div>
-        <label className="block text-xs font-medium text-foreground mb-2">Comments</label>
-        <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-          <input
-            type="checkbox"
-            checked={commentsEnabled}
-            onChange={(e) => setCommentsEnabled(e.target.checked)}
-            className="rounded border-border cursor-pointer"
-          />
-          Allow comments on this diary
-        </label>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-foreground mb-2">
-          Content Warnings <span className="text-subtle font-normal">(optional)</span>
-        </label>
-        <div className="space-y-2">
-          {warnings.map(({ key, label }) => (
-            <label key={key} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">Comments</label>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
               <input
                 type="checkbox"
-                checked={contentWarnings.includes(key)}
-                onChange={() => toggleWarning(key)}
+                checked={commentsEnabled}
+                onChange={(e) => setCommentsEnabled(e.target.checked)}
                 className="rounded border-border cursor-pointer"
               />
-              {label}
+              Allow comments on this diary
             </label>
-          ))}
-        </div>
-      </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">
+              Content Warnings <span className="text-subtle font-normal">(optional)</span>
+            </label>
+            <div className="space-y-2">
+              {warnings.map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={contentWarnings.includes(key)}
+                    onChange={() => toggleWarning(key)}
+                    className="rounded border-border cursor-pointer"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {privacy === "private" && (
+        <>
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">Tags</label>
+            <TagsAutocomplete value={tags} onChange={setTags} max={50} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">Emotion</label>
+            <Input
+              value={emotion}
+              onChange={(e) => setEmotion(e.target.value)}
+              placeholder="how are you feeling?"
+              maxLength={50}
+              list="editor-emotion-suggestions"
+            />
+            <datalist id="editor-emotion-suggestions">
+              {EMOTION_SUGGESTIONS.map((e) => (
+                <option key={e} value={e} />
+              ))}
+            </datalist>
+          </div>
+        </>
+      )}
     </div>
   );
 }

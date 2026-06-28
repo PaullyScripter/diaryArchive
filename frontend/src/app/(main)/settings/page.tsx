@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { useAuthStore } from "@/store/auth-store";
 import { useUpdateProfile, useUpdateEmail } from "@/hooks/use-user";
+import { useMasterKey } from "@/hooks/use-master-key";
 import { Avatar } from "@/components/shared/avatar";
 import {
   Tabs,
@@ -23,6 +24,7 @@ function SettingsContent() {
 
   const updateProfile = useUpdateProfile();
   const updateEmail = useUpdateEmail();
+  const { reEncryptMasterKey, isAvailable: hasMasterKey } = useMasterKey();
 
   const [about, setAbout] = useState(user?.about ?? "");
   const [quote, setQuote] = useState(user?.favorite_quote ?? "");
@@ -128,10 +130,21 @@ function SettingsContent() {
 
     try {
       const { apiClient } = await import("@/lib/api/client");
-      await apiClient.put("/auth/change-password", {
+      const payload: Record<string, string> = {
         current_password: currentPassword,
         new_password: newPassword,
-      });
+      };
+
+      if (hasMasterKey && currentPassword) {
+        const reEncrypted = await reEncryptMasterKey(currentPassword, newPassword);
+        if (reEncrypted) {
+          payload.new_encrypted_master_key = reEncrypted.newEncryptedMasterKey;
+          payload.new_master_key_salt = reEncrypted.newMasterKeySalt;
+          payload.new_master_key_iv = reEncrypted.newMasterKeyIv;
+        }
+      }
+
+      await apiClient.put("/auth/change-password", payload);
       setPasswordMessage("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");

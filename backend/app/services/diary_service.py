@@ -34,7 +34,7 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
     is_bookmarked = False
     if current_user:
         is_owner = str(diary["user_id"]) == str(current_user["_id"])
-    return {
+    result = {
         "id": str(diary["_id"]),
         "privacy": diary.get("privacy", "public"),
         "title": diary.get("title"),
@@ -54,12 +54,18 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
         "updated_at": _fmt_dt(diary.get("updated_at")),
         "published_at": _fmt_dt(diary.get("published_at")),
     }
+    if diary.get("privacy") == "private" and is_owner:
+        ed = diary.get("encrypted_data")
+        result["encrypted_data"] = ed if ed else None
+    return result
 
 
 def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None = None) -> dict:
     content_text = diary.get("content_text") or ""
-    return {
+    is_owner = current_user and str(diary["user_id"]) == str(current_user["_id"])
+    result = {
         "id": str(diary["_id"]),
+        "privacy": diary.get("privacy", "public"),
         "title": diary.get("title"),
         "excerpt": content_text[:200] if content_text else None,
         "author": _build_author(author),
@@ -73,6 +79,10 @@ def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None 
         "updated_at": _fmt_dt(diary.get("updated_at")),
         "published_at": _fmt_dt(diary.get("published_at")),
     }
+    if diary.get("privacy") == "private" and is_owner:
+        ed = diary.get("encrypted_data")
+        result["encrypted_data"] = ed if ed else None
+    return result
 
 
 def _validate_tags(tags: list[str]) -> list[str]:
@@ -110,21 +120,38 @@ async def create_diary(user: dict, data: dict) -> dict:
         raise PermissionDeniedException("Your account has been banned")
 
     privacy = data.get("privacy", "public")
-    if privacy not in ("public", "draft"):
-        raise ValidationException("Privacy must be 'public' or 'draft'")
+    if privacy not in ("public", "draft", "private"):
+        raise ValidationException("Privacy must be 'public', 'draft', or 'private'")
+
+    if privacy == "private":
+        encrypted_data = data.get("encrypted_data")
+        if not encrypted_data:
+            raise ValidationException("encrypted_data is required for private diaries")
+        if not isinstance(encrypted_data, dict):
+            raise ValidationException("encrypted_data must be an object")
+        if not all(k in encrypted_data for k in ("ciphertext", "iv", "salt")):
+            raise ValidationException(
+                "encrypted_data must contain ciphertext, iv, and salt"
+            )
+        if data.get("content_html"):
+            raise ValidationException("content_html must be absent for private diaries")
+        if data.get("content_text"):
+            raise ValidationException("content_text must be absent for private diaries")
+        if data.get("title"):
+            raise ValidationException("title must be absent for private diaries")
 
     title = data.get("title")
-    if privacy != "draft" and not title:
+    if privacy != "private" and privacy != "draft" and not title:
         raise ValidationException("Title is required for public diaries")
 
     content_html = data.get("content_html")
-    if content_html:
+    if content_html and privacy != "private":
         content_html = sanitize_html(content_html)
         if len(content_html.encode("utf-8")) > 102400:
             raise ValidationException("Content exceeds 100KB limit after sanitization")
 
     content_text = data.get("content_text", "")
-    if len(content_text.encode("utf-8")) > 51200:
+    if privacy != "private" and len(content_text.encode("utf-8")) > 51200:
         raise ValidationException("Content text exceeds 50KB limit")
 
     tags = _validate_tags(data.get("tags", []))
@@ -136,24 +163,45 @@ async def create_diary(user: dict, data: dict) -> dict:
     content_warnings = [w.lower().strip() for w in content_warnings if w.lower().strip() in VALID_WARNINGS]
 
     now = datetime.now(UTC)
-    diary_doc = {
-        "user_id": user["_id"],
-        "privacy": privacy,
-        "title": title,
-        "content_html": content_html,
-        "content_text": content_text,
-        "tags": tags,
-        "emotion": emotion,
-        "content_warnings": content_warnings,
-        "comments_enabled": data.get("comments_enabled", True),
-        "comments_locked": False,
-        "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
-        "year": now.year,
-        "month": now.month,
-        "created_at": now,
-        "updated_at": now,
-        "published_at": now if privacy == "public" else None,
-    }
+    if privacy == "private":
+        diary_doc = {
+            "user_id": user["_id"],
+            "privacy": privacy,
+            "title": None,
+            "content_html": None,
+            "content_text": None,
+            "encrypted_data": data["encrypted_data"],
+            "tags": tags,
+            "emotion": emotion,
+            "content_warnings": [],
+            "comments_enabled": False,
+            "comments_locked": False,
+            "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
+            "year": now.year,
+            "month": now.month,
+            "created_at": now,
+            "updated_at": now,
+            "published_at": None,
+        }
+    else:
+        diary_doc = {
+            "user_id": user["_id"],
+            "privacy": privacy,
+            "title": title,
+            "content_html": content_html,
+            "content_text": content_text,
+            "tags": tags,
+            "emotion": emotion,
+            "content_warnings": content_warnings,
+            "comments_enabled": data.get("comments_enabled", True),
+            "comments_locked": False,
+            "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
+            "year": now.year,
+            "month": now.month,
+            "created_at": now,
+            "updated_at": now,
+            "published_at": now if privacy == "public" else None,
+        }
 
     diary_id = await diary_repo.create(diary_doc)
     await user_repo.update_stats(str(user["_id"]), "diary_count", 1)
@@ -194,47 +242,63 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
         raise PermissionDeniedException("You do not own this diary")
 
     set_fields = {}
+    current_privacy = diary.get("privacy", "public")
 
     if "privacy" in updates and updates["privacy"] is not None:
         new_privacy = updates["privacy"]
-        if new_privacy not in ("public", "draft"):
-            raise ValidationException("Privacy must be 'public' or 'draft'")
-        if diary.get("privacy") in ("public", "draft") and new_privacy in ("public", "draft"):
+        if new_privacy not in ("public", "draft", "private"):
+            raise ValidationException("Privacy must be 'public', 'draft', or 'private'")
+        if current_privacy == "private" and new_privacy != "private":
+            raise ValidationException("Cannot change privacy from private")
+        if current_privacy != "private" and new_privacy == "private":
+            raise ValidationException("Cannot change privacy to private")
+        if current_privacy in ("public", "draft") and new_privacy in ("public", "draft"):
             set_fields["privacy"] = new_privacy
             if new_privacy == "public" and diary.get("published_at") is None:
                 set_fields["published_at"] = datetime.now(UTC)
-        else:
-            raise ValidationException("Cannot change privacy to or from 'private'")
 
-    if "title" in updates and updates["title"] is not None:
-        title = updates["title"]
-        if len(title) > 200:
-            raise ValidationException("Title exceeds 200 characters")
-        set_fields["title"] = title
+    if current_privacy == "private":
+        if "encrypted_data" in updates and updates["encrypted_data"] is not None:
+            ed = updates["encrypted_data"]
+            if not isinstance(ed, dict) or not all(k in ed for k in ("ciphertext", "iv", "salt")):
+                raise ValidationException(
+                    "encrypted_data must contain ciphertext, iv, and salt"
+                )
+            set_fields["encrypted_data"] = ed
+        if "tags" in updates and updates["tags"] is not None:
+            set_fields["tags"] = _validate_tags(updates["tags"])
+        if "emotion" in updates:
+            set_fields["emotion"] = _validate_emotion(updates["emotion"])
+    else:
+        if "title" in updates and updates["title"] is not None:
+            title = updates["title"]
+            if len(title) > 200:
+                raise ValidationException("Title exceeds 200 characters")
+            set_fields["title"] = title
 
-    if "content_html" in updates and updates["content_html"] is not None:
-        html = sanitize_html(updates["content_html"])
-        if len(html.encode("utf-8")) > 102400:
-            raise ValidationException("Content exceeds 100KB limit after sanitization")
-        set_fields["content_html"] = html
+        if "content_html" in updates and updates["content_html"] is not None:
+            html = sanitize_html(updates["content_html"])
+            if len(html.encode("utf-8")) > 102400:
+                raise ValidationException("Content exceeds 100KB limit after sanitization")
+            set_fields["content_html"] = html
 
-    if "content_text" in updates and updates["content_text"] is not None:
-        if len(updates["content_text"].encode("utf-8")) > 51200:
-            raise ValidationException("Content text exceeds 50KB limit")
-        set_fields["content_text"] = updates["content_text"]
+        if "content_text" in updates and updates["content_text"] is not None:
+            if len(updates["content_text"].encode("utf-8")) > 51200:
+                raise ValidationException("Content text exceeds 50KB limit")
+            set_fields["content_text"] = updates["content_text"]
 
-    if "tags" in updates and updates["tags"] is not None:
-        set_fields["tags"] = _validate_tags(updates["tags"])
+        if "comments_enabled" in updates and updates["comments_enabled"] is not None:
+            set_fields["comments_enabled"] = updates["comments_enabled"]
 
-    if "emotion" in updates:
+        if "content_warnings" in updates and updates["content_warnings"] is not None:
+            cw = [w.lower().strip() for w in updates["content_warnings"] if w.lower().strip() in VALID_WARNINGS]
+            set_fields["content_warnings"] = cw
+
+        if "tags" in updates and updates["tags"] is not None:
+            set_fields["tags"] = _validate_tags(updates["tags"])
+
+    if "emotion" in updates and current_privacy != "private":
         set_fields["emotion"] = _validate_emotion(updates["emotion"])
-
-    if "comments_enabled" in updates and updates["comments_enabled"] is not None:
-        set_fields["comments_enabled"] = updates["comments_enabled"]
-
-    if "content_warnings" in updates and updates["content_warnings"] is not None:
-        cw = [w.lower().strip() for w in updates["content_warnings"] if w.lower().strip() in VALID_WARNINGS]
-        set_fields["content_warnings"] = cw
 
     if set_fields:
         set_fields["updated_at"] = datetime.now(UTC)
@@ -373,8 +437,7 @@ async def list_my_diaries(
     author_info = _build_author(user)
     data = []
     for diary in diaries:
-        item = _build_diary_list_item(diary, {"_id": str(user["_id"]), "username": user["username"]})
-        item["privacy"] = diary.get("privacy", "public")
+        item = _build_diary_list_item(diary, {"_id": str(user["_id"]), "username": user["username"]}, current_user=user)
         item["author"] = author_info
         data.append(item)
 
