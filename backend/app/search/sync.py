@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from app.core.database import DatabaseManager
-from app.search.config import PUBLIC_DIARIES_INDEX, get_client
+from app.search.config import INDEX_SETTINGS, PUBLIC_DIARIES_INDEX, get_client
 from app.search.indexer import DiaryIndexer
 
 logger = logging.getLogger(__name__)
@@ -14,9 +14,10 @@ async def full_reindex() -> int:
     try:
         client = get_client()
         try:
-            client.get_index(PUBLIC_DIARIES_INDEX)
+            idx = client.get_index(PUBLIC_DIARIES_INDEX)
         except Exception:
-            client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+            idx = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+        idx.update_settings(INDEX_SETTINGS)
     except Exception as e:
         logger.warning("Meilisearch not available — reindex skipped: %s", e)
         return 0
