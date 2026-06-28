@@ -121,7 +121,7 @@ function MyDiariesContent() {
               </Link>
             </div>
           ) : (
-            <div>
+    <div className="max-w-2xl mx-auto py-8 px-4">
               {enrichedDiaries.map((diary) => (
                 <DiaryCard key={diary.id} diary={diary} />
               ))}
