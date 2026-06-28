@@ -68,7 +68,7 @@ export default function DiaryReaderPage() {
 
   const isOwner = user?.id === diary.author.id;
 
-  const showWarning = diary.content_warnings?.length && !warningAcknowledged && !isOwner;
+  const showWarning = (diary.content_warnings?.length ?? 0) > 0 && !warningAcknowledged && !isOwner;
 
   const handleDelete = async () => {
     if (!confirm("Delete this diary permanently? This cannot be undone.")) return;
