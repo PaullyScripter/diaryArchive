@@ -79,7 +79,7 @@ async def search_diaries(
         "limit": per_page,
         "offset": (page - 1) * per_page,
         "attributesToHighlight": ["title", "content_text"],
-        "attributesToCrop": [{"attribute": "content_text", "cropLength": 300}],
+        "attributesToCrop": ["content_text"],
     }
     if sort_field in ("created_at", "updated_at", "like_count", "comment_count"):
         search_params["sort"] = sort_param
