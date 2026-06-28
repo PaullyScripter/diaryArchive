@@ -37,6 +37,8 @@ async def enrich_search_results(
     enriched = []
     for hit in hits:
         author = author_map.get(hit.get("author_id", ""), {})
+        if author.get("is_banned"):
+            continue
         formatted = hit.get("_formatted", {})
         entry = {
             "id": hit["id"],

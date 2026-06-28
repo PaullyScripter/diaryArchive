@@ -1,7 +1,15 @@
-from app.core.database import DatabaseManager
+import asyncio
+import logging
+
 from app.repositories.user_repo import UserRepository
 from app.search.config import PUBLIC_DIARIES_INDEX, get_client
 from app.search.enricher import enrich_search_results
+
+logger = logging.getLogger(__name__)
+
+
+def _run_search(index, q: str, search_params: dict) -> dict:
+    return index.search(q, search_params)
 
 
 async def search_diaries(
@@ -53,7 +61,18 @@ async def search_diaries(
     sort_field, sort_order = sort.split(":") if ":" in sort else (sort, "desc")
     sort_param = [{sort_field: sort_order}]
 
-    index = get_client().index(PUBLIC_DIARIES_INDEX)
+    try:
+        index = get_client().index(PUBLIC_DIARIES_INDEX)
+    except Exception:
+        logger.warning("Meilisearch client unavailable")
+        return {
+            "data": [],
+            "meta": {
+                "page": 1, "per_page": per_page, "total": 0,
+                "has_next": False, "has_prev": False,
+                "processing_time_ms": 0,
+            },
+        }
 
     search_params = {
         "filter": filter_expression,
@@ -64,7 +83,18 @@ async def search_diaries(
         "attributesToCrop": [{"attribute": "content_text", "cropLength": 300}],
     }
 
-    result = index.search(q or "", search_params)
+    try:
+        result = await asyncio.to_thread(_run_search, index, q or "", search_params)
+    except Exception:
+        logger.warning("Meilisearch search failed")
+        return {
+            "data": [],
+            "meta": {
+                "page": 1, "per_page": per_page, "total": 0,
+                "has_next": False, "has_prev": False,
+                "processing_time_ms": 0,
+            },
+        }
 
     enriched = await enrich_search_results(result["hits"], current_user)
 
