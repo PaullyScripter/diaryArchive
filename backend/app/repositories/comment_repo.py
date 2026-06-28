@@ -13,7 +13,7 @@ class CommentRepository(BaseRepository):
         limit: int = 20,
     ) -> list[dict]:
         return await self.find(
-            {"diary_id": ObjectId(diary_id), "parent_comment_id": None},
+            {"diary_id": ObjectId(diary_id), "parent_comment_id": None, "is_deleted": {"$ne": True}},
             sort=[("created_at", 1)],
             skip=skip,
             limit=limit,
@@ -31,7 +31,11 @@ class CommentRepository(BaseRepository):
         return await self.count({"parent_comment_id": ObjectId(parent_id)})
 
     async def count_by_diary(self, diary_id: str) -> int:
-        return await self.count({"diary_id": ObjectId(diary_id)})
+        return await self.count({
+            "diary_id": ObjectId(diary_id),
+            "is_deleted": {"$ne": True},
+            "parent_comment_id": None,
+        })
 
     async def inc_reply_count(self, comment_id: str, delta: int) -> None:
         await self._collection.update_one(

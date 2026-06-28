@@ -109,7 +109,7 @@ class TestComments:
 
         list_resp = await client.get(f"/api/v1/diaries/{public_diary}/comments")
         comments = list_resp.json()["data"]
-        assert comments[0]["is_deleted"] is True
+        assert len(comments) == 0
 
     async def test_comment_count_incremented(self, client: AsyncClient, auth_token: str, public_diary: str):
         await client.post(
