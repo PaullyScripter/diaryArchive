@@ -8,20 +8,27 @@ from app.search.indexer import DiaryIndexer
 logger = logging.getLogger(__name__)
 
 
-async def full_reindex() -> int:
+async def full_reindex(max_retries: int = 5) -> int:
     logger.info("Starting full Meilisearch re-index...")
 
-    try:
-        client = get_client()
+    idx = None
+    for attempt in range(max_retries):
         try:
-            idx = client.get_index(PUBLIC_DIARIES_INDEX)
-        except Exception:
-            idx = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
-        await asyncio.to_thread(lambda: idx.update_settings(INDEX_SETTINGS))
-        logger.info("Index settings applied")
-    except Exception as e:
-        logger.warning("Meilisearch not available — reindex skipped: %s", e)
-        return 0
+            client = get_client()
+            try:
+                idx = client.get_index(PUBLIC_DIARIES_INDEX)
+            except Exception:
+                idx = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+            await asyncio.to_thread(lambda: idx.update_settings(INDEX_SETTINGS))
+            logger.info("Index settings applied")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning("Meilisearch not ready, retrying in 2s (%d/%d): %s", attempt + 1, max_retries, e)
+                await asyncio.sleep(2)
+            else:
+                logger.warning("Meilisearch not available after %d attempts — reindex skipped: %s", max_retries, e)
+                return 0
 
     indexer = DiaryIndexer()
     await indexer.clear_index()
