@@ -55,11 +55,20 @@ class DiaryIndexer:
             "year": diary.get("year"),
             "month": diary.get("month"),
             "author_id": str(diary["user_id"]),
-            "created_at": diary["created_at"].isoformat() if hasattr(diary["created_at"], "isoformat") else str(diary["created_at"]),
-            "updated_at": diary["updated_at"].isoformat() if diary.get("updated_at") and hasattr(diary["updated_at"], "isoformat") else str(diary.get("updated_at", "")),
+            "created_at": _fmt_date(diary.get("created_at", "")),
+            "updated_at": _fmt_date(diary.get("updated_at", "")),
             "like_count": diary.get("stats", {}).get("like_count", 0),
             "comment_count": diary.get("stats", {}).get("comment_count", 0),
             "bookmark_count": diary.get("stats", {}).get("bookmark_count", 0),
             "excerpt": content_text[:300],
-            "published_at": diary.get("published_at").isoformat() if diary.get("published_at") and hasattr(diary["published_at"], "isoformat") else None,
+            "published_at": _fmt_date(diary.get("published_at")),
         }
+
+def _fmt_date(value) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)

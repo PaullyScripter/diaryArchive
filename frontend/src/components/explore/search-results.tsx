@@ -66,6 +66,7 @@ export function SearchResults({
               stats: diary.stats,
               created_at: diary.created_at,
               published_at: diary.created_at,
+              highlight: true,
             }}
           />
         ))}

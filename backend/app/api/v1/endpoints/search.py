@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.api.deps import _optional_user, get_current_user
+from app.api.deps import _optional_user
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
 from app.services.search_service import search_diaries
@@ -22,8 +22,7 @@ async def search(
     author: str | None = Query(None),
     current_user: dict | None = Depends(_optional_user),
 ):
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header:
+    if current_user:
         is_limited, _ = await check_rate_limit(
             f"rate_limit:search:{current_user['_id']}", 30, 60
         )

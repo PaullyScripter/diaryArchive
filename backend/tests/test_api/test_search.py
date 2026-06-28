@@ -98,3 +98,28 @@ class TestEmotions:
         returned = {e["emotion"] for e in body["data"]}
         for em in VALID_EMOTIONS:
             assert em in returned
+
+
+class TestSearchWithInvalidToken:
+    async def test_search_with_invalid_token_falls_back_anonymous(self, client: AsyncClient):
+        response = await client.get(
+            "/api/v1/search?q=test",
+            headers={"Authorization": "Bearer invalid-token-that-cannot-be-decoded"},
+        )
+        assert response.status_code == 200
+
+    async def test_search_with_expired_token(self, client: AsyncClient):
+        response = await client.get(
+            "/api/v1/search?q=test",
+            headers={"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJub25leGlzdGVudCJ9.invalid"},
+        )
+        assert response.status_code == 200
+
+
+class TestSearchGracefulDegradation:
+    async def test_search_returns_empty_when_no_results(self, client: AsyncClient):
+        response = await client.get("/api/v1/search?q=nonexistenttermxyz123")
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["data"]) == 0
+        assert "meta" in body

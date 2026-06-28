@@ -36,7 +36,7 @@ def get_client() -> Client:
 async def initialize_search_indexes() -> None:
     try:
         client = get_client()
-        index = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+        index = client.get_or_create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
         index.update_settings(INDEX_SETTINGS)
         logger.info("Meilisearch index '%s' initialized", PUBLIC_DIARIES_INDEX)
     except Exception:
