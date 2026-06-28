@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from app.api.deps import _optional_user
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
+from app.search.config import PUBLIC_DIARIES_INDEX, get_client
 from app.search.sync import full_reindex
 from app.services.search_service import search_diaries
 
@@ -56,3 +57,26 @@ async def search(
 async def reindex():
     count = await full_reindex()
     return {"data": {"indexed": count, "message": f"Re-indexed {count} public diaries"}}
+
+
+@router.get("/search/health")
+async def search_health():
+    try:
+        client = get_client()
+        health = client.health()
+        index = client.get_index(PUBLIC_DIARIES_INDEX)
+        stats = index.get_stats()
+        return {
+            "data": {
+                "meilisearch": health.get("status", "unknown"),
+                "index": PUBLIC_DIARIES_INDEX,
+                "documents": stats.number_of_documents,
+            }
+        }
+    except Exception as e:
+        return {
+            "data": {
+                "meilisearch": "unavailable",
+                "error": str(e),
+            }
+        }
