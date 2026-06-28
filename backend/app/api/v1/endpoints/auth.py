@@ -344,9 +344,12 @@ async def change_password(
         if body.get("new_encrypted_master_key") and body.get("new_master_key_salt"):
             update_fields["encrypted_master_key"] = body["new_encrypted_master_key"]
             update_fields["master_key_salt"] = body["new_master_key_salt"]
+            if "new_master_key_iv" in body:
+                update_fields["master_key_iv"] = body["new_master_key_iv"]
         elif current_user.get("encrypted_master_key"):
             update_fields["encrypted_master_key"] = None
             update_fields["master_key_salt"] = None
+            update_fields["master_key_iv"] = None
 
     await user_repo.update(str(current_user["_id"]), update_fields)
 
@@ -430,6 +433,7 @@ async def reset_password(
         "password_hash": new_hash,
         "encrypted_master_key": None,
         "master_key_salt": None,
+        "master_key_iv": None,
     })
 
     await reset_repo.mark_used(token_hash)
