@@ -28,9 +28,7 @@ export default function Home() {
   const {
     data: diariesData,
     isLoading: diariesLoading,
-    fetchNextPage,
-    hasNextPage,
-  } = useDiaries({ sort: "latest" });
+  } = useDiaries({ sort: "latest", perPage: 5 });
   const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
   const { data: popularTags } = usePopularTags();
   const { data: emotions } = useEmotions();
@@ -72,22 +70,9 @@ export default function Home() {
           </div>
         ) : latestDiaries.length > 0 ? (
           <div>
-            <div>
-              {latestDiaries.map((diary) => (
-                <DiaryCard key={diary.id} diary={diary} />
-              ))}
-            </div>
-            {hasNextPage && (
-              <div className="mt-6 text-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchNextPage()}
-                >
-                  Load more
-                </Button>
-              </div>
-            )}
+            {latestDiaries.map((diary) => (
+              <DiaryCard key={diary.id} diary={diary} />
+            ))}
           </div>
         ) : (
           <div className="text-center py-12">
