@@ -49,6 +49,7 @@ async function fetchDiaries({
   emotion,
   year,
   month,
+  perPage = 20,
 }: {
   pageParam?: number;
   sort?: string;
@@ -56,10 +57,11 @@ async function fetchDiaries({
   emotion?: string;
   year?: number;
   month?: number;
+  perPage?: number;
 }) {
   const params: Record<string, unknown> = {
     page: pageParam,
-    per_page: 20,
+    per_page: perPage,
     sort,
   };
   if (tags) params.tags = tags;
@@ -125,6 +127,7 @@ export function useDiaries(filters?: {
   emotion?: string;
   year?: number;
   month?: number;
+  perPage?: number;
 }) {
   return useInfiniteQuery({
     queryKey: ["diaries", filters],

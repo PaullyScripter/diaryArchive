@@ -80,6 +80,7 @@ def _build_user_response(user: dict) -> dict:
         "is_admin": user.get("is_admin", False),
         "has_email": bool(user.get("email_encrypted")),
         "email_verified": user.get("email_verified", False),
+        "has_master_key": bool(user.get("encrypted_master_key")),
         "preferences": user.get("preferences", {
             "theme": "system",
             "comments_disabled": False,
@@ -337,8 +338,20 @@ async def change_password(
     _validate_password(new_password)
 
     user_repo = UserRepository()
-    new_hash = hash_password(new_password)
-    await user_repo.update(str(current_user["_id"]), {"password_hash": new_hash})
+    update_fields = {"password_hash": hash_password(new_password)}
+
+    if "new_encrypted_master_key" in body and "new_master_key_salt" in body:
+        if body.get("new_encrypted_master_key") and body.get("new_master_key_salt"):
+            update_fields["encrypted_master_key"] = body["new_encrypted_master_key"]
+            update_fields["master_key_salt"] = body["new_master_key_salt"]
+            if "new_master_key_iv" in body:
+                update_fields["master_key_iv"] = body["new_master_key_iv"]
+        elif current_user.get("encrypted_master_key"):
+            update_fields["encrypted_master_key"] = None
+            update_fields["master_key_salt"] = None
+            update_fields["master_key_iv"] = None
+
+    await user_repo.update(str(current_user["_id"]), update_fields)
 
     refresh_repo = RefreshTokenRepository()
     revoked = await refresh_repo.delete_all_for_user(str(current_user["_id"]))
@@ -420,6 +433,7 @@ async def reset_password(
         "password_hash": new_hash,
         "encrypted_master_key": None,
         "master_key_salt": None,
+        "master_key_iv": None,
     })
 
     await reset_repo.mark_used(token_hash)

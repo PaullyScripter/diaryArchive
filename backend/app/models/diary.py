@@ -9,11 +9,18 @@ VALID_EMOTIONS = frozenset({
 })
 
 
+class EncryptedData(BaseModel):
+    ciphertext: str
+    iv: str
+    salt: str
+
+
 class DiaryCreate(BaseModel):
-    privacy: str = Field(default="public", pattern=r"^(public|draft)$")
+    privacy: str = Field(default="public", pattern=r"^(public|draft|private)$")
     title: str | None = Field(None, max_length=200)
     content_html: str | None = Field(None, max_length=102400)
     content_text: str | None = Field(None, max_length=51200)
+    encrypted_data: EncryptedData | None = None
     tags: list[str] = Field(default_factory=list, max_length=50)
     emotion: str | None = None
     comments_enabled: bool = True
@@ -25,6 +32,7 @@ class DiaryUpdate(BaseModel):
     title: str | None = Field(None, max_length=200)
     content_html: str | None = Field(None, max_length=102400)
     content_text: str | None = Field(None, max_length=51200)
+    encrypted_data: EncryptedData | None = None
     tags: list[str] | None = None
     emotion: str | None = None
     comments_enabled: bool | None = None
@@ -49,6 +57,7 @@ class DiaryResponse(BaseModel):
     title: str | None = None
     content_html: str | None = None
     content_text: str | None = None
+    encrypted_data: EncryptedData | None = None
     author: AuthorInfo
     tags: list[str] = []
     emotion: str | None = None
