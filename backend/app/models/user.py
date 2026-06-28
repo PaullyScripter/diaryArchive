@@ -71,3 +71,8 @@ class UserPublicProfile(BaseModel):
 
 class EmailUpdate(BaseModel):
     email: str | None = Field(None, max_length=254)
+
+
+class EncryptionKeyUpdate(BaseModel):
+    encrypted_master_key: str = Field(..., min_length=1)
+    master_key_salt: str = Field(..., min_length=1)

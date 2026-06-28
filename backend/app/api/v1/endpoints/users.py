@@ -7,11 +7,12 @@ from fastapi import APIRouter, Depends, Query, Request
 from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import NotFoundException, RateLimitException
 from app.core.security import check_rate_limit
-from app.models.user import EmailUpdate, UserUpdate
+from app.models.user import EmailUpdate, EncryptionKeyUpdate, UserUpdate
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
 from app.services.user_service import (
     get_user_profile,
+    update_encryption_key,
     update_user_email,
     update_user_profile,
 )
@@ -65,6 +66,33 @@ async def update_my_email(
         raise RateLimitException("Too many email update attempts")
     result = await update_user_email(str(current_user["_id"]), body.email)
     return {"data": result}
+
+
+@router.put("/me/encryption-key")
+async def update_encryption_key_endpoint(
+    body: EncryptionKeyUpdate,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    result = await update_encryption_key(
+        str(current_user["_id"]),
+        body.encrypted_master_key,
+        body.master_key_salt,
+    )
+    return {"data": result}
+
+
+@router.get("/me/encryption-key")
+async def get_encryption_key(
+    current_user: dict = Depends(get_current_user),
+):
+    return {
+        "data": {
+            "encrypted_master_key": current_user.get("encrypted_master_key"),
+            "master_key_salt": current_user.get("master_key_salt"),
+            "has_master_key": bool(current_user.get("encrypted_master_key")),
+        }
+    }
 
 
 @router.get("/{username}/diaries")

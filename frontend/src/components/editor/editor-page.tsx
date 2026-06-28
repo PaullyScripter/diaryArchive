@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Eye, Lock, Shield } from "lucide-react";
 
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
+import { useMasterKey } from "@/hooks/use-master-key";
+import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +47,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const { data: existingDiary, isLoading: isLoadingDiary } = useDiary(diaryId ?? "");
   const isEditMode = !!diaryId;
 
+  const {
+    masterKey,
+    isAvailable: isMasterKeyAvailable,
+    setupMasterKey,
+    isLoading: isKeyLoading,
+  } = useMasterKey();
+
   const [editor, setEditor] = useState<Editor | null>(null);
   const [title, setTitle] = useState("");
   const [contentHtml, setContentHtml] = useState("");
@@ -60,6 +69,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [showKeySetup, setShowKeySetup] = useState(false);
+  const [keySetupPassword, setKeySetupPassword] = useState("");
+  const [keySetupError, setKeySetupError] = useState("");
+  const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
 
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
 
@@ -113,24 +126,53 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     const finalPrivacy = publishPrivacy ?? privacy;
     setSaveStatus("saving");
     try {
-      const payload = {
-        privacy: finalPrivacy,
-        title: title.trim() || null,
-        content_html: customCss ? `<style>${customCss}</style>${contentHtml}` : contentHtml,
-        content_text: contentText,
-        tags,
-        emotion: emotion || null,
-        comments_enabled: commentsEnabled,
-        content_warnings: contentWarnings,
-      };
-      if (isEditMode && diaryId) {
-        await updateDiary.mutateAsync({ id: diaryId, ...payload });
+      let payload: Record<string, unknown>;
+      if (finalPrivacy === "private") {
+        if (!masterKey) {
+          setShowKeySetup(true);
+          setSaveStatus("error");
+          return;
+        }
+        const encryptedPayload = await encryptDiary(
+          {
+            title: title.trim() || "Untitled",
+            contentHtml: customCss
+              ? `<style>${customCss}</style>${contentHtml}`
+              : contentHtml,
+            tags,
+          },
+          masterKey
+        );
+        payload = {
+          privacy: "private",
+          encrypted_data: encryptedPayload,
+          tags,
+          emotion: emotion || null,
+        };
       } else {
-        const result = await createDiary.mutateAsync(payload);
-        if (result && result.id) {
+        payload = {
+          privacy: finalPrivacy,
+          title: title.trim() || null,
+          content_html: customCss
+            ? `<style>${customCss}</style>${contentHtml}`
+            : contentHtml,
+          content_text: contentText,
+          tags,
+          emotion: emotion || null,
+          comments_enabled: commentsEnabled,
+          content_warnings: contentWarnings,
+        };
+      }
+      if (isEditMode && diaryId) {
+        await updateDiary.mutateAsync({ id: diaryId, ...payload } as Parameters<typeof updateDiary.mutateAsync>[0]);
+      } else {
+        const result = await createDiary.mutateAsync(
+          payload as Parameters<typeof createDiary.mutateAsync>[0]
+        );
+        if (result && (result as { id?: string }).id) {
           if (finalPrivacy !== "draft") {
             clearDraft();
-            router.push(`/diary/${result.id}`);
+            router.push(`/diary/${(result as { id: string }).id}`);
             return;
           }
         }
@@ -208,13 +250,24 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           >
             Save Draft
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => doSave("public")}
-          >
-            {isEditMode ? "Save Changes" : "Publish"}
-          </Button>
+          {privacy === "private" ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => doSave("private")}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              {isEditMode ? "Save Changes" : "Save Encrypted"}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => doSave("public")}
+            >
+              {isEditMode ? "Save Changes" : "Publish"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -287,6 +340,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             setCommentsEnabled={setCommentsEnabled}
             contentWarnings={contentWarnings}
             toggleWarning={toggleWarning}
+            hasMasterKey={isMasterKeyAvailable}
+            isEditMode={isEditMode}
           />
 
           <div className="mt-6">
@@ -396,6 +451,106 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 }}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {showKeySetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+          <div className="w-full max-w-md mx-4 bg-background border border-border rounded-lg shadow-lg p-6">
+            {keySetupStep === "explain" ? (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className="w-6 h-6 text-accent" />
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Set Up End-to-End Encryption
+                  </h2>
+                </div>
+                <div className="text-sm text-muted space-y-3 mb-6">
+                  <p>
+                    Your diary content will be encrypted in your browser before
+                    being sent to the server. A master encryption key will be
+                    generated and stored (encrypted with your password) on our
+                    servers.
+                  </p>
+                  <p className="text-destructive font-medium">
+                    If you lose your password and have no recovery email, your
+                    private diaries cannot be recovered. There is no backdoor.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowKeySetup(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setKeySetupStep("password")}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <Shield className="w-6 h-6 text-accent" />
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Enter Your Password
+                  </h2>
+                </div>
+                <p className="text-sm text-muted mb-4">
+                  Your master key will be encrypted with your account password.
+                  Enter it below to generate and secure your encryption key.
+                </p>
+                <Input
+                  type="password"
+                  value={keySetupPassword}
+                  onChange={(e) => {
+                    setKeySetupPassword(e.target.value);
+                    setKeySetupError("");
+                  }}
+                  placeholder="Your account password"
+                  className="mb-2"
+                />
+                {keySetupError && (
+                  <p className="text-xs text-destructive mb-2">{keySetupError}</p>
+                )}
+                <div className="flex gap-3 mt-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowKeySetup(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={!keySetupPassword || isKeyLoading}
+                    onClick={async () => {
+                      try {
+                        await setupMasterKey(keySetupPassword);
+                        setShowKeySetup(false);
+                        setKeySetupPassword("");
+                        setKeySetupError("");
+                        setKeySetupStep("explain");
+                      } catch {
+                        setKeySetupError(
+                          "Failed to set up encryption. Check your password."
+                        );
+                      }
+                    }}
+                  >
+                    {isKeyLoading ? "Generating..." : "Generate Key"}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

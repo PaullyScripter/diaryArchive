@@ -17,6 +17,7 @@ export interface User {
   is_admin: boolean;
   has_email: boolean;
   email_verified: boolean;
+  has_master_key: boolean;
   preferences: {
     theme: string;
     comments_disabled: boolean;
@@ -67,6 +68,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         is_admin: data.is_admin || false,
         has_email: false,
         email_verified: false,
+        has_master_key: false,
         preferences: {
           theme: "system",
           comments_disabled: false,
@@ -105,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         is_admin: false,
         has_email: false,
         email_verified: false,
+        has_master_key: false,
         preferences: {
           theme: "system",
           comments_disabled: false,
