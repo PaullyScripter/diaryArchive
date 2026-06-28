@@ -111,7 +111,7 @@ class TestSearchWithInvalidToken:
     async def test_search_with_expired_token(self, client: AsyncClient):
         response = await client.get(
             "/api/v1/search?q=test",
-            headers={"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJub25leGlzdGVudCJ9.invalid"},
+            headers={"Authorization": "Bearer this-is-a-fake-token-for-testing"},
         )
         assert response.status_code == 200
 
