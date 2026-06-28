@@ -21,6 +21,11 @@ export interface DiaryCardData {
   };
   privacy?: string;
   content_warnings?: string[];
+  encrypted_data?: {
+    ciphertext: string;
+    iv: string;
+    salt: string;
+  } | null;
   created_at: string;
   updated_at?: string;
   published_at?: string | null;

@@ -129,3 +129,16 @@ async def update_user_email(user_id: str, email: str | None) -> dict:
             "email_verified": False,
             "message": "Email removed.",
         }
+
+
+async def update_encryption_key(user_id: str, encrypted_master_key: str, master_key_salt: str) -> dict:
+    user_repo = UserRepository()
+    await user_repo.update(user_id, {
+        "encrypted_master_key": encrypted_master_key,
+        "master_key_salt": master_key_salt,
+        "updated_at": datetime.now(UTC),
+    })
+    return {
+        "has_master_key": True,
+        "message": "Encryption key stored successfully.",
+    }
