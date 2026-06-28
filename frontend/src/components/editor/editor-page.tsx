@@ -10,6 +10,7 @@ import { Eye, Lock, Shield } from "lucide-react";
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
 import { useMasterKey } from "@/hooks/use-master-key";
+import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -70,8 +71,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showKeySetup, setShowKeySetup] = useState(false);
-  const [keySetupPassword, setKeySetupPassword] = useState("");
-  const [keySetupError, setKeySetupError] = useState("");
+  const [setupInput, setSetupInput] = useState("");
+  const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
 
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
@@ -137,7 +138,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           {
             title: title.trim() || "Untitled",
             contentHtml: customCss
-              ? `<style>${customCss}</style>${contentHtml}`
+              ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
               : contentHtml,
             tags,
           },
@@ -446,9 +447,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               <article
                 className="font-serif text-base leading-relaxed text-foreground max-w-none [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
                 dangerouslySetInnerHTML={{
-                  __html: customCss
-                    ? `<style>${customCss}</style>${contentHtml}`
-                    : contentHtml,
+                  __html: sanitizeHtml(
+                    customCss
+                      ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                      : contentHtml
+                  ),
                 }}
               />
             </div>
@@ -510,16 +513,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </p>
                 <Input
                   type="password"
-                  value={keySetupPassword}
+                  value={setupInput}
                   onChange={(e) => {
-                    setKeySetupPassword(e.target.value);
-                    setKeySetupError("");
+                    setSetupInput(e.target.value);
+                    setSetupError("");
                   }}
                   placeholder="Your account password"
                   className="mb-2"
                 />
-                {keySetupError && (
-                  <p className="text-xs text-destructive mb-2">{keySetupError}</p>
+                {setupError && (
+                  <p className="text-xs text-destructive mb-2">{setupError}</p>
                 )}
                 <div className="flex gap-3 mt-4">
                   <Button
@@ -532,21 +535,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                   <Button
                     variant="primary"
                     size="sm"
-                    disabled={!keySetupPassword || isKeyLoading}
+                    disabled={!setupInput || isKeyLoading}
                     onClick={async () => {
                       try {
-                        await setupMasterKey(keySetupPassword);
+                        await setupMasterKey(setupInput);
                         setPrivacy("private");
                         setShowKeySetup(false);
-                        setKeySetupPassword("");
-                        setKeySetupError("");
+                        setSetupInput("");
+                        setSetupError("");
                         setKeySetupStep("explain");
                       } catch (err: unknown) {
                         const msg =
                           err instanceof Error
                             ? err.message
                             : "Failed to set up encryption";
-                        setKeySetupError(msg);
+                        setSetupError(msg);
                       }
                     }}
                   >

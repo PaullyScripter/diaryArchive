@@ -21,9 +21,9 @@ from app.core.security import (
     create_access_token,
     create_email_verification_token,
     generate_refresh_token,
-    hash_password,
+    hash_password_async,
     hash_token,
-    verify_password,
+    verify_password_async,
 )
 from app.models.token import AuthResponse, RegisterResponse, TokenResponse
 from app.models.user import UserCreate, UserLogin
@@ -170,7 +170,7 @@ async def register(
         except Exception:
             raise ValidationException("Invalid email format")
 
-    password_hash = hash_password(body.password)
+    password_hash = await hash_password_async(body.password)
 
     user_doc = {
         "username": body.username.lower(),
@@ -230,7 +230,7 @@ async def login(
     user_repo = UserRepository()
     user = await user_repo.get_by_username(body.username.lower())
 
-    if user is None or not verify_password(body.password, user["password_hash"]):
+    if user is None or not await verify_password_async(body.password, user["password_hash"]):
         raise AuthenticationException("Invalid username or password")
 
     if user.get("is_banned"):
@@ -332,13 +332,13 @@ async def change_password(
     if not current_password or not new_password:
         raise ValidationException("Both current_password and new_password are required")
 
-    if not verify_password(current_password, current_user["password_hash"]):
+    if not await verify_password_async(current_password, current_user["password_hash"]):
         raise AuthenticationException("Current password is incorrect")
 
     _validate_password(new_password)
 
     user_repo = UserRepository()
-    update_fields = {"password_hash": hash_password(new_password)}
+    update_fields = {"password_hash": await hash_password_async(new_password)}
 
     if "new_encrypted_master_key" in body and "new_master_key_salt" in body:
         if body.get("new_encrypted_master_key") and body.get("new_master_key_salt"):
@@ -428,7 +428,7 @@ async def reset_password(
     if user is None:
         raise AuthenticationException("User not found")
 
-    new_hash = hash_password(new_password)
+    new_hash = await hash_password_async(new_password)
     await user_repo.update(str(user["_id"]), {
         "password_hash": new_hash,
         "encrypted_master_key": None,
