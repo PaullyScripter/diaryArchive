@@ -97,7 +97,7 @@ export function ExplorePageContent() {
         />
       </div>
 
-      {!store.hasActiveFilters() && (
+      {!store.query && (
         <>
           <section className="mb-6">
             <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
@@ -108,6 +108,7 @@ export function ExplorePageContent() {
               selectedTags={store.selectedTags}
               onToggleTag={(tag) => {
                 store.toggleTag(tag);
+                store.setQuery(tag);
                 updateUrl();
               }}
             />
