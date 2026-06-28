@@ -86,8 +86,12 @@ async def search_diaries(
     try:
         result = await asyncio.to_thread(_run_search, index, q or "", search_params)
     except Exception:
-        logger.warning("Meilisearch search failed")
-        return {
+        try:
+            del search_params["sort"]
+            result = await asyncio.to_thread(_run_search, index, q or "", search_params)
+        except Exception:
+            logger.warning("Meilisearch search failed", exc_info=True)
+            return {
             "data": [],
             "meta": {
                 "page": 1, "per_page": per_page, "total": 0,
