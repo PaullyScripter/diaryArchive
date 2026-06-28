@@ -131,11 +131,12 @@ async def update_user_email(user_id: str, email: str | None) -> dict:
         }
 
 
-async def update_encryption_key(user_id: str, encrypted_master_key: str, master_key_salt: str) -> dict:
+async def update_encryption_key(user_id: str, encrypted_master_key: str, master_key_salt: str, master_key_iv: str) -> dict:
     user_repo = UserRepository()
     await user_repo.update(user_id, {
         "encrypted_master_key": encrypted_master_key,
         "master_key_salt": master_key_salt,
+        "master_key_iv": master_key_iv,
         "updated_at": datetime.now(UTC),
     })
     return {

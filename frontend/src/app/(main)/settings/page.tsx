@@ -140,6 +140,7 @@ function SettingsContent() {
         if (reEncrypted) {
           payload.new_encrypted_master_key = reEncrypted.newEncryptedMasterKey;
           payload.new_master_key_salt = reEncrypted.newMasterKeySalt;
+          payload.new_master_key_iv = reEncrypted.newMasterKeyIv;
         }
       }
 

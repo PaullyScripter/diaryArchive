@@ -78,6 +78,7 @@ async def update_encryption_key_endpoint(
         str(current_user["_id"]),
         body.encrypted_master_key,
         body.master_key_salt,
+        body.master_key_iv,
     )
     return {"data": result}
 
@@ -90,6 +91,7 @@ async def get_encryption_key(
         "data": {
             "encrypted_master_key": current_user.get("encrypted_master_key"),
             "master_key_salt": current_user.get("master_key_salt"),
+            "master_key_iv": current_user.get("master_key_iv"),
             "has_master_key": bool(current_user.get("encrypted_master_key")),
         }
     }

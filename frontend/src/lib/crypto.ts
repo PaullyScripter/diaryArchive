@@ -43,34 +43,39 @@ export async function generateMasterKey(): Promise<CryptoKey> {
 export async function encryptMasterKey(
   masterKey: CryptoKey,
   password: string
-): Promise<{ encryptedMasterKey: string; salt: string }> {
+): Promise<{ encryptedMasterKey: string; salt: string; iv: string }> {
   const salt = new Uint8Array(new ArrayBuffer(16));
   crypto.getRandomValues(salt);
+  const iv = new Uint8Array(new ArrayBuffer(12));
+  crypto.getRandomValues(iv);
   const passwordKey = await deriveKeyFromPassword(password, salt);
   const wrappedKey = await crypto.subtle.wrapKey(
     "raw",
     masterKey,
     passwordKey,
-    { name: "AES-GCM" }
+    { name: "AES-GCM", iv: iv as BufferSource }
   );
   return {
     encryptedMasterKey: bufferToHex(wrappedKey),
     salt: bufferToHex(salt),
+    iv: bufferToHex(iv),
   };
 }
 
 export async function decryptMasterKey(
   encryptedMasterKey: string,
   salt: string,
+  iv: string,
   password: string
 ): Promise<CryptoKey> {
   const saltBytes = hexToBuffer(salt);
+  const ivBytes = hexToBuffer(iv);
   const passwordKey = await deriveKeyFromPassword(password, saltBytes);
   return crypto.subtle.unwrapKey(
     "raw",
     hexToBuffer(encryptedMasterKey) as BufferSource,
     passwordKey,
-    { name: "AES-GCM" },
+    { name: "AES-GCM", iv: ivBytes as BufferSource },
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"]

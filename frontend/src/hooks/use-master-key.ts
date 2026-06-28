@@ -37,7 +37,7 @@ export function useMasterKey(): MasterKeyState & {
   reEncryptMasterKey: (
     currentPassword: string,
     newPassword: string
-  ) => Promise<{ newEncryptedMasterKey: string; newMasterKeySalt: string } | null>;
+  ) => Promise<{ newEncryptedMasterKey: string; newMasterKeySalt: string; newMasterKeyIv: string } | null>;
   clearMasterKey: () => void;
   isAvailable: boolean;
 } {
@@ -74,7 +74,7 @@ export function useMasterKey(): MasterKeyState & {
       try {
         const meResp = await apiClient.get("/users/me/encryption-key");
         const keyData = meResp.data.data || meResp.data;
-        if (!keyData?.encrypted_master_key || !keyData?.master_key_salt) {
+        if (!keyData?.encrypted_master_key || !keyData?.master_key_salt || !keyData?.master_key_iv) {
           setState((s) => ({
             ...s,
             error: "No encryption key found",
@@ -85,6 +85,7 @@ export function useMasterKey(): MasterKeyState & {
         const mk = await decryptMasterKey(
           keyData.encrypted_master_key,
           keyData.master_key_salt,
+          keyData.master_key_iv,
           password
         );
         masterKeyMap.set(userId, mk);
@@ -115,13 +116,14 @@ export function useMasterKey(): MasterKeyState & {
       setState((s) => ({ ...s, isLoading: true, error: null }));
       try {
         const mk = await generateMasterKey();
-        const { encryptedMasterKey, salt } = await encryptMasterKey(
+        const { encryptedMasterKey, salt, iv } = await encryptMasterKey(
           mk,
           password
         );
         await apiClient.put("/users/me/encryption-key", {
           encrypted_master_key: encryptedMasterKey,
           master_key_salt: salt,
+          master_key_iv: iv,
         });
         masterKeyMap.set(userId, mk);
         useAuthStore.getState().setUser({
@@ -146,18 +148,19 @@ export function useMasterKey(): MasterKeyState & {
     async (
       currentPassword: string,
       newPassword: string
-    ): Promise<{ newEncryptedMasterKey: string; newMasterKeySalt: string } | null> => {
+    ): Promise<{ newEncryptedMasterKey: string; newMasterKeySalt: string; newMasterKeyIv: string } | null> => {
       if (!hasMasterKey || !state.masterKey) return null;
-      const { encryptedMasterKey, salt } = await encryptMasterKey(
+      const { encryptedMasterKey, salt, iv } = await encryptMasterKey(
         state.masterKey,
         newPassword
       );
       await decryptMasterKey(
         encryptedMasterKey,
         salt,
+        iv,
         newPassword
       );
-      return { newEncryptedMasterKey: encryptedMasterKey, newMasterKeySalt: salt };
+      return { newEncryptedMasterKey: encryptedMasterKey, newMasterKeySalt: salt, newMasterKeyIv: iv };
     },
     [hasMasterKey, state.masterKey]
   );

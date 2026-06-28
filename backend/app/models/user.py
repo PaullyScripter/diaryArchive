@@ -76,3 +76,4 @@ class EmailUpdate(BaseModel):
 class EncryptionKeyUpdate(BaseModel):
     encrypted_master_key: str = Field(..., min_length=1)
     master_key_salt: str = Field(..., min_length=1)
+    master_key_iv: str = Field(..., min_length=1)
