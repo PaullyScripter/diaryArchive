@@ -146,6 +146,7 @@ export function useDeleteComment(diaryId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", diaryId] });
       queryClient.invalidateQueries({ queryKey: ["replies"] });
+      queryClient.invalidateQueries({ queryKey: ["diary", diaryId] });
     },
   });
 }
