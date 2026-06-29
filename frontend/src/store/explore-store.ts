@@ -41,10 +41,9 @@ interface ExploreState {
   setDate: (year: number | null, month: number | null) => void;
   setSort: (sort: string) => void;
   clearFilters: () => void;
-  hasActiveFilters: () => boolean;
 }
 
-export const useExploreStore = create<ExploreState>((set, get) => ({
+export const useExploreStore = create<ExploreState>((set) => ({
   query: "",
   selectedTags: [],
   selectedEmotion: null,
@@ -70,14 +69,4 @@ export const useExploreStore = create<ExploreState>((set, get) => ({
       selectedYear: null,
       selectedMonth: null,
     }),
-  hasActiveFilters: () => {
-    const s = get();
-    return (
-      s.query !== "" ||
-      s.selectedTags.length > 0 ||
-      s.selectedEmotion !== null ||
-      s.selectedYear !== null ||
-      s.selectedMonth !== null
-    );
-  },
 }));

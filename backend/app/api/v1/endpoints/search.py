@@ -86,10 +86,9 @@ async def search_health():
                 "documents": stats.number_of_documents,
             }
         }
-    except Exception as e:
+    except Exception:
         return {
             "data": {
                 "meilisearch": "unavailable",
-                "error": str(e),
             }
         }

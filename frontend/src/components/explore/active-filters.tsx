@@ -1,11 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+import { MONTHS_ABBR } from "@/lib/utils";
 
 interface ActiveFiltersProps {
   tags: string[];
@@ -64,7 +60,7 @@ export function ActiveFilters({
           aria-label="Remove date filter"
           type="button"
         >
-          {month ? `${MONTHS[month - 1]} ` : ""}{year}
+          {month ? `${MONTHS_ABBR[month - 1]} ` : ""}{year}
           <X className="w-3 h-3" />
         </button>
       )}
