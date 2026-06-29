@@ -97,52 +97,47 @@ export function ExplorePageContent() {
         />
       </div>
 
-      {!store.query && (
-        <>
-          <section className="mb-6">
-            <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-              Tags
-            </h2>
-            <TagCloud
-              tags={allTags}
-              selectedTags={store.selectedTags}
-              onToggleTag={(tag) => {
-                store.toggleTag(tag);
-                store.setQuery(tag);
-                updateUrl();
-              }}
-            />
-          </section>
+      <section className="mb-6">
+        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
+          Tags
+        </h2>
+        <TagCloud
+          tags={allTags}
+          selectedTags={store.selectedTags}
+          onToggleTag={(tag) => {
+            store.toggleTag(tag);
+            updateUrl();
+          }}
+        />
+      </section>
 
-          <section className="mb-6">
-            <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-              Emotions
-            </h2>
-            <EmotionBrowser
-              emotions={allEmotions}
-              selectedEmotion={store.selectedEmotion}
-              onSelectEmotion={(emotion) => {
-                store.setEmotion(emotion);
-                updateUrl();
-              }}
-            />
-          </section>
+      <section className="mb-6">
+        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
+          Emotions
+        </h2>
+        <EmotionBrowser
+          emotions={allEmotions}
+          selectedEmotion={store.selectedEmotion}
+          onSelectEmotion={(emotion) => {
+            store.setEmotion(emotion);
+            updateUrl();
+          }}
+        />
+      </section>
 
-          <section className="mb-6">
-            <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
-              Browse by Date
-            </h2>
-            <DateArchive
-              selectedYear={store.selectedYear}
-              selectedMonth={store.selectedMonth}
-              onSelectDate={(year, month) => {
-                store.setDate(year, month);
-                updateUrl();
-              }}
-            />
-          </section>
-        </>
-      )}
+      <section className="mb-6">
+        <h2 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
+          Browse by Date
+        </h2>
+        <DateArchive
+          selectedYear={store.selectedYear}
+          selectedMonth={store.selectedMonth}
+          onSelectDate={(year, month) => {
+            store.setDate(year, month);
+            updateUrl();
+          }}
+        />
+      </section>
 
       <ActiveFilters
         tags={store.selectedTags}
