@@ -37,7 +37,8 @@ export interface DiaryCardData {
 
 export function DiaryCard({ diary }: { diary: DiaryCardData }) {
   const titleContent = diary.title ?? (diary.privacy === "private" ? "Private Entry" : "Untitled");
-  const isHighlighted = diary.highlight === true && typeof diary.title === "string" && diary.title.includes("<em>");
+  const titleIsHighlighted = diary.highlight === true && typeof diary.title === "string" && diary.title.includes("<em>");
+  const excerptIsHighlighted = diary.highlight === true && typeof diary.excerpt === "string" && diary.excerpt.includes("<em>");
   return (
     <article className="py-3 border-b border-border last:border-b-0 border-l-2 border-l-accent transition-colors hover:bg-overlay -mx-4 px-4 rounded-sm">
       <div className="max-w-prose">
@@ -45,7 +46,7 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
           href={`/diary/${diary.id}`}
           className="text-lg font-serif font-semibold text-foreground leading-snug no-underline hover:underline"
         >
-          {isHighlighted ? (
+          {titleIsHighlighted ? (
             <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleContent) }} />
           ) : (
             titleContent
@@ -91,7 +92,7 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
 
         {diary.excerpt && (
           <p className="mt-2 text-xs text-muted leading-snug line-clamp-2">
-            {isHighlighted ? (
+            {excerptIsHighlighted ? (
               <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(diary.excerpt!) }} />
             ) : (
               diary.excerpt

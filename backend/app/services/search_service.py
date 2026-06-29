@@ -59,7 +59,7 @@ async def search_diaries(
     filter_expression = " AND ".join(filters) if filters else None
 
     sort_field, sort_order = sort.split(":") if ":" in sort else (sort, "desc")
-    sort_param = [{sort_field: sort_order}]
+    sort_param = [f"{sort_field}:{sort_order}"]
 
     try:
         index = get_client().index(PUBLIC_DIARIES_INDEX)
@@ -74,19 +74,22 @@ async def search_diaries(
             },
         }
 
-    search_params = {
+    search_params: dict = {
         "filter": filter_expression,
-        "sort": sort_param,
-        "page": page,
-        "hitsPerPage": per_page,
+        "limit": per_page,
+        "offset": (page - 1) * per_page,
         "attributesToHighlight": ["title", "content_text"],
-        "attributesToCrop": [{"attribute": "content_text", "cropLength": 300}],
+        "attributesToCrop": ["content_text"],
+        "highlightPreTag": "<em>",
+        "highlightPostTag": "</em>",
     }
+    if sort_field in ("created_at", "updated_at", "like_count", "comment_count"):
+        search_params["sort"] = sort_param
 
     try:
         result = await asyncio.to_thread(_run_search, index, q or "", search_params)
-    except Exception:
-        logger.warning("Meilisearch search failed")
+    except Exception as e:
+        logger.warning("Meilisearch search failed: %s", e)
         return {
             "data": [],
             "meta": {
@@ -98,14 +101,18 @@ async def search_diaries(
 
     enriched = await enrich_search_results(result["hits"], current_user)
 
+    total = result.get("estimatedTotalHits", 0)
+    offset_val = result.get("offset", 0)
+    limit_val = result.get("limit", per_page)
+
     return {
         "data": enriched,
         "meta": {
-            "page": result.get("page", page),
-            "per_page": result.get("hitsPerPage", per_page),
-            "total": result.get("totalHits", 0),
-            "has_next": result.get("page", 1) < result.get("totalPages", 1),
-            "has_prev": result.get("page", 1) > 1,
+            "page": (offset_val // limit_val) + 1 if limit_val else 1,
+            "per_page": limit_val,
+            "total": total,
+            "has_next": offset_val + limit_val < total,
+            "has_prev": offset_val > 0,
             "processing_time_ms": result.get("processingTimeMs", 0),
         },
     }

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from app.search.config import PUBLIC_DIARIES_INDEX, get_client
@@ -14,15 +15,15 @@ class DiaryIndexer:
             return
         try:
             doc = self._build_document(diary)
-            await self.index.add_documents([doc], primary_key="id")
+            await asyncio.to_thread(lambda: self.index.add_documents([doc], primary_key="id"))
         except Exception:
-            logger.warning("Failed to index diary %s", diary.get("_id"))
+            logger.warning("Failed to index diary %s", diary.get("_id"), exc_info=True)
 
     async def remove_diary(self, diary_id: str) -> None:
         try:
-            await self.index.delete_document(diary_id)
+            await asyncio.to_thread(lambda: self.index.delete_document(diary_id))
         except Exception:
-            logger.warning("Failed to remove diary %s from index", diary_id)
+            logger.warning("Failed to remove diary %s from index", diary_id, exc_info=True)
 
     async def bulk_index(self, diaries: list[dict]) -> None:
         docs = [
@@ -33,15 +34,15 @@ class DiaryIndexer:
         if not docs:
             return
         try:
-            await self.index.add_documents(docs, primary_key="id")
+            await asyncio.to_thread(lambda: self.index.add_documents(docs, primary_key="id"))
         except Exception:
-            logger.warning("Failed to bulk index %d diaries", len(docs))
+            logger.warning("Failed to bulk index %d diaries", len(docs), exc_info=True)
 
     async def clear_index(self) -> None:
         try:
-            await self.index.delete_all_documents()
+            await asyncio.to_thread(lambda: self.index.delete_all_documents())
         except Exception:
-            logger.warning("Failed to clear Meilisearch index")
+            logger.warning("Failed to clear Meilisearch index", exc_info=True)
 
     def _build_document(self, diary: dict) -> dict:
         content_text = diary.get("content_text") or ""
