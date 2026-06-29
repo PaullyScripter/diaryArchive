@@ -144,7 +144,7 @@ export default function ProfilePage() {
                       {entry.tags.map((tag) => (
                         <Link
                           key={tag}
-                          href={`/explore?tag=${tag}`}
+                          href={`/explore?tags=${tag}`}
                           className="text-link hover:underline mr-1"
                         >
                           #{tag}

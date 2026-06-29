@@ -3,29 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronDownIcon, ChevronRightIcon } from "@/components/shared/icons";
+import { usePopularTags, useEmotions } from "@/hooks/use-diaries";
 
-const tags = [
-  { name: "life", count: 42 },
-  { name: "reflection", count: 28 },
-  { name: "poetry", count: 15 },
-  { name: "travel", count: 12 },
-  { name: "mental-health", count: 8 },
-  { name: "relationships", count: 6 },
-  { name: "work", count: 5 },
-  { name: "family", count: 4 },
-  { name: "art", count: 3 },
-];
-
-const emotions = [
-  { name: "grateful" },
-  { name: "reflective" },
-  { name: "hopeful" },
-  { name: "melancholy" },
-  { name: "anxious" },
-  { name: "joyful" },
-];
-
-const years = ["2026", "2025", "2024"];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 2023 }, (_, i) => String(currentYear - i));
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -60,6 +41,12 @@ function CollapsibleSection({
 }
 
 export function BrowseSidebar() {
+  const { data: tagsData } = usePopularTags();
+  const { data: emotionsData } = useEmotions();
+
+  const tags = tagsData ?? [];
+  const emotions = emotionsData ?? [];
+
   return (
     <aside className="w-44 shrink-0 hidden lg:block">
       <nav aria-label="Browse the archive">
@@ -67,12 +54,12 @@ export function BrowseSidebar() {
 
         <CollapsibleSection title="Tags">
           {tags.map((tag) => (
-            <div key={tag.name}>
+            <div key={tag.tag}>
               <Link
-                href={`/explore?tags=${tag.name}`}
+                href={`/explore?tags=${tag.tag}`}
                 className="text-xs text-muted hover:text-foreground no-underline hover:underline"
               >
-                {tag.name}
+                {tag.tag}
                 <span className="text-subtle ml-1">({tag.count})</span>
               </Link>
             </div>
@@ -81,12 +68,12 @@ export function BrowseSidebar() {
 
         <CollapsibleSection title="Emotions">
           {emotions.map((emotion) => (
-            <div key={emotion.name}>
+            <div key={emotion.emotion}>
               <Link
-                href={`/explore?emotion=${emotion.name}`}
+                href={`/explore?emotion=${emotion.emotion}`}
                 className="text-xs text-muted hover:text-foreground no-underline hover:underline"
               >
-                {emotion.name}
+                {emotion.emotion}
               </Link>
             </div>
           ))}
@@ -112,7 +99,7 @@ export function BrowseSidebar() {
               {months.map((month, idx) => (
                 <div key={month}>
                   <Link
-                    href={`/explore?year=2026&month=${idx + 1}`}
+                    href={`/explore?year=${currentYear}&month=${idx + 1}`}
                     className="text-xs text-muted hover:text-foreground no-underline hover:underline"
                   >
                   {month}

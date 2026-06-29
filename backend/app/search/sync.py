@@ -7,8 +7,18 @@ from app.search.indexer import DiaryIndexer
 
 logger = logging.getLogger(__name__)
 
+_reindex_lock = asyncio.Lock()
+
 
 async def full_reindex(max_retries: int = 5) -> int:
+    if _reindex_lock.locked():
+        logger.warning("Reindex already in progress, skipping")
+        return 0
+    async with _reindex_lock:
+        return await _do_reindex(max_retries)
+
+
+async def _do_reindex(max_retries: int) -> int:
     logger.info("Starting full Meilisearch re-index...")
 
     idx = None
@@ -46,15 +56,41 @@ async def full_reindex(max_retries: int = 5) -> int:
 
     batch: list[dict] = []
     total = 0
+    skipped = 0
     async for diary in cursor:
         batch.append(diary)
         if len(batch) >= 100:
-            await indexer.bulk_index(batch)
+            try:
+                await indexer.bulk_index(batch)
+            except Exception:
+                logger.warning("Batch indexing failed for %d documents, retrying individually", len(batch))
+                for d in batch:
+                    try:
+                        await indexer.index_diary(d)
+                        total += 1
+                    except Exception:
+                        logger.warning("Failed to index diary %s", d.get("_id"))
+                        skipped += 1
+                batch = []
+                continue
             total += len(batch)
             logger.info("Indexed batch of %d, running total: %d", len(batch), total)
             batch = []
     if batch:
-        await indexer.bulk_index(batch)
+        try:
+            await indexer.bulk_index(batch)
+        except Exception:
+            logger.warning("Final batch indexing failed for %d documents, retrying individually", len(batch))
+            for d in batch:
+                try:
+                    await indexer.index_diary(d)
+                    total += 1
+                except Exception:
+                    logger.warning("Failed to index diary %s", d.get("_id"))
+                    skipped += 1
+            batch = []
+            logger.info("Indexed final batch individually, total: %d, skipped: %d", total, skipped)
+            return total
         total += len(batch)
         logger.info("Indexed final batch of %d, total: %d", len(batch), total)
 

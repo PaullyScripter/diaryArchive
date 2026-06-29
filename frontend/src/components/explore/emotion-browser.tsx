@@ -13,6 +13,14 @@ const EMOTION_MAP: Record<string, { label: string }> = {
   lonely: { label: "Lonely" },
   nostalgic: { label: "Nostalgic" },
   neutral: { label: "Neutral" },
+  melancholy: { label: "Melancholy" },
+  peaceful: { label: "Peaceful" },
+  energetic: { label: "Energetic" },
+  curious: { label: "Curious" },
+  frustrated: { label: "Frustrated" },
+  content: { label: "Content" },
+  overwhelmed: { label: "Overwhelmed" },
+  loved: { label: "Loved" },
 };
 
 interface EmotionBrowserProps {
@@ -45,8 +53,7 @@ export function EmotionBrowser({ emotions, selectedEmotion, onSelectEmotion }: E
         }`}
         type="button"
       >
-        <span className="text-xs font-medium text-subtle">All</span>
-        <span className="text-xs text-foreground font-medium">All</span>
+        <span className="text-sm font-medium text-foreground">All</span>
       </button>
       {emotionEntries.map(({ emotion, count }) => {
         const em = EMOTION_MAP[emotion];

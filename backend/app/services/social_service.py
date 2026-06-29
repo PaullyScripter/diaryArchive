@@ -48,14 +48,17 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
 
     deleted = await like_repo.find_one_and_delete(user_id, diary_id)
     if deleted is not None:
-        await diary_repo._collection.update_one(
-            {"_id": diary["_id"]}, {"$inc": {"stats.like_count": -1}}
-        )
-        diary = await diary_repo.get_by_id(diary_id)
-        return {
-            "is_liked": False,
-            "like_count": diary["stats"]["like_count"] if diary else 0,
-        }
+    await diary_repo._collection.update_one(
+        {"_id": diary["_id"]}, {"$inc": {"stats.like_count": -1}}
+    )
+    diary = await diary_repo.get_by_id(diary_id)
+    if diary:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
+    return {
+        "is_liked": False,
+        "like_count": diary["stats"]["like_count"] if diary else 0,
+    }
 
     try:
         await like_repo.create({
@@ -73,6 +76,9 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
         {"_id": diary["_id"]}, {"$inc": {"stats.like_count": 1}}
     )
     diary = await diary_repo.get_by_id(diary_id)
+    if diary:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
     return {
         "is_liked": True,
         "like_count": diary["stats"]["like_count"] if diary else 0,
@@ -96,14 +102,17 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
 
     deleted = await bookmark_repo.find_one_and_delete(user_id, diary_id)
     if deleted is not None:
-        await diary_repo._collection.update_one(
-            {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": -1}}
-        )
-        diary = await diary_repo.get_by_id(diary_id)
-        return {
-            "is_bookmarked": False,
-            "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
-        }
+    await diary_repo._collection.update_one(
+        {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": -1}}
+    )
+    diary = await diary_repo.get_by_id(diary_id)
+    if diary:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
+    return {
+        "is_bookmarked": False,
+        "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
+    }
 
     try:
         await bookmark_repo.create({
@@ -121,6 +130,9 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
         {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": 1}}
     )
     diary = await diary_repo.get_by_id(diary_id)
+    if diary:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
     return {
         "is_bookmarked": True,
         "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,

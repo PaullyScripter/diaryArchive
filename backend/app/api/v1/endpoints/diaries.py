@@ -35,7 +35,6 @@ async def create(
 
 @router.get("")
 async def list_diaries(
-    request: Request,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     sort: str = Query("latest"),
@@ -44,10 +43,10 @@ async def list_diaries(
     emotion: str | None = Query(None),
     year: int | None = Query(None),
     month: int | None = Query(None, ge=1, le=12),
+    current_user: dict | None = Depends(_optional_user),
 ):
     if month is not None and year is None:
         raise ValidationException("Year is required when filtering by month")
-    current_user = await _optional_user(request.headers.get("Authorization", ""))
     result = await list_public_diaries(
         current_user=current_user,
         page=page,
@@ -63,8 +62,7 @@ async def list_diaries(
 
 
 @router.get("/random")
-async def random_diary(request: Request):
-    current_user = await _optional_user(request.headers.get("Authorization", ""))
+async def random_diary(current_user: dict | None = Depends(_optional_user)):
     diary = await get_random_diary(current_user)
     return {"data": diary}
 
@@ -72,9 +70,8 @@ async def random_diary(request: Request):
 @router.get("/{diary_id}")
 async def get_one(
     diary_id: str,
-    request: Request,
+    current_user: dict | None = Depends(_optional_user),
 ):
-    current_user = await _optional_user(request.headers.get("Authorization", ""))
     diary = await get_diary(diary_id, current_user)
     return {"data": diary}
 
