@@ -17,12 +17,12 @@ const tags = [
 ];
 
 const emotions = [
-  { name: "grateful", symbol: "◈" },
-  { name: "reflective", symbol: "○" },
-  { name: "hopeful", symbol: "☆" },
-  { name: "melancholy", symbol: "◇" },
-  { name: "anxious", symbol: "△" },
-  { name: "joyful", symbol: "✦" },
+  { name: "grateful" },
+  { name: "reflective" },
+  { name: "hopeful" },
+  { name: "melancholy" },
+  { name: "anxious" },
+  { name: "joyful" },
 ];
 
 const years = ["2026", "2025", "2024"];
@@ -86,7 +86,6 @@ export function BrowseSidebar() {
                 href={`/explore?emotion=${emotion.name}`}
                 className="text-xs text-muted hover:text-foreground no-underline hover:underline"
               >
-                <span className="text-accent mr-1">{emotion.symbol}</span>
                 {emotion.name}
               </Link>
             </div>
@@ -129,7 +128,7 @@ export function BrowseSidebar() {
           href="/diary/random"
           className="text-xs font-medium text-foreground hover:text-link no-underline hover:underline"
         >
-          → Random Diary
+          Random Diary
         </Link>
       </div>
     </aside>
