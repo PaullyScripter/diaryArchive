@@ -70,6 +70,8 @@ export function ExplorePageContent() {
   const {
     data,
     isLoading,
+    isError,
+    error,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -91,7 +93,7 @@ export function ExplorePageContent() {
           value={store.query}
           onChange={(q) => {
             store.setQuery(q);
-            setTimeout(updateUrl, 350);
+            updateUrl();
           }}
           isLoading={isLoading}
         />
@@ -166,6 +168,8 @@ export function ExplorePageContent() {
         <SearchResults
           diaries={diaries}
           isLoading={isLoading}
+          isError={isError}
+          error={error}
           isFetchingNextPage={isFetchingNextPage}
           hasNextPage={!!hasNextPage}
           total={total}

@@ -24,6 +24,12 @@ export function SearchBar({
     setLocalValue(value);
   }, [value]);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   const handleChange = (newValue: string) => {
     setLocalValue(newValue);
     if (debounceRef.current) clearTimeout(debounceRef.current);

@@ -118,6 +118,10 @@ async def create_comment(
         {"_id": diary["_id"]},
         {"$inc": {"stats.comment_count": 1}},
     )
+    from app.services.diary_service import _index_diary_async
+    updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
+    if updated_diary:
+        _index_diary_async(updated_diary)
 
     comment_doc["_id"] = comment_id
     return _build_comment_response(comment_doc, current_user, current_user, diary)
@@ -236,6 +240,10 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict) -> 
         {"_id": diary["_id"]},
         {"$inc": {"stats.comment_count": -1}},
     )
+    from app.services.diary_service import _index_diary_async
+    updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
+    if updated_diary:
+        _index_diary_async(updated_diary)
 
 
 async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:

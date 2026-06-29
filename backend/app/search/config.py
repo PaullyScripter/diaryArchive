@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from meilisearch import Client
@@ -34,11 +35,14 @@ def get_client() -> Client:
 async def initialize_search_indexes() -> None:
     try:
         client = get_client()
-        try:
-            index = client.get_index(PUBLIC_DIARIES_INDEX)
-        except Exception:
-            index = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
-        index.update_settings(INDEX_SETTINGS)
+        def _setup():
+            try:
+                index = client.get_index(PUBLIC_DIARIES_INDEX)
+            except Exception:
+                index = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+            index.update_settings(INDEX_SETTINGS)
+            return index
+        await asyncio.to_thread(_setup)
         logger.info("Meilisearch index '%s' initialized", PUBLIC_DIARIES_INDEX)
     except Exception:
         logger.warning("Meilisearch not available — search will be unavailable")

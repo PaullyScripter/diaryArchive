@@ -22,6 +22,12 @@ def _index_diary_async(diary: dict) -> None:
             await indexer.index_diary(diary)
         except Exception:
             logger.warning("Async indexing failed for diary %s", diary.get("_id"))
+        try:
+            from app.core.database import DatabaseManager
+            redis = DatabaseManager.get_redis()
+            await redis.delete("tags:popular:90:50", "emotions:counts:90")
+        except Exception:
+            pass
     import asyncio
     asyncio.create_task(_do_index())
 
@@ -34,6 +40,12 @@ def _remove_from_index_async(diary_id: str) -> None:
             await indexer.remove_diary(diary_id)
         except Exception:
             logger.warning("Async index removal failed for diary %s", diary_id)
+        try:
+            from app.core.database import DatabaseManager
+            redis = DatabaseManager.get_redis()
+            await redis.delete("tags:popular:90:50", "emotions:counts:90")
+        except Exception:
+            pass
     import asyncio
     asyncio.create_task(_do_remove())
 
