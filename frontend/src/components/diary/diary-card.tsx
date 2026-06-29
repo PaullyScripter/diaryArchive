@@ -35,7 +35,7 @@ export interface DiaryCardData {
   highlight?: boolean;
 }
 
-export function DiaryCard({ diary }: { diary: DiaryCardData }) {
+export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; selectedTags?: string[] }) {
   const titleContent = diary.title ?? (diary.privacy === "private" ? "Private Entry" : "Untitled");
   const titleIsHighlighted = diary.highlight === true && typeof diary.title === "string" && diary.title.includes("<em>");
   const excerptIsHighlighted = diary.highlight === true && typeof diary.excerpt === "string" && diary.excerpt.includes("<em>");
@@ -85,7 +85,7 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
         {diary.tags.length > 0 && (
           <div className="mt-1 text-xs">
             {diary.tags.map((tag) => (
-              <TagBadge key={tag} tag={tag} />
+              <TagBadge key={tag} tag={tag} active={selectedTags.includes(tag)} />
             ))}{" "}
           </div>
         )}

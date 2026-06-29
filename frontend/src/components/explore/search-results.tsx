@@ -3,7 +3,7 @@
 import { DiaryCard } from "@/components/diary/diary-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { SearchResult } from "@/store/explore-store";
+import { useExploreStore, type SearchResult } from "@/store/explore-store";
 
 interface SearchResultsProps {
   diaries: SearchResult[];
@@ -22,6 +22,7 @@ export function SearchResults({
   total,
   onLoadMore,
 }: SearchResultsProps) {
+  const selectedTags = useExploreStore((s) => s.selectedTags);
   if (isLoading) {
     return (
       <div className="space-y-0" role="feed" aria-label="Search results" aria-busy="true">
@@ -68,6 +69,7 @@ export function SearchResults({
               published_at: diary.created_at,
               highlight: true,
             }}
+            selectedTags={selectedTags}
           />
         ))}
       </div>
