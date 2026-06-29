@@ -58,7 +58,7 @@ export function useSearchResults() {
     queryKey: ["search", query, selectedTags, selectedEmotion, selectedYear, selectedMonth, sort],
     queryFn: ({ pageParam }) =>
       fetchSearch({
-        q: query,
+        q: query || (selectedTags.length > 0 ? selectedTags.join(" ") : ""),
         tags: selectedTags.length > 0 ? selectedTags.join(",") : undefined,
         emotion: selectedEmotion,
         year: selectedYear,

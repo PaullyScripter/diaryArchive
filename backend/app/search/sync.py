@@ -1,16 +1,36 @@
+import asyncio
 import logging
 
 from app.core.database import DatabaseManager
-from app.search.config import PUBLIC_DIARIES_INDEX, get_client
+from app.search.config import INDEX_SETTINGS, PUBLIC_DIARIES_INDEX, get_client
 from app.search.indexer import DiaryIndexer
 
 logger = logging.getLogger(__name__)
 
 
-async def full_reindex() -> int:
+async def full_reindex(max_retries: int = 5) -> int:
     logger.info("Starting full Meilisearch re-index...")
-    indexer = DiaryIndexer()
 
+    idx = None
+    for attempt in range(max_retries):
+        try:
+            client = get_client()
+            try:
+                idx = client.get_index(PUBLIC_DIARIES_INDEX)
+            except Exception:
+                idx = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
+            await asyncio.to_thread(lambda: idx.update_settings(INDEX_SETTINGS))
+            logger.info("Index settings applied")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning("Meilisearch not ready, retrying in 2s (%d/%d): %s", attempt + 1, max_retries, e)
+                await asyncio.sleep(2)
+            else:
+                logger.warning("Meilisearch not available after %d attempts — reindex skipped: %s", max_retries, e)
+                return 0
+
+    indexer = DiaryIndexer()
     await indexer.clear_index()
 
     db = DatabaseManager.get_db()
@@ -31,13 +51,17 @@ async def full_reindex() -> int:
         if len(batch) >= 100:
             await indexer.bulk_index(batch)
             total += len(batch)
+            logger.info("Indexed batch of %d, running total: %d", len(batch), total)
             batch = []
     if batch:
         await indexer.bulk_index(batch)
         total += len(batch)
+        logger.info("Indexed final batch of %d, total: %d", len(batch), total)
 
     mongo_count = await db.diaries.count_documents({"privacy": "public"})
-    index_stats = get_client().index(PUBLIC_DIARIES_INDEX).get_stats()
+    index_stats = await asyncio.to_thread(
+        lambda: get_client().index(PUBLIC_DIARIES_INDEX).get_stats()
+    )
     index_count = index_stats.number_of_documents
 
     logger.info(
