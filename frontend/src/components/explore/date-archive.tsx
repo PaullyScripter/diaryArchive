@@ -1,9 +1,6 @@
 "use client";
 
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+import { MONTHS_ABBR } from "@/lib/utils";
 
 interface DateArchiveProps {
   selectedYear: number | null;
@@ -47,7 +44,7 @@ export function DateArchive({ selectedYear, selectedMonth, onSelectDate }: DateA
 
       {selectedYear && (
         <div className="grid grid-cols-6 sm:grid-cols-12 gap-1">
-          {MONTHS.map((name, idx) => {
+          {MONTHS_ABBR.map((name, idx) => {
             const month = idx + 1;
             const isSelected = selectedMonth === month;
             return (

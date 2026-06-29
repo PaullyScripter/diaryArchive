@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import UTC, datetime
 
@@ -28,7 +29,6 @@ def _index_diary_async(diary: dict) -> None:
             await redis.delete("tags:popular:90:50", "emotions:counts:90")
         except Exception:
             pass
-    import asyncio
     asyncio.create_task(_do_index())
 
 
@@ -46,7 +46,6 @@ def _remove_from_index_async(diary_id: str) -> None:
             await redis.delete("tags:popular:90:50", "emotions:counts:90")
         except Exception:
             pass
-    import asyncio
     asyncio.create_task(_do_remove())
 
 
