@@ -265,7 +265,7 @@ export default function DiaryReaderPage() {
               key={w}
               className="inline-block px-2 py-0.5 text-xs border border-border text-muted"
             >
-              ⚠ {w}
+              CW: {w}
             </span>
           ))}
         </div>

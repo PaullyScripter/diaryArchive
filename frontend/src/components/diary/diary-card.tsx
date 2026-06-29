@@ -71,7 +71,7 @@ export function DiaryCard({ diary }: { diary: DiaryCardData }) {
           {diary.content_warnings && diary.content_warnings.length > 0 && (
             <>
               <span className="mx-1">·</span>
-              <span className="text-subtle text-[11px]" title={diary.content_warnings.join(", ")}>⚠</span>
+              <span className="text-subtle text-[11px]" title={diary.content_warnings.join(", ")}>CW</span>
             </>
           )}
           {diary.privacy && (

@@ -1,18 +1,18 @@
 "use client";
 
-const EMOTION_MAP: Record<string, { emoji: string; label: string }> = {
-  happy: { emoji: "\uD83D\uDE0A", label: "Happy" },
-  sad: { emoji: "\uD83D\uDE22", label: "Sad" },
-  hopeful: { emoji: "\u2601\uFE0F", label: "Hopeful" },
-  reflective: { emoji: "\uD83E\uDE9E", label: "Reflective" },
-  angry: { emoji: "\uD83D\uDE24", label: "Angry" },
-  anxious: { emoji: "\uD83D\uDE30", label: "Anxious" },
-  grateful: { emoji: "\uD83D\uDE4F", label: "Grateful" },
-  excited: { emoji: "\uD83C\uDF89", label: "Excited" },
-  tired: { emoji: "\uD83D\uDE34", label: "Tired" },
-  lonely: { emoji: "\uD83C\uDF27\uFE0F", label: "Lonely" },
-  nostalgic: { emoji: "\uD83D\uDD6E\uFE0F", label: "Nostalgic" },
-  neutral: { emoji: "\uD83D\uDE10", label: "Neutral" },
+const EMOTION_MAP: Record<string, { label: string }> = {
+  happy: { label: "Happy" },
+  sad: { label: "Sad" },
+  hopeful: { label: "Hopeful" },
+  reflective: { label: "Reflective" },
+  angry: { label: "Angry" },
+  anxious: { label: "Anxious" },
+  grateful: { label: "Grateful" },
+  excited: { label: "Excited" },
+  tired: { label: "Tired" },
+  lonely: { label: "Lonely" },
+  nostalgic: { label: "Nostalgic" },
+  neutral: { label: "Neutral" },
 };
 
 interface EmotionBrowserProps {
@@ -45,7 +45,7 @@ export function EmotionBrowser({ emotions, selectedEmotion, onSelectEmotion }: E
         }`}
         type="button"
       >
-        <span className="text-xl">All</span>
+        <span className="text-xs font-medium text-subtle">All</span>
         <span className="text-xs text-foreground font-medium">All</span>
       </button>
       {emotionEntries.map(({ emotion, count }) => {
@@ -64,8 +64,7 @@ export function EmotionBrowser({ emotions, selectedEmotion, onSelectEmotion }: E
             }`}
             type="button"
           >
-            <span className="text-xl">{em.emoji}</span>
-            <span className="text-xs text-foreground">{em.label}</span>
+            <span className="text-sm font-medium text-foreground">{em.label}</span>
             <span className="text-[10px] text-subtle">{count}</span>
           </button>
         );
