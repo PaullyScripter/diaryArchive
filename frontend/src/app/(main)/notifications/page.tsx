@@ -32,14 +32,19 @@ export default function NotificationsPage() {
             </p>
           </div>
           {unread > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => markAllRead.mutate()}
-              disabled={markAllRead.isPending}
-            >
-              {markAllRead.isPending ? "Marking..." : "Mark all as read"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {markAllRead.isError && (
+                <span className="text-xs text-destructive">Failed — try again</span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+              >
+                {markAllRead.isPending ? "Marking..." : "Mark all as read"}
+              </Button>
+            </div>
           )}
         </div>
 

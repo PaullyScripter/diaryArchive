@@ -60,6 +60,7 @@ async def create_notification(
 
     actor = await user_repo.get_by_id(actor_id)
     actor_username = actor.get("username", "someone") if actor else "someone"
+    actor_avatar_path = actor.get("avatar_path") if actor else None
 
     messages = {
         "like": f"{actor_username} liked your diary",
@@ -76,24 +77,27 @@ async def create_notification(
             message = f"{actor_username} replied to your comment"
             if metadata.get("diary_title"):
                 message += f' on "{metadata["diary_title"][:50]}"'
+            if metadata.get("comment_excerpt"):
+                message += f': "{metadata["comment_excerpt"][:80]}"'
         elif notification_type == "comment" and metadata.get("comment_excerpt"):
             message += f': "{metadata["comment_excerpt"][:80]}"'
 
     if notification_type == "follow":
-        target_type = "user"
+        resolved_type = target_type or "user"
     elif notification_type == "comment":
-        target_type = "comment"
+        resolved_type = target_type or "comment"
     else:
-        target_type = "diary"
+        resolved_type = target_type or "diary"
 
     repo = NotificationRepository()
     doc = {
         "user_id": ObjectId(recipient_id),
         "actor_id": ObjectId(actor_id),
         "actor_username": actor_username,
+        "actor_avatar_path": actor_avatar_path,
         "type": notification_type,
         "target_id": ObjectId(target_id) if target_id else None,
-        "target_type": target_type,
+        "target_type": resolved_type,
         "message": message,
         "metadata": metadata or {},
         "read": False,

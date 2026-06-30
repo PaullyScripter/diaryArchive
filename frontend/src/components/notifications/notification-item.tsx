@@ -50,10 +50,9 @@ export function NotificationItem({ notification, onMarkRead }: NotificationItemP
           ? "hover:bg-overlay"
           : "bg-accent/5 border-l-2 border-l-accent hover:bg-accent/10"
       }`}
-      role="button"
       aria-label={`${notification.read ? "" : "Unread: "}${notification.message}`}
     >
-      <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-overlay flex items-center justify-center border border-border">
+      <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-overlay flex items-center justify-center border border-border" aria-hidden="true">
         {ICON_MAP[notification.type] || ICON_MAP.like}
       </div>
       <div className="min-w-0 flex-1">

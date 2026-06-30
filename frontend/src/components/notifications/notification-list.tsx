@@ -3,12 +3,15 @@
 import type { NotificationItem as NotificationItemType } from "@/hooks/use-notifications";
 import { NotificationItem } from "./notification-item";
 
-function groupByDate(notifications: NotificationItemType[]): Record<string, NotificationItemType[]> {
-  const groups: Record<string, NotificationItemType[]> = {};
+const GROUP_ORDER = ["Today", "Yesterday", "This Week", "This Month", "Earlier"];
+
+function groupByDate(notifications: NotificationItemType[]): [string, NotificationItemType[]][] {
+  const groups = new Map<string, NotificationItemType[]>();
   const now = new Date();
 
   for (const n of notifications) {
     const d = new Date(n.created_at);
+    if (isNaN(d.getTime())) continue;
     const diffMs = now.getTime() - d.getTime();
     const diffDays = Math.floor(diffMs / 86400000);
 
@@ -19,11 +22,11 @@ function groupByDate(notifications: NotificationItemType[]): Record<string, Noti
     else if (diffDays < 30) key = "This Month";
     else key = "Earlier";
 
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(n);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(n);
   }
 
-  return groups;
+  return GROUP_ORDER.filter((k) => groups.has(k)).map((k) => [k, groups.get(k)!]);
 }
 
 interface NotificationListProps {
@@ -38,7 +41,7 @@ export function NotificationList({ notifications, onMarkRead }: NotificationList
 
   return (
     <div className="space-y-6">
-      {Object.entries(groups).map(([label, items]) => (
+      {groups.map(([label, items]) => (
         <div key={label}>
           <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
             {label}

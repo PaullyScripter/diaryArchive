@@ -79,6 +79,8 @@ export function useNotifications() {
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_next ? lastPage.meta.page + 1 : undefined,
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 55_000,
     enabled: isAuthenticated,
   });
 
@@ -86,21 +88,24 @@ export function useNotifications() {
     queryKey: ["notifications", "unread-count"],
     queryFn: fetchUnreadCount,
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 55_000,
     enabled: isAuthenticated,
   });
 
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
+  };
+
   const markReadMutation = useMutation({
     mutationFn: markRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: invalidateAll,
   });
 
   const markAllReadMutation = useMutation({
     mutationFn: markAllRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
+    onSuccess: invalidateAll,
   });
 
   return {
