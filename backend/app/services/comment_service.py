@@ -122,6 +122,17 @@ async def create_comment(
     updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
     if updated_diary:
         _index_diary_async(updated_diary)
+    from app.services.notification_service import _send_notification_async
+    _send_notification_async(
+        recipient_id=str(diary["user_id"]),
+        actor_id=str(current_user["_id"]),
+        notification_type="comment",
+        target_id=str(comment_id),
+        metadata={
+            "diary_title": diary.get("title"),
+            "comment_excerpt": content[:100],
+        },
+    )
 
     comment_doc["_id"] = comment_id
     return _build_comment_response(comment_doc, current_user, current_user, diary)
