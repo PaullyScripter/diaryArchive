@@ -26,7 +26,7 @@ def _index_diary_async(diary: dict) -> None:
         try:
             from app.core.database import DatabaseManager
             redis = DatabaseManager.get_redis()
-            await redis.delete("tags:popular:90:50", "emotions:counts:90")
+            await redis.delete("tags:popular:90:50", "tags:popular:365:100", "emotions:counts:90", "emotions:counts:v2:90")
         except Exception:
             pass
     asyncio.create_task(_do_index())
@@ -43,7 +43,7 @@ def _remove_from_index_async(diary_id: str) -> None:
         try:
             from app.core.database import DatabaseManager
             redis = DatabaseManager.get_redis()
-            await redis.delete("tags:popular:90:50", "emotions:counts:90")
+            await redis.delete("tags:popular:90:50", "tags:popular:365:100", "emotions:counts:90", "emotions:counts:v2:90")
         except Exception:
             pass
     asyncio.create_task(_do_remove())

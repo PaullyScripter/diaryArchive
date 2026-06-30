@@ -96,6 +96,12 @@ async def update(
 @router.delete("/{diary_id}", status_code=204)
 async def delete(
     diary_id: str,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:delete_diary:{current_user['_id']}", 10, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many diary deletion attempts")
     await delete_diary(diary_id, current_user)

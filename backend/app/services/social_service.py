@@ -287,7 +287,6 @@ async def list_my_likes(
     like_repo = LikeRepository()
     skip = (page - 1) * per_page
     likes = await like_repo.find_by_user(str(current_user["_id"]), skip=skip, limit=per_page)
-    total = await like_repo.count_by_user(str(current_user["_id"]))
 
     diary_ids = [str(like["diary_id"]) for like in likes]
     diary_repo = DiaryRepository()
@@ -295,6 +294,19 @@ async def list_my_likes(
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     diaries = [d for d in diaries if d.get("privacy") == "public"]
+
+    from bson import ObjectId
+    all_likes = await like_repo._collection.find(
+        {"user_id": ObjectId(current_user["_id"])},
+        {"diary_id": 1}
+    ).to_list(length=10000)
+    all_diary_ids = list({str(l["diary_id"]) for l in all_likes})
+    valid_oids = [ObjectId(did) for did in all_diary_ids if ObjectId.is_valid(did)]
+    public_diaries = await diary_repo._collection.count_documents({
+        "_id": {"$in": valid_oids},
+        "privacy": "public",
+    })
+    total = public_diaries
 
     if not diaries:
         return {
@@ -337,11 +349,22 @@ async def list_my_bookmarks(
     bookmark_repo = BookmarkRepository()
     skip = (page - 1) * per_page
     bookmarks = await bookmark_repo.find_by_user(str(current_user["_id"]), skip=skip, limit=per_page)
-    total = await bookmark_repo.count_by_user(str(current_user["_id"]))
 
     diary_ids = [str(bm["diary_id"]) for bm in bookmarks]
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
+
+    from bson import ObjectId
+    all_bookmarks = await bookmark_repo._collection.find(
+        {"user_id": ObjectId(current_user["_id"])},
+        {"diary_id": 1}
+    ).to_list(length=10000)
+    all_diary_ids = list({str(b["diary_id"]) for b in all_bookmarks})
+    valid_oids = [ObjectId(did) for did in all_diary_ids if ObjectId.is_valid(did)]
+    total = await diary_repo._collection.count_documents({
+        "_id": {"$in": valid_oids},
+        "privacy": "public",
+    })
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     diaries = [d for d in diaries if d.get("privacy") == "public"]

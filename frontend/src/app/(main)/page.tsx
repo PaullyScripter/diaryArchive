@@ -30,6 +30,7 @@ export default function Home() {
   const {
     data: diariesData,
     isLoading: diariesLoading,
+    isError: diariesError,
   } = useDiaries({ sort: "latest", perPage: 5 });
   const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
   const { data: popularTags } = usePopularTags();
@@ -61,7 +62,20 @@ export default function Home() {
           </p>
         </div>
 
-        {diariesLoading ? (
+        {diariesError ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted mb-2">
+              Could not load diaries.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-link hover:underline cursor-pointer"
+              type="button"
+            >
+              Retry
+            </button>
+          </div>
+        ) : diariesLoading ? (
           <div className="space-y-0">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
