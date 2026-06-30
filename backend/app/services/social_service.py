@@ -401,6 +401,8 @@ async def list_following_feed(
     from app.services.enrichment_service import enrich_diary_batch
     diaries = await enrich_diary_batch(diaries, current_user)
 
+    await _sync_comment_counts(diaries)
+
     user_repo = UserRepository()
     author_ids = list({str(d["user_id"]) for d in diaries})
     authors = await user_repo.find_by_ids(author_ids)
