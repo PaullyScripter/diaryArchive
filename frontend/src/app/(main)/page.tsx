@@ -39,7 +39,7 @@ export default function Home() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const randomTags = useMemo(() => pickRandom(popularTags ?? [], 25), [popularTags]);
-  const randomEmotions = useMemo(() => pickRandom(emotions ?? [], 25), [emotions]);
+  const randomEmotions = useMemo(() => pickRandom(emotions?.data ?? [], 25), [emotions]);
 
   const latestDiaries: DiaryCardData[] =
     diariesData?.pages.flatMap((p) => p.data ?? []) ?? [];

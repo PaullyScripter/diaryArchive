@@ -45,7 +45,7 @@ export function BrowseSidebar() {
   const { data: emotionsData } = useEmotions();
 
   const tags = tagsData ?? [];
-  const emotions = emotionsData ?? [];
+  const emotions = emotionsData?.data ?? [];
 
   return (
     <aside className="w-44 shrink-0 hidden lg:block">
