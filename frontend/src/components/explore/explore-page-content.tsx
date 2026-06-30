@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useExploreStore } from "@/store/explore-store";
 import { useSearchResults } from "@/hooks/use-search";
@@ -15,20 +15,11 @@ import { SearchResults } from "@/components/explore/search-results";
 export function ExplorePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const skipSync = useRef(false);
-  const lastProgrammaticParams = useRef("");
-
   const store = useExploreStore();
   const { data: tagsData } = usePopularTags();
   const { data: emotionsResponse } = useEmotions();
 
   useEffect(() => {
-    const currentSearch = searchParams.toString();
-    if (skipSync.current && currentSearch === lastProgrammaticParams.current) {
-      skipSync.current = false;
-      return;
-    }
-    skipSync.current = false;
     const q = searchParams.get("q") || "";
     const tags = searchParams.get("tags") || "";
     const emotion = searchParams.get("emotion") || "";
@@ -66,8 +57,6 @@ export function ExplorePageContent() {
       if (store.selectedMonth) params.set("month", String(store.selectedMonth));
     }
     const qs = params.toString();
-    lastProgrammaticParams.current = qs;
-    skipSync.current = true;
     router.push(`/explore${qs ? "?" + qs : ""}`, { scroll: false });
   };
 
