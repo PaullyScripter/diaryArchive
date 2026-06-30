@@ -42,7 +42,6 @@ export default function DiaryReaderPage() {
     tags: string[];
   } | null>(null);
   const [decryptError, setDecryptError] = useState("");
-  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const isOwner = user?.id === diary?.author.id;
   const isPrivate = diary?.privacy === "private";
@@ -55,8 +54,6 @@ export default function DiaryReaderPage() {
     const commentId = hash.slice("#comment-".length);
     if (!commentId) return;
 
-    setHighlightId(commentId);
-
     const attemptScroll = (retries: number) => {
       const el = document.getElementById(hash.slice(1));
       if (el) {
@@ -64,10 +61,17 @@ export default function DiaryReaderPage() {
         el.classList.add("comment-highlight");
         highlightTimer.current = setTimeout(() => {
           el.classList.remove("comment-highlight");
-          setHighlightId(null);
         }, 1500);
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
         return;
+      }
+      if (retries === 10 || retries === 5) {
+        const buttons = document.querySelectorAll<HTMLButtonElement>('button');
+        buttons.forEach((btn) => {
+          if (btn.textContent && /view \d+ repl/i.test(btn.textContent.trim())) {
+            btn.click();
+          }
+        });
       }
       if (retries > 0) {
         setTimeout(() => attemptScroll(retries - 1), 500);
@@ -410,7 +414,7 @@ export default function DiaryReaderPage() {
         </div>
       )}
 
-      {!isPrivate && <CommentSection diaryId={id} highlightCommentId={highlightId} />}
+      {!isPrivate && <CommentSection diaryId={id} />}
     </div>
     </>
   );
