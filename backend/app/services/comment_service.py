@@ -132,6 +132,7 @@ async def create_comment(
         actor_id=str(current_user["_id"]),
         notification_type="comment",
         target_id=str(diary["_id"]),
+        target_type="diary",
         metadata={
             "diary_title": diary.get("title"),
             "comment_excerpt": content[:100],
@@ -144,6 +145,7 @@ async def create_comment(
             actor_id=str(current_user["_id"]),
             notification_type="comment",
             target_id=str(diary["_id"]),
+            target_type="comment",
             metadata={
                 "diary_title": diary.get("title"),
                 "comment_excerpt": content[:100],

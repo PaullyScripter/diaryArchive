@@ -12,5 +12,6 @@ class NotificationResponse(BaseModel):
     target_id: str | None = None
     target_type: str | None = None
     read: bool = False
-    created_at: datetime
+    created_at: str = ""
     time_ago: str = ""
+    metadata: dict = Field(default_factory=dict)

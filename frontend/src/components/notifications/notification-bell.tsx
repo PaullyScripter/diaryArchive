@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { BellIcon } from "@/components/shared/icons";
 import { NotificationItem } from "./notification-item";
@@ -20,12 +21,21 @@ export function NotificationBell({
   onToggle,
   onMarkRead,
 }: NotificationBellProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onToggle();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen, onToggle]);
+
   return (
     <div className="relative">
       <button
         onClick={onToggle}
         className="relative text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
-        aria-label={`Notifications, ${unreadCount} unread`}
+        aria-label={unreadCount === 0 ? "Notifications" : `Notifications, ${unreadCount} unread`}
         aria-expanded={isOpen}
         type="button"
       >
@@ -45,9 +55,9 @@ export function NotificationBell({
           <div
             className="fixed inset-0 z-40"
             onClick={onToggle}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") onToggle();
-            }}
+            role="dialog"
+            aria-label="Notifications panel"
+            aria-modal="true"
           />
           <div
             className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-md shadow-lg z-50 overflow-hidden"

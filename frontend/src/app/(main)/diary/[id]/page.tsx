@@ -74,7 +74,8 @@ export default function DiaryReaderPage() {
           return;
         }
         if (retries === 10 || retries === 5 || retries === 2) {
-          const buttons = document.querySelectorAll<HTMLButtonElement>('button');
+          const container = document.querySelector('[role="feed"], .space-y-0');
+          const buttons = (container || document).querySelectorAll<HTMLButtonElement>('button');
           buttons.forEach((btn) => {
             const text = btn.textContent?.trim().toLowerCase() || "";
             if (text.startsWith("view") && (text.includes("repl") || text.includes("reply"))) {
@@ -94,7 +95,13 @@ export default function DiaryReaderPage() {
 
     handleScroll();
     window.addEventListener("hashchange", handleScroll);
-    return () => window.removeEventListener("hashchange", handleScroll);
+    return () => {
+      window.removeEventListener("hashchange", handleScroll);
+      if (highlightTimer.current) {
+        clearTimeout(highlightTimer.current);
+        highlightTimer.current = null;
+      }
+    };
   }, [id]);
 
   useEffect(() => {
