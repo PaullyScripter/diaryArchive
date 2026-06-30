@@ -19,7 +19,7 @@ export function ExplorePageContent() {
 
   const store = useExploreStore();
   const { data: tagsData } = usePopularTags();
-  const { data: emotionsData } = useEmotions();
+  const { data: emotionsResponse } = useEmotions();
 
   useEffect(() => {
     if (isUpdatingUrl.current) {
@@ -84,7 +84,8 @@ export function ExplorePageContent() {
   const total = data?.pages[0]?.meta?.total ?? 0;
 
   const allTags = tagsData ?? [];
-  const allEmotions = emotionsData ?? [];
+  const allEmotions = emotionsResponse?.data ?? [];
+  const totalDiaries = emotionsResponse?.total ?? 0;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -119,6 +120,7 @@ export function ExplorePageContent() {
         </h2>
         <EmotionBrowser
           emotions={allEmotions}
+          totalCount={totalDiaries}
           selectedEmotion={store.selectedEmotion}
           onSelectEmotion={(emotion) => {
             store.setEmotion(emotion);

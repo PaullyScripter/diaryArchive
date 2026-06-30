@@ -25,11 +25,12 @@ const EMOTION_MAP: Record<string, { label: string }> = {
 
 interface EmotionBrowserProps {
   emotions: Array<{ emotion: string; count: number }>;
+  totalCount: number;
   selectedEmotion: string | null;
   onSelectEmotion: (emotion: string | null) => void;
 }
 
-export function EmotionBrowser({ emotions, selectedEmotion, onSelectEmotion }: EmotionBrowserProps) {
+export function EmotionBrowser({ emotions, totalCount, selectedEmotion, onSelectEmotion }: EmotionBrowserProps) {
   const emotionEntries = emotions.filter((e) => EMOTION_MAP[e.emotion]);
 
   if (emotionEntries.length === 0) {
@@ -54,6 +55,7 @@ export function EmotionBrowser({ emotions, selectedEmotion, onSelectEmotion }: E
         type="button"
       >
         <span className="text-sm font-medium text-foreground">All</span>
+        <span className="text-[10px] text-subtle">{totalCount}</span>
       </button>
       {emotionEntries.map(({ emotion, count }) => {
         const em = EMOTION_MAP[emotion];

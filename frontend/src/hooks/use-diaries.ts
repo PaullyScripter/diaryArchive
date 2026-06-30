@@ -102,9 +102,9 @@ async function fetchPopularTags(): Promise<DiaryTagsResponse[]> {
   return response.data.data;
 }
 
-async function fetchEmotions(): Promise<EmotionData[]> {
+async function fetchEmotions(): Promise<{ data: EmotionData[]; total: number }> {
   const response = await apiClient.get("/emotions");
-  return response.data.data;
+  return response.data;
 }
 
 async function createDiary(data: Record<string, unknown>) {
