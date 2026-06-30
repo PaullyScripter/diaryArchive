@@ -72,7 +72,11 @@ async def create_notification(
     if metadata:
         if metadata.get("diary_title"):
             message += f' "{metadata["diary_title"][:50]}"'
-        if notification_type == "comment" and metadata.get("comment_excerpt"):
+        if notification_type == "comment" and metadata.get("parent_content"):
+            message = f"{actor_username} replied to your comment"
+            if metadata.get("diary_title"):
+                message += f' on "{metadata["diary_title"][:50]}"'
+        elif notification_type == "comment" and metadata.get("comment_excerpt"):
             message += f': "{metadata["comment_excerpt"][:80]}"'
 
     if notification_type == "follow":

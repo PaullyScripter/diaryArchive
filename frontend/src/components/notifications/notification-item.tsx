@@ -64,6 +64,24 @@ export function NotificationItem({ notification, onMarkRead }: NotificationItemP
         >
           {notification.message}
         </p>
+        {notification.type === "comment" && (
+          <div className="mt-1 space-y-0.5">
+            {notification.metadata?.parent_content && (
+              <p className="text-xs text-subtle truncate">
+                <span className="text-muted">You: </span>
+                {notification.metadata.parent_content}
+              </p>
+            )}
+            {notification.metadata?.comment_excerpt && (
+              <p className="text-xs text-subtle truncate">
+                <span className="text-muted">
+                  {notification.metadata.parent_content ? "Reply: " : ""}
+                </span>
+                {notification.metadata.comment_excerpt}
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-xs text-subtle mt-0.5">{notification.time_ago}</p>
       </div>
     </Link>
