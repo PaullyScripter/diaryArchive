@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
 import { BrowseSidebar } from "@/components/diary/browse-sidebar";
 import {
   useDiaries,
@@ -97,12 +96,9 @@ export default function Home() {
 
         {isAuthenticated && followingDiaries.length > 0 && (
           <section className="mt-14 pt-8 border-t-2 border-border">
-            <div className="flex items-center gap-2 mb-5">
-              <Users className="w-5 h-5 text-muted" />
-              <h2 className="font-serif text-xl font-bold text-foreground">
+            <h2 className="font-serif text-xl font-bold text-foreground mb-5">
                 From People You Follow
               </h2>
-            </div>
             {followingDiaries.map((diary) => (
               <DiaryCard key={diary.id} diary={diary} />
             ))}
