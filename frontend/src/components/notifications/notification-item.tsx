@@ -45,7 +45,7 @@ export function NotificationItem({ notification, onMarkRead }: NotificationItemP
     <Link
       href={getTargetUrl(notification)}
       onClick={handleClick}
-      className={`flex items-start gap-3 px-3 py-2.5 -mx-3 rounded-sm transition-colors no-underline ${
+      className={`flex items-start gap-3 px-3 py-2.5 rounded-sm transition-colors no-underline ${
         notification.read
           ? "hover:bg-overlay"
           : "bg-accent/5 border-l-2 border-l-accent hover:bg-accent/10"
