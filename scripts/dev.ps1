@@ -136,7 +136,7 @@ function Get-ServiceStatus {
   $status = @{
     Mongo  = @{ Tag = "[DOWN]"; Color = "Red"   }
     Redis  = @{ Tag = "[DOWN]"; Color = "Red"   }
-    Meili  = @{ Tag = "[INFO]"; Color = "DarkGray" }
+    Meili  = @{ Tag = "[DOWN]"; Color = "Red" }
   }
 
   $prev = $ErrorActionPreference
@@ -148,6 +148,10 @@ function Get-ServiceStatus {
   try {
     $redisResult = docker compose -f "$composeFile" exec -T redis redis-cli ping 2>&1
     if ($LASTEXITCODE -eq 0 -and "$redisResult" -match "PONG") { $status.Redis.Tag = "[OK]"; $status.Redis.Color = "Green" }
+  } catch {}
+  try {
+    $meiliResult = Invoke-RestMethod -Uri "http://localhost:7700/health" -Method Get -TimeoutSec 2 -ErrorAction Stop
+    if ($meiliResult.status -eq "available") { $status.Meili.Tag = "[OK]"; $status.Meili.Color = "Green" }
   } catch {}
   $ErrorActionPreference = $prev
 
@@ -178,7 +182,7 @@ function Show-Dashboard {
   Write-Host "Services" -ForegroundColor White
   Write-Tag $svc.Mongo.Tag $svc.Mongo.Color "MongoDB      27017"
   Write-Tag $svc.Redis.Tag $svc.Redis.Color "Redis        6379"
-  Write-Tag "[INFO]"      "DarkGray"      "Meilisearch  7700 (optional)"
+  Write-Tag $svc.Meili.Tag $svc.Meili.Color "Meilisearch  7700"
   Write-Host ""
 
   Write-Host "Processes" -ForegroundColor White

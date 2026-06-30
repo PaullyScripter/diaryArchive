@@ -3,11 +3,13 @@
 import { DiaryCard } from "@/components/diary/diary-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { SearchResult } from "@/store/explore-store";
+import { useExploreStore, type SearchResult } from "@/store/explore-store";
 
 interface SearchResultsProps {
   diaries: SearchResult[];
   isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
   isFetchingNextPage: boolean;
   hasNextPage: boolean;
   total: number;
@@ -17,11 +19,29 @@ interface SearchResultsProps {
 export function SearchResults({
   diaries,
   isLoading,
+  isError,
+  error,
   isFetchingNextPage,
   hasNextPage,
   total,
   onLoadMore,
 }: SearchResultsProps) {
+  const selectedTags = useExploreStore((s) => s.selectedTags);
+
+  if (isError) {
+    return (
+      <div className="text-center py-12" role="alert">
+        <p className="text-sm text-destructive mb-2">Could not load search results.</p>
+        <p className="text-xs text-subtle mb-3">
+          {error?.message || "An unexpected error occurred."}
+        </p>
+        <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-0" role="feed" aria-label="Search results" aria-busy="true">
@@ -68,6 +88,7 @@ export function SearchResults({
               published_at: diary.created_at,
               highlight: true,
             }}
+            selectedTags={selectedTags}
           />
         ))}
       </div>

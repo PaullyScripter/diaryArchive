@@ -83,6 +83,8 @@ async def create_comment(
     comment_repo = CommentRepository()
     depth = 0
     root_id = None
+    parent_author_id = None
+    parent_content = None
 
     if parent_comment_id:
         parent = await comment_repo.get_by_id(parent_comment_id)
@@ -94,6 +96,8 @@ async def create_comment(
         if depth > MAX_DEPTH:
             raise ValidationException("Maximum reply depth reached")
         root_id = parent.get("root_comment_id") or parent["_id"]
+        parent_author_id = str(parent["user_id"])
+        parent_content = parent.get("content")
 
     now = datetime.now(UTC)
     comment_doc = {
@@ -113,11 +117,42 @@ async def create_comment(
 
     if parent_comment_id:
         await comment_repo.inc_reply_count(parent_comment_id, 1)
-
-    await diary_repo._collection.update_one(
-        {"_id": diary["_id"]},
-        {"$inc": {"stats.comment_count": 1}},
+    else:
+        await diary_repo._collection.update_one(
+            {"_id": diary["_id"]},
+            {"$inc": {"stats.comment_count": 1}},
+        )
+    from app.services.diary_service import _index_diary_async
+    updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
+    if updated_diary:
+        _index_diary_async(updated_diary)
+    from app.services.notification_service import _send_notification_async
+    _send_notification_async(
+        recipient_id=str(diary["user_id"]),
+        actor_id=str(current_user["_id"]),
+        notification_type="comment",
+        target_id=str(diary["_id"]),
+        target_type="diary",
+        metadata={
+            "diary_title": diary.get("title"),
+            "comment_excerpt": content[:100],
+            "comment_id": str(comment_id),
+        },
     )
+    if parent_author_id and parent_author_id != str(diary["user_id"]):
+        _send_notification_async(
+            recipient_id=parent_author_id,
+            actor_id=str(current_user["_id"]),
+            notification_type="comment",
+            target_id=str(diary["_id"]),
+            target_type="comment",
+            metadata={
+                "diary_title": diary.get("title"),
+                "comment_excerpt": content[:100],
+                "comment_id": str(comment_id),
+                "parent_content": (parent_content or "")[:100],
+            },
+        )
 
     comment_doc["_id"] = comment_id
     return _build_comment_response(comment_doc, current_user, current_user, diary)
@@ -135,7 +170,9 @@ async def list_comments(
         raise NotFoundException("Diary not found")
 
     if diary.get("privacy") != "public":
-        raise NotFoundException("Diary not found")
+        is_owner = current_user and str(diary.get("user_id")) == str(current_user.get("_id"))
+        if not is_owner:
+            raise NotFoundException("Diary not found")
 
     comment_repo = CommentRepository()
     skip = (page - 1) * per_page
@@ -158,8 +195,13 @@ async def list_replies(
 
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(str(parent["diary_id"]))
-    if diary is None or diary.get("privacy") != "public":
+    if diary is None:
         raise NotFoundException("Diary not found")
+
+    if diary.get("privacy") != "public":
+        is_owner = current_user and str(diary.get("user_id")) == str(current_user.get("_id"))
+        if not is_owner:
+            raise NotFoundException("Diary not found")
 
     skip = (page - 1) * per_page
     comments = await comment_repo.find_replies(comment_id, skip=skip, limit=per_page)
@@ -231,11 +273,15 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict) -> 
     await comment_repo.soft_delete(comment_id)
     if parent_id:
         await comment_repo.inc_reply_count(str(parent_id), -1)
-
-    await diary_repo._collection.update_one(
-        {"_id": diary["_id"]},
-        {"$inc": {"stats.comment_count": -1}},
-    )
+    else:
+        await diary_repo._collection.update_one(
+            {"_id": diary["_id"]},
+            {"$inc": {"stats.comment_count": -1}},
+        )
+    from app.services.diary_service import _index_diary_async
+    updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
+    if updated_diary:
+        _index_diary_async(updated_diary)
 
 
 async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:

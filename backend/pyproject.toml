@@ -14,8 +14,8 @@ dependencies = [
     "passlib[argon2]>=1.7.4",
     "python-multipart>=0.0.20",
     "httpx>=0.28.0",
-    "bleach>=6.0.0",
-    "tinycss2>=1.0.0",
+    "bleach[css]>=6.0.0",
+    "meilisearch>=0.41.0",
 ]
 
 [project.optional-dependencies]

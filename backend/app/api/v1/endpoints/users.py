@@ -65,6 +65,11 @@ async def update_encryption_key_endpoint(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:update_encryption_key:{current_user['_id']}", 5, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many encryption key update attempts")
     result = await update_encryption_key(
         str(current_user["_id"]),
         body.encrypted_master_key,

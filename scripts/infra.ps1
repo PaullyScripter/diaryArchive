@@ -21,7 +21,7 @@ if ($Down) {
   $downCode = $LASTEXITCODE
   $ErrorActionPreference = "Stop"
   if ($downCode -eq 0) {
-    Write-OK "MongoDB and Redis stopped"
+    Write-OK "MongoDB, Redis, and Meilisearch stopped"
   } else {
     Write-Fail "Failed to stop infrastructure"
   }
@@ -33,7 +33,7 @@ Write-Host "  DiaryArchive - Starting Infrastructure" -ForegroundColor Cyan
 Write-Host ""
 
 # === Start containers =============================================
-Write-Info "Starting MongoDB and Redis..."
+Write-Info "Starting MongoDB, Redis, and Meilisearch..."
 $ErrorActionPreference = "Continue"
 docker compose -f $composeFile up -d 2>&1 | Out-Null
 $upCode = $LASTEXITCODE
@@ -82,6 +82,29 @@ for ($i = 0; $i -lt 15; $i++) {
 if (-not $redisOk) {
   Write-Fail "Redis failed to start within 15 seconds"
   Write-Info "Check logs: docker compose -f $composeFile logs redis"
+  exit 1
+}
+
+# === Wait for Meilisearch health =================================
+Write-Info "Waiting for Meilisearch..."
+$meiliOk = $false
+for ($i = 0; $i -lt 30; $i++) {
+  $ErrorActionPreference = "Continue"
+  try {
+    $result = Invoke-RestMethod -Uri "http://localhost:7700/health" -Method Get -TimeoutSec 2 -ErrorAction Stop
+    if ($result.status -eq "available") {
+      Write-OK "Meilisearch is healthy on port 7700"
+      $meiliOk = $true
+      break
+    }
+  } catch { }
+  $ErrorActionPreference = "Stop"
+  if ($i -eq 0) { Write-Info "  Polling..." }
+  Start-Sleep -Seconds 1
+}
+if (-not $meiliOk) {
+  Write-Fail "Meilisearch failed to start within 30 seconds"
+  Write-Info "Check logs: docker compose -f $composeFile logs meilisearch"
   exit 1
 }
 

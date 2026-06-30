@@ -1,31 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { ChevronDownIcon, ChevronRightIcon } from "@/components/shared/icons";
+import { usePopularTags, useEmotions } from "@/hooks/use-diaries";
 
-const tags = [
-  { name: "life", count: 42 },
-  { name: "reflection", count: 28 },
-  { name: "poetry", count: 15 },
-  { name: "travel", count: 12 },
-  { name: "mental-health", count: 8 },
-  { name: "relationships", count: 6 },
-  { name: "work", count: 5 },
-  { name: "family", count: 4 },
-  { name: "art", count: 3 },
-];
-
-const emotions = [
-  { name: "grateful", symbol: "◈" },
-  { name: "reflective", symbol: "○" },
-  { name: "hopeful", symbol: "☆" },
-  { name: "melancholy", symbol: "◇" },
-  { name: "anxious", symbol: "△" },
-  { name: "joyful", symbol: "✦" },
-];
-
-const years = ["2026", "2025", "2024"];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 2023 }, (_, i) => String(currentYear - i));
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -60,34 +42,59 @@ function CollapsibleSection({
 }
 
 export function BrowseSidebar() {
+  const { data: tagsData } = usePopularTags();
+  const { data: emotionsData } = useEmotions();
+  const [tagSearch, setTagSearch] = useState("");
+
+  const tags = tagsData ?? [];
+  const emotions = emotionsData?.data ?? [];
+
+  const filteredTags = useMemo(() => {
+    if (!tagSearch.trim()) return tags;
+    const q = tagSearch.toLowerCase();
+    return tags.filter((t) => t.tag.toLowerCase().includes(q));
+  }, [tags, tagSearch]);
+
   return (
     <aside className="w-44 shrink-0 hidden lg:block">
       <nav aria-label="Browse the archive">
         <p className="text-[10px] text-subtle uppercase tracking-wider mb-2">Browse</p>
 
         <CollapsibleSection title="Tags">
-          {tags.map((tag) => (
-            <div key={tag.name}>
+          <div className="relative mb-2">
+            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-subtle pointer-events-none" />
+            <input
+              type="text"
+              value={tagSearch}
+              onChange={(e) => setTagSearch(e.target.value)}
+              placeholder="Search tags..."
+              className="w-full pl-6 pr-2 py-1 rounded-sm text-xs bg-overlay border border-border text-foreground placeholder:text-subtle focus:outline-none focus:border-accent"
+            />
+          </div>
+          {filteredTags.map((tag) => (
+            <div key={tag.tag}>
               <Link
-                href={`/explore?tags=${tag.name}`}
+                href={`/explore?tags=${tag.tag}`}
                 className="text-xs text-muted hover:text-foreground no-underline hover:underline"
               >
-                {tag.name}
+                {tag.tag}
                 <span className="text-subtle ml-1">({tag.count})</span>
               </Link>
             </div>
           ))}
+          {tagSearch.trim() && filteredTags.length === 0 && (
+            <p className="text-xs text-muted">No tags found.</p>
+          )}
         </CollapsibleSection>
 
         <CollapsibleSection title="Emotions">
           {emotions.map((emotion) => (
-            <div key={emotion.name}>
+            <div key={emotion.emotion}>
               <Link
-                href={`/explore?emotion=${emotion.name}`}
+                href={`/explore?emotion=${emotion.emotion}`}
                 className="text-xs text-muted hover:text-foreground no-underline hover:underline"
               >
-                <span className="text-accent mr-1">{emotion.symbol}</span>
-                {emotion.name}
+                {emotion.emotion}
               </Link>
             </div>
           ))}
@@ -113,7 +120,7 @@ export function BrowseSidebar() {
               {months.map((month, idx) => (
                 <div key={month}>
                   <Link
-                    href={`/explore?year=2026&month=${idx + 1}`}
+                    href={`/explore?year=${currentYear}&month=${idx + 1}`}
                     className="text-xs text-muted hover:text-foreground no-underline hover:underline"
                   >
                   {month}
@@ -129,7 +136,7 @@ export function BrowseSidebar() {
           href="/diary/random"
           className="text-xs font-medium text-foreground hover:text-link no-underline hover:underline"
         >
-          → Random Diary
+          Random Diary
         </Link>
       </div>
     </aside>
