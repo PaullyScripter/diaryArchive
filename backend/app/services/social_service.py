@@ -79,6 +79,14 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
     if diary:
         from app.services.diary_service import _index_diary_async
         _index_diary_async(diary)
+        from app.services.notification_service import _send_notification_async
+        _send_notification_async(
+            recipient_id=str(diary["user_id"]),
+            actor_id=user_id,
+            notification_type="like",
+            target_id=diary_id,
+            metadata={"diary_title": diary.get("title")},
+        )
     return {
         "is_liked": True,
         "like_count": diary["stats"]["like_count"] if diary else 0,
@@ -133,6 +141,14 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
     if diary:
         from app.services.diary_service import _index_diary_async
         _index_diary_async(diary)
+        from app.services.notification_service import _send_notification_async
+        _send_notification_async(
+            recipient_id=str(diary["user_id"]),
+            actor_id=user_id,
+            notification_type="bookmark",
+            target_id=diary_id,
+            metadata={"diary_title": diary.get("title")},
+        )
     return {
         "is_bookmarked": True,
         "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
@@ -183,6 +199,14 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
     await user_repo.update_stats(following_id, "follower_count", 1)
     await user_repo.update_stats(follower_id, "following_count", 1)
     target = await user_repo.get_by_id(following_id)
+    from app.services.notification_service import _send_notification_async
+    _send_notification_async(
+        recipient_id=following_id,
+        actor_id=follower_id,
+        notification_type="follow",
+        target_id=following_id,
+        target_type="user",
+    )
     return {
         "is_following": True,
         "follower_count": target["stats"]["follower_count"] if target else 0,
