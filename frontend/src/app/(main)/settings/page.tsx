@@ -422,8 +422,7 @@ function SettingsContent() {
                   Notifications
                 </h3>
                 <p className="text-xs text-muted mb-3">
-                  Notification preferences will be fully customizable in a
-                  future milestone.
+                  Choose which notifications you want to receive.
                 </p>
                 <div className="space-y-2">
                   {[
@@ -437,7 +436,33 @@ function SettingsContent() {
                       className="flex items-center justify-between py-1"
                     >
                       <span className="text-sm text-foreground">{label}</span>
-                      <span className="text-xs text-muted">Coming soon</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={
+                          user?.preferences?.[key as keyof typeof user.preferences] ?? key !== "notify_on_bookmark"
+                        }
+                        onClick={() => {
+                          if (!user) return;
+                          const current = user.preferences?.[key as keyof typeof user.preferences] ?? (key !== "notify_on_bookmark");
+                          const newPrefs = { ...user.preferences, [key]: !current };
+                          setUser({ ...user, preferences: newPrefs });
+                          updateProfile.mutate({ preferences: newPrefs });
+                        }}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-link ${
+                          (user?.preferences?.[key as keyof typeof user.preferences] ?? key !== "notify_on_bookmark")
+                            ? "bg-accent"
+                            : "bg-border"
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                            (user?.preferences?.[key as keyof typeof user.preferences] ?? key !== "notify_on_bookmark")
+                              ? "translate-x-4"
+                              : "translate-x-0"
+                          }`}
+                        />
+                      </button>
                     </div>
                   ))}
                 </div>
