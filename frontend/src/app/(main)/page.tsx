@@ -51,13 +51,13 @@ export default function Home() {
       <BrowseSidebar />
 
       <div className="min-w-0 flex-1">
-        <div className="mb-5 pb-4 border-b border-border">
+        <div className="mb-8 pb-5 border-b border-border">
           <div className="flex items-baseline justify-between">
-            <h1 className="font-serif text-xl font-semibold text-foreground">
+            <h1 className="font-serif text-2xl font-bold text-foreground tracking-tight">
               Recent Diaries
             </h1>
           </div>
-          <p className="text-xs text-muted mt-0.5">
+          <p className="text-sm text-muted mt-1">
             Public entries from the archive
           </p>
         </div>
@@ -96,23 +96,23 @@ export default function Home() {
         )}
 
         {isAuthenticated && followingDiaries.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="w-4 h-4 text-muted" />
-              <h2 className="font-serif text-lg font-semibold text-foreground">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <div className="flex items-center gap-2 mb-5">
+              <Users className="w-5 h-5 text-muted" />
+              <h2 className="font-serif text-xl font-bold text-foreground">
                 From People You Follow
               </h2>
             </div>
             {followingDiaries.map((diary) => (
               <DiaryCard key={diary.id} diary={diary} />
             ))}
-          </div>
+          </section>
         )}
 
         {randomDiary && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-serif text-lg font-semibold text-foreground">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="font-serif text-xl font-bold text-foreground">
                 Random Diary
               </h2>
               <Button
@@ -124,12 +124,12 @@ export default function Home() {
               </Button>
             </div>
             <DiaryCard diary={randomDiary as unknown as DiaryCardData} />
-          </div>
+          </section>
         )}
 
         {randomTags.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <h2 className="font-serif text-xl font-bold text-foreground mb-4">
               Browse by Tags
             </h2>
             <div className="flex gap-1.5 flex-wrap">
@@ -145,12 +145,12 @@ export default function Home() {
                 </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {randomEmotions.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <h2 className="font-serif text-xl font-bold text-foreground mb-4">
               Browse by Emotion
             </h2>
             <div className="flex gap-2 flex-wrap">
@@ -167,11 +167,11 @@ export default function Home() {
                 </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        <div className="mt-12 pt-8 border-t border-border">
-          <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+        <section className="mt-14 pt-8 border-t-2 border-border">
+          <h2 className="font-serif text-xl font-bold text-foreground mb-4">
             Browse by Year
           </h2>
           <div className="flex gap-2 flex-wrap">
@@ -190,7 +190,7 @@ export default function Home() {
                 </Link>
               ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
