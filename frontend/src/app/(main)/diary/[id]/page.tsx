@@ -97,11 +97,6 @@ export default function DiaryReaderPage() {
     return () => window.removeEventListener("hashchange", handleScroll);
   }, [id]);
 
-    return () => {
-      if (highlightTimer.current) clearTimeout(highlightTimer.current);
-    };
-  }, [id, diary]);
-
   useEffect(() => {
     setWarningAcknowledged(false);
     setDecrypted(null);
