@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
+import { useAuthStore } from "@/store/auth-store";
 
 export interface NotificationItem {
   id: string;
@@ -67,6 +68,7 @@ async function markAllRead(): Promise<void> {
 
 export function useNotifications() {
   const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const list = useInfiniteQuery({
     queryKey: ["notifications"],
@@ -75,14 +77,15 @@ export function useNotifications() {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_next ? lastPage.meta.page + 1 : undefined,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
+    enabled: isAuthenticated,
   });
 
   const unreadCount = useQuery({
     queryKey: ["notifications", "unread-count"],
     queryFn: fetchUnreadCount,
-    refetchInterval: 30_000,
-    enabled: true,
+    refetchInterval: 60_000,
+    enabled: isAuthenticated,
   });
 
   const markReadMutation = useMutation({

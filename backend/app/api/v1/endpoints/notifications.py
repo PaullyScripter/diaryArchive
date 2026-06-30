@@ -1,9 +1,11 @@
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_user
+from app.core.exceptions import RateLimitException
+from app.core.security import check_rate_limit
 from app.core.utils import fmt_dt
 from app.repositories.notification_repo import NotificationRepository
 
@@ -52,10 +54,16 @@ def _format_notification(n: dict) -> dict:
 
 @router.get("/notifications")
 async def list_notifications(
+    request: Request,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=50),
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:notifications_list:{current_user['_id']}", 20, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many requests")
     repo = NotificationRepository()
     user_id = str(current_user["_id"])
     skip = (page - 1) * per_page
@@ -78,7 +86,15 @@ async def list_notifications(
 
 
 @router.get("/notifications/unread-count")
-async def unread_count(current_user: dict = Depends(get_current_user)):
+async def unread_count(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:notifications_unread:{current_user['_id']}", 30, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many requests")
     repo = NotificationRepository()
     count = await repo.count_unread(str(current_user["_id"]))
     return {"data": {"unread_count": count}}
@@ -87,8 +103,14 @@ async def unread_count(current_user: dict = Depends(get_current_user)):
 @router.put("/notifications/{notification_id}/read")
 async def mark_read(
     notification_id: str,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:notifications_mark_read:{current_user['_id']}", 10, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many requests")
     repo = NotificationRepository()
     updated = await repo.mark_read(notification_id, str(current_user["_id"]))
     if not updated:
@@ -98,7 +120,15 @@ async def mark_read(
 
 
 @router.put("/notifications/read-all")
-async def mark_all_read(current_user: dict = Depends(get_current_user)):
+async def mark_all_read(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:notifications_mark_all:{current_user['_id']}", 5, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many requests")
     repo = NotificationRepository()
     count = await repo.mark_all_read(str(current_user["_id"]))
     return {"data": {"message": "All notifications marked as read", "count": count}}
