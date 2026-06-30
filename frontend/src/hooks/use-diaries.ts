@@ -98,7 +98,7 @@ async function fetchRandomDiary(): Promise<DiaryData> {
 }
 
 async function fetchPopularTags(): Promise<DiaryTagsResponse[]> {
-  const response = await apiClient.get("/tags/popular", { params: { limit: 100 } });
+  const response = await apiClient.get("/tags/popular", { params: { limit: 100, days: 365 } });
   return response.data.data;
 }
 

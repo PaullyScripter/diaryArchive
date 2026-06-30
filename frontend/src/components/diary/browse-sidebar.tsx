@@ -60,7 +60,7 @@ export function BrowseSidebar() {
       <nav aria-label="Browse the archive">
         <p className="text-[10px] text-subtle uppercase tracking-wider mb-2">Browse</p>
 
-        <CollapsibleSection title="Tags">
+        <CollapsibleSection title="Tags" defaultOpen>
           <div className="relative mb-2">
             <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-subtle pointer-events-none" />
             <input
