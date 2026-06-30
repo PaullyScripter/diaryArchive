@@ -69,7 +69,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
   if (isDeleted || comment.is_deleted) return null;
 
   return (
-    <div>
+    <div id={`comment-${comment.id}`}>
       <div className={isReply ? "ml-3 sm:ml-5 border-l-2 border-border/40 pl-3 sm:pl-4" : ""}>
         <div className="flex gap-2.5 py-2.5">
           <Avatar

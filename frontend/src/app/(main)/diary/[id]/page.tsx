@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
 
@@ -45,6 +45,35 @@ export default function DiaryReaderPage() {
 
   const isOwner = user?.id === diary?.author.id;
   const isPrivate = diary?.privacy === "private";
+
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash || !hash.startsWith("#comment-")) return;
+    const commentId = hash.slice("#comment-".length);
+    if (!commentId) return;
+
+    const attemptScroll = (retries: number) => {
+      const el = document.getElementById(hash.slice(1));
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("comment-highlight");
+        highlightTimer.current = setTimeout(() => {
+          el.classList.remove("comment-highlight");
+        }, 1500);
+        return;
+      }
+      if (retries > 0) {
+        setTimeout(() => attemptScroll(retries - 1), 300);
+      }
+    };
+    attemptScroll(8);
+
+    return () => {
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    };
+  }, [id, diary]);
 
   useEffect(() => {
     setWarningAcknowledged(false);

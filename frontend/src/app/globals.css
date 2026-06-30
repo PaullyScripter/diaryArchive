@@ -139,3 +139,12 @@ a:visited:hover {
 [style*="font-family: monospace"] { font-family: monospace; }
 
 style { display: none; }
+
+.comment-highlight {
+  animation: comment-flash 1.5s ease-out;
+}
+
+@keyframes comment-flash {
+  0% { background-color: var(--color-accent); opacity: 0.3; }
+  100% { background-color: transparent; opacity: 1; }
+}
