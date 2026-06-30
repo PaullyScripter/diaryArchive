@@ -15,8 +15,11 @@ function getTargetUrl(notification: NotificationItemType): string {
   switch (notification.type) {
     case "follow":
       return `/profile/${notification.actor_username}`;
-    case "comment":
-      return `/diary/${notification.target_id}`;
+    case "comment": {
+      const base = `/diary/${notification.target_id}`;
+      const commentId = notification.metadata?.comment_id;
+      return commentId ? `${base}#comment-${commentId}` : base;
+    }
     case "like":
       return `/diary/${notification.target_id}`;
     case "bookmark":
