@@ -15,17 +15,20 @@ import { SearchResults } from "@/components/explore/search-results";
 export function ExplorePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isUpdatingUrl = useRef(false);
+  const skipSync = useRef(false);
+  const lastProgrammaticParams = useRef("");
 
   const store = useExploreStore();
   const { data: tagsData } = usePopularTags();
   const { data: emotionsResponse } = useEmotions();
 
   useEffect(() => {
-    if (isUpdatingUrl.current) {
-      isUpdatingUrl.current = false;
+    const currentSearch = searchParams.toString();
+    if (skipSync.current && currentSearch === lastProgrammaticParams.current) {
+      skipSync.current = false;
       return;
     }
+    skipSync.current = false;
     const q = searchParams.get("q") || "";
     const tags = searchParams.get("tags") || "";
     const emotion = searchParams.get("emotion") || "";
@@ -63,7 +66,8 @@ export function ExplorePageContent() {
       if (store.selectedMonth) params.set("month", String(store.selectedMonth));
     }
     const qs = params.toString();
-    isUpdatingUrl.current = true;
+    lastProgrammaticParams.current = qs;
+    skipSync.current = true;
     router.push(`/explore${qs ? "?" + qs : ""}`, { scroll: false });
   };
 
