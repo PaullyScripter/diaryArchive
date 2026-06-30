@@ -127,10 +127,11 @@ async def create_comment(
         recipient_id=str(diary["user_id"]),
         actor_id=str(current_user["_id"]),
         notification_type="comment",
-        target_id=str(comment_id),
+        target_id=str(diary["_id"]),
         metadata={
             "diary_title": diary.get("title"),
             "comment_excerpt": content[:100],
+            "comment_id": str(comment_id),
         },
     )
 
