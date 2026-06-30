@@ -113,11 +113,11 @@ async def create_comment(
 
     if parent_comment_id:
         await comment_repo.inc_reply_count(parent_comment_id, 1)
-
-    await diary_repo._collection.update_one(
-        {"_id": diary["_id"]},
-        {"$inc": {"stats.comment_count": 1}},
-    )
+    else:
+        await diary_repo._collection.update_one(
+            {"_id": diary["_id"]},
+            {"$inc": {"stats.comment_count": 1}},
+        )
     from app.services.diary_service import _index_diary_async
     updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
     if updated_diary:
@@ -139,7 +139,9 @@ async def list_comments(
         raise NotFoundException("Diary not found")
 
     if diary.get("privacy") != "public":
-        raise NotFoundException("Diary not found")
+        is_owner = current_user and str(diary.get("user_id")) == str(current_user.get("_id"))
+        if not is_owner:
+            raise NotFoundException("Diary not found")
 
     comment_repo = CommentRepository()
     skip = (page - 1) * per_page
@@ -162,8 +164,13 @@ async def list_replies(
 
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(str(parent["diary_id"]))
-    if diary is None or diary.get("privacy") != "public":
+    if diary is None:
         raise NotFoundException("Diary not found")
+
+    if diary.get("privacy") != "public":
+        is_owner = current_user and str(diary.get("user_id")) == str(current_user.get("_id"))
+        if not is_owner:
+            raise NotFoundException("Diary not found")
 
     skip = (page - 1) * per_page
     comments = await comment_repo.find_replies(comment_id, skip=skip, limit=per_page)
@@ -235,11 +242,11 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict) -> 
     await comment_repo.soft_delete(comment_id)
     if parent_id:
         await comment_repo.inc_reply_count(str(parent_id), -1)
-
-    await diary_repo._collection.update_one(
-        {"_id": diary["_id"]},
-        {"$inc": {"stats.comment_count": -1}},
-    )
+    else:
+        await diary_repo._collection.update_one(
+            {"_id": diary["_id"]},
+            {"$inc": {"stats.comment_count": -1}},
+        )
     from app.services.diary_service import _index_diary_async
     updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
     if updated_diary:

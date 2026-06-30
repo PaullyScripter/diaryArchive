@@ -63,15 +63,21 @@ async def update_user_profile(user_id: str, update_data: dict) -> dict:
             set_fields[field] = None
 
     if "preferences" in update_data and update_data["preferences"] is not None:
-        prefs = update_data["preferences"]
+        existing_user = await user_repo.get_by_id(user_id)
+        existing_prefs = existing_user.get("preferences", {}) if existing_user else {}
+        incoming = update_data["preferences"]
+        if isinstance(incoming, dict):
+            merged = {**existing_prefs, **incoming}
+        else:
+            merged = incoming.model_dump() if hasattr(incoming, "model_dump") else incoming
+            merged = {**existing_prefs, **merged}
         valid_themes = {"light", "dark", "system"}
-        if "theme" in prefs:
-            if prefs["theme"] not in valid_themes:
-                from app.core.exceptions import ValidationException
-                raise ValidationException(
-                    f"Theme must be one of: {', '.join(valid_themes)}"
-                )
-        set_fields["preferences"] = prefs
+        if merged.get("theme") not in valid_themes:
+            from app.core.exceptions import ValidationException
+            raise ValidationException(
+                f"Theme must be one of: {', '.join(valid_themes)}"
+            )
+        set_fields["preferences"] = merged
 
     set_fields["updated_at"] = datetime.now(UTC)
 

@@ -80,6 +80,12 @@ async def like_comment(
 async def delete(
     diary_id: str,
     comment_id: str,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:delete_comment:{current_user['_id']}", 10, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many comment deletion attempts")
     await delete_comment(comment_id, diary_id, current_user)
