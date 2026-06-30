@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/components/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
 import { MenuIcon, MoonIcon, SunIcon, XIcon } from "@/components/shared/icons";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { useNotifications } from "@/hooks/use-notifications";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -60,9 +62,14 @@ function NavLinks({ vertical = false, onClick }: { vertical?: boolean; onClick?:
 export function NavBar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
+  const { unreadCount, list: notificationsList, markRead } = useNotifications();
+
+  const fromList = notificationsList.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
+  const count = unreadCount.data?.data?.unread_count ?? 0;
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -109,6 +116,15 @@ export function NavBar() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          {isAuthenticated && (
+            <NotificationBell
+              unreadCount={count}
+              recentNotifications={fromList}
+              isOpen={bellOpen}
+              onToggle={() => setBellOpen(!bellOpen)}
+              onMarkRead={(id) => markRead.mutate(id)}
+            />
+          )}
           {isAuthenticated ? (
             <div className="relative" ref={menuRef}>
               <button
@@ -138,6 +154,19 @@ export function NavBar() {
                     role="menuitem"
                   >
                     My Diaries
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+                    role="menuitem"
+                  >
+                    Notifications
+                    {count > 0 && (
+                      <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-destructive text-white text-[9px] font-bold leading-none">
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
                   </Link>
                   <Link
                     href="/me/bookmarks"

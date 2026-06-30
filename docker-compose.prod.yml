@@ -1,4 +1,21 @@
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    restart: always
+
   mongodb:
     deploy:
       resources:
@@ -53,10 +70,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: runner
     ports:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: /api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
     deploy:
       resources:
         limits:

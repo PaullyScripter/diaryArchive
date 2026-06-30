@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import {
   useReplies,
@@ -19,14 +19,21 @@ interface CommentItemProps {
   parentAuthor?: string;
   parentContent?: string;
   isReply?: boolean;
+  highlightCommentId?: string | null;
 }
 
-export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false }: CommentItemProps) {
+export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false, highlightCommentId }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+
+  useEffect(() => {
+    if (highlightCommentId && !isReply && comment.reply_count > 0) {
+      setShowReplies(true);
+    }
+  }, [highlightCommentId, comment.reply_count, isReply]);
 
   const createComment = useCreateComment(diaryId);
   const deleteComment = useDeleteComment(diaryId);
@@ -69,7 +76,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
   if (isDeleted || comment.is_deleted) return null;
 
   return (
-    <div>
+    <div id={`comment-${comment.id}`}>
       <div className={isReply ? "ml-3 sm:ml-5 border-l-2 border-border/40 pl-3 sm:pl-4" : ""}>
         <div className="flex gap-2.5 py-2.5">
           <Avatar

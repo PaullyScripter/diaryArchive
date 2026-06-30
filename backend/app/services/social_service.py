@@ -52,6 +52,9 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
             {"_id": diary["_id"]}, {"$inc": {"stats.like_count": -1}}
         )
         diary = await diary_repo.get_by_id(diary_id)
+        if diary:
+            from app.services.diary_service import _index_diary_async
+            _index_diary_async(diary)
         return {
             "is_liked": False,
             "like_count": diary["stats"]["like_count"] if diary else 0,
@@ -73,6 +76,17 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
         {"_id": diary["_id"]}, {"$inc": {"stats.like_count": 1}}
     )
     diary = await diary_repo.get_by_id(diary_id)
+    if diary:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
+        from app.services.notification_service import _send_notification_async
+        _send_notification_async(
+            recipient_id=str(diary["user_id"]),
+            actor_id=user_id,
+            notification_type="like",
+            target_id=diary_id,
+            metadata={"diary_title": diary.get("title")},
+        )
     return {
         "is_liked": True,
         "like_count": diary["stats"]["like_count"] if diary else 0,
@@ -100,6 +114,9 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
             {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": -1}}
         )
         diary = await diary_repo.get_by_id(diary_id)
+        if diary:
+            from app.services.diary_service import _index_diary_async
+            _index_diary_async(diary)
         return {
             "is_bookmarked": False,
             "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
@@ -121,6 +138,17 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
         {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": 1}}
     )
     diary = await diary_repo.get_by_id(diary_id)
+    if diary:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
+        from app.services.notification_service import _send_notification_async
+        _send_notification_async(
+            recipient_id=str(diary["user_id"]),
+            actor_id=user_id,
+            notification_type="bookmark",
+            target_id=diary_id,
+            metadata={"diary_title": diary.get("title")},
+        )
     return {
         "is_bookmarked": True,
         "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
@@ -171,6 +199,14 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
     await user_repo.update_stats(following_id, "follower_count", 1)
     await user_repo.update_stats(follower_id, "following_count", 1)
     target = await user_repo.get_by_id(following_id)
+    from app.services.notification_service import _send_notification_async
+    _send_notification_async(
+        recipient_id=following_id,
+        actor_id=follower_id,
+        notification_type="follow",
+        target_id=following_id,
+        target_type="user",
+    )
     return {
         "is_following": True,
         "follower_count": target["stats"]["follower_count"] if target else 0,
@@ -275,7 +311,6 @@ async def list_my_likes(
     like_repo = LikeRepository()
     skip = (page - 1) * per_page
     likes = await like_repo.find_by_user(str(current_user["_id"]), skip=skip, limit=per_page)
-    total = await like_repo.count_by_user(str(current_user["_id"]))
 
     diary_ids = [str(like["diary_id"]) for like in likes]
     diary_repo = DiaryRepository()
@@ -283,6 +318,19 @@ async def list_my_likes(
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     diaries = [d for d in diaries if d.get("privacy") == "public"]
+
+    from bson import ObjectId
+    all_likes = await like_repo._collection.find(
+        {"user_id": ObjectId(current_user["_id"])},
+        {"diary_id": 1}
+    ).to_list(length=10000)
+    all_diary_ids = list({str(l["diary_id"]) for l in all_likes})
+    valid_oids = [ObjectId(did) for did in all_diary_ids if ObjectId.is_valid(did)]
+    public_diaries = await diary_repo._collection.count_documents({
+        "_id": {"$in": valid_oids},
+        "privacy": "public",
+    })
+    total = public_diaries
 
     if not diaries:
         return {
@@ -325,11 +373,22 @@ async def list_my_bookmarks(
     bookmark_repo = BookmarkRepository()
     skip = (page - 1) * per_page
     bookmarks = await bookmark_repo.find_by_user(str(current_user["_id"]), skip=skip, limit=per_page)
-    total = await bookmark_repo.count_by_user(str(current_user["_id"]))
 
     diary_ids = [str(bm["diary_id"]) for bm in bookmarks]
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
+
+    from bson import ObjectId
+    all_bookmarks = await bookmark_repo._collection.find(
+        {"user_id": ObjectId(current_user["_id"])},
+        {"diary_id": 1}
+    ).to_list(length=10000)
+    all_diary_ids = list({str(b["diary_id"]) for b in all_bookmarks})
+    valid_oids = [ObjectId(did) for did in all_diary_ids if ObjectId.is_valid(did)]
+    total = await diary_repo._collection.count_documents({
+        "_id": {"$in": valid_oids},
+        "privacy": "public",
+    })
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     diaries = [d for d in diaries if d.get("privacy") == "public"]
@@ -388,6 +447,8 @@ async def list_following_feed(
 
     from app.services.enrichment_service import enrich_diary_batch
     diaries = await enrich_diary_batch(diaries, current_user)
+
+    await _sync_comment_counts(diaries)
 
     user_repo = UserRepository()
     author_ids = list({str(d["user_id"]) for d in diaries})

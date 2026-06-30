@@ -24,6 +24,12 @@ export function SearchBar({
     setLocalValue(value);
   }, [value]);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   const handleChange = (newValue: string) => {
     setLocalValue(newValue);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -62,9 +68,7 @@ export function SearchBar({
         className="w-full pl-10 pr-10 py-2.5 border border-border rounded-md bg-background text-sm text-foreground placeholder:text-subtle focus:outline-none focus:ring-2 focus:ring-ring"
         aria-label="Search diaries"
       />
-      {isLoading ? (
-        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle animate-spin" />
-      ) : localValue ? (
+      {localValue && (
         <button
           onClick={handleClear}
           className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-subtle hover:text-foreground"
@@ -73,7 +77,10 @@ export function SearchBar({
         >
           <X className="w-4 h-4" />
         </button>
-      ) : null}
+      )}
+      {isLoading && (
+        <Loader2 className="absolute right-9 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle animate-spin" />
+      )}
     </div>
   );
 }

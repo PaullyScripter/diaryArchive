@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Users } from "lucide-react";
 import { BrowseSidebar } from "@/components/diary/browse-sidebar";
 import {
   useDiaries,
@@ -31,6 +30,7 @@ export default function Home() {
   const {
     data: diariesData,
     isLoading: diariesLoading,
+    isError: diariesError,
   } = useDiaries({ sort: "latest", perPage: 5 });
   const { data: randomDiary, refetch: shuffleRandom } = useRandomDiary();
   const { data: popularTags } = usePopularTags();
@@ -39,7 +39,7 @@ export default function Home() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const randomTags = useMemo(() => pickRandom(popularTags ?? [], 25), [popularTags]);
-  const randomEmotions = useMemo(() => pickRandom(emotions ?? [], 25), [emotions]);
+  const randomEmotions = useMemo(() => pickRandom(emotions?.data ?? [], 25), [emotions]);
 
   const latestDiaries: DiaryCardData[] =
     diariesData?.pages.flatMap((p) => p.data ?? []) ?? [];
@@ -51,18 +51,31 @@ export default function Home() {
       <BrowseSidebar />
 
       <div className="min-w-0 flex-1">
-        <div className="mb-5 pb-4 border-b border-border">
+        <div className="mb-8 pb-5 border-b border-border">
           <div className="flex items-baseline justify-between">
-            <h1 className="font-serif text-xl font-semibold text-foreground">
+            <h1 className="font-serif text-2xl font-bold text-foreground tracking-tight">
               Recent Diaries
             </h1>
           </div>
-          <p className="text-xs text-muted mt-0.5">
+          <p className="text-sm text-muted mt-1">
             Public entries from the archive
           </p>
         </div>
 
-        {diariesLoading ? (
+        {diariesError ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-muted mb-2">
+              Could not load diaries.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-link hover:underline cursor-pointer"
+              type="button"
+            >
+              Retry
+            </button>
+          </div>
+        ) : diariesLoading ? (
           <div className="space-y-0">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
@@ -96,23 +109,20 @@ export default function Home() {
         )}
 
         {isAuthenticated && followingDiaries.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="w-4 h-4 text-muted" />
-              <h2 className="font-serif text-lg font-semibold text-foreground">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <h2 className="font-serif text-xl font-bold text-foreground mb-5">
                 From People You Follow
               </h2>
-            </div>
             {followingDiaries.map((diary) => (
               <DiaryCard key={diary.id} diary={diary} />
             ))}
-          </div>
+          </section>
         )}
 
         {randomDiary && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-serif text-lg font-semibold text-foreground">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="font-serif text-xl font-bold text-foreground">
                 Random Diary
               </h2>
               <Button
@@ -124,12 +134,12 @@ export default function Home() {
               </Button>
             </div>
             <DiaryCard diary={randomDiary as unknown as DiaryCardData} />
-          </div>
+          </section>
         )}
 
         {randomTags.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <h2 className="font-serif text-xl font-bold text-foreground mb-4">
               Browse by Tags
             </h2>
             <div className="flex gap-1.5 flex-wrap">
@@ -145,12 +155,12 @@ export default function Home() {
                 </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {randomEmotions.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-border">
-            <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+          <section className="mt-14 pt-8 border-t-2 border-border">
+            <h2 className="font-serif text-xl font-bold text-foreground mb-4">
               Browse by Emotion
             </h2>
             <div className="flex gap-2 flex-wrap">
@@ -167,11 +177,11 @@ export default function Home() {
                 </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        <div className="mt-12 pt-8 border-t border-border">
-          <h2 className="font-serif text-lg font-semibold text-foreground mb-3">
+        <section className="mt-14 pt-8 border-t-2 border-border">
+          <h2 className="font-serif text-xl font-bold text-foreground mb-4">
             Browse by Year
           </h2>
           <div className="flex gap-2 flex-wrap">
@@ -190,7 +200,7 @@ export default function Home() {
                 </Link>
               ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

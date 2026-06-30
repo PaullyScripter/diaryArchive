@@ -29,11 +29,11 @@ async def search_diaries(
     if tags:
         tag_list = [t.strip() for t in tags.split(",") if t.strip()]
         if tag_list:
-            tag_filters = [f"tags = {t}" for t in tag_list]
+            tag_filters = [f'tags = "{t}"' for t in tag_list]
             filters.append(f"({' OR '.join(tag_filters)})")
 
     if emotion:
-        filters.append(f"emotion = {emotion}")
+        filters.append(f'emotion = "{emotion}"')
 
     if year is not None:
         filters.append(f"year = {year}")
@@ -45,7 +45,7 @@ async def search_diaries(
         user_repo = UserRepository()
         author = await user_repo.get_by_username(author_username)
         if author:
-            filters.append(f"author_id = {author['_id']}")
+            filters.append(f'author_id = "{author["_id"]}"')
         else:
             return {
                 "data": [],
@@ -58,7 +58,8 @@ async def search_diaries(
 
     filter_expression = " AND ".join(filters) if filters else None
 
-    sort_field, sort_order = sort.split(":") if ":" in sort else (sort, "desc")
+    parts = sort.split(":") if ":" in sort else [sort, "desc"]
+    sort_field, sort_order = parts[0], parts[1] if len(parts) > 1 else "desc"
     sort_param = [f"{sort_field}:{sort_order}"]
 
     try:

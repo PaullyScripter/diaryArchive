@@ -153,6 +153,12 @@ class DiaryRepository(BaseRepository):
     async def delete_cascade(self, diary_id: str) -> int:
         oid = self._oid(diary_id)
         db = self._collection.database
+        comment_ids = await db.comments.find(
+            {"diary_id": oid}, {"_id": 1}
+        ).to_list(length=10000)
+        comment_oids = [c["_id"] for c in comment_ids]
+        if comment_oids:
+            await db.comment_likes.delete_many({"comment_id": {"$in": comment_oids}})
         await db.comments.delete_many({"diary_id": oid})
         await db.likes.delete_many({"diary_id": oid})
         await db.bookmarks.delete_many({"diary_id": oid})
