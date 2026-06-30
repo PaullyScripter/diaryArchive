@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import {
   useReplies,
@@ -19,14 +19,21 @@ interface CommentItemProps {
   parentAuthor?: string;
   parentContent?: string;
   isReply?: boolean;
+  highlightCommentId?: string | null;
 }
 
-export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false }: CommentItemProps) {
+export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false, highlightCommentId }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+
+  useEffect(() => {
+    if (highlightCommentId && !isReply && comment.reply_count > 0) {
+      setShowReplies(true);
+    }
+  }, [highlightCommentId, comment.reply_count, isReply]);
 
   const createComment = useCreateComment(diaryId);
   const deleteComment = useDeleteComment(diaryId);

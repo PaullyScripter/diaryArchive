@@ -46,38 +46,56 @@ export default function DiaryReaderPage() {
   const isOwner = user?.id === diary?.author.id;
   const isPrivate = diary?.privacy === "private";
 
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doneRef = useRef(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash || !hash.startsWith("#comment-")) return;
-    const commentId = hash.slice("#comment-".length);
-    if (!commentId) return;
+    function handleScroll() {
+      if (doneRef.current) return;
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith("#comment-")) return;
+      const commentId = hash.slice("#comment-".length);
+      if (!commentId) return;
+      doneRef.current = true;
+      setHighlightId(commentId);
 
-    const attemptScroll = (retries: number) => {
-      const el = document.getElementById(hash.slice(1));
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("comment-highlight");
-        highlightTimer.current = setTimeout(() => {
-          el.classList.remove("comment-highlight");
-        }, 1500);
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
-        return;
-      }
-      if (retries === 10 || retries === 5) {
-        const buttons = document.querySelectorAll<HTMLButtonElement>('button');
-        buttons.forEach((btn) => {
-          if (btn.textContent && /view \d+ repl/i.test(btn.textContent.trim())) {
-            btn.click();
-          }
-        });
-      }
-      if (retries > 0) {
-        setTimeout(() => attemptScroll(retries - 1), 500);
-      }
-    };
-    attemptScroll(15);
+      const attemptScroll = (retries: number) => {
+        const el = document.getElementById(hash.slice(1));
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("comment-highlight");
+          highlightTimer.current = setTimeout(() => {
+            el.classList.remove("comment-highlight");
+            setHighlightId(null);
+            doneRef.current = false;
+          }, 1500);
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          return;
+        }
+        if (retries === 10 || retries === 5 || retries === 2) {
+          const buttons = document.querySelectorAll<HTMLButtonElement>('button');
+          buttons.forEach((btn) => {
+            const text = btn.textContent?.trim().toLowerCase() || "";
+            if (text.startsWith("view") && (text.includes("repl") || text.includes("reply"))) {
+              btn.click();
+            }
+          });
+        }
+        if (retries > 0) {
+          setTimeout(() => attemptScroll(retries - 1), 500);
+        } else {
+          setHighlightId(null);
+          doneRef.current = false;
+        }
+      };
+      setTimeout(() => attemptScroll(15), 400);
+    }
+
+    handleScroll();
+    window.addEventListener("hashchange", handleScroll);
+    return () => window.removeEventListener("hashchange", handleScroll);
+  }, [id]);
 
     return () => {
       if (highlightTimer.current) clearTimeout(highlightTimer.current);
@@ -414,7 +432,7 @@ export default function DiaryReaderPage() {
         </div>
       )}
 
-      {!isPrivate && <CommentSection diaryId={id} />}
+      {!isPrivate && <CommentSection diaryId={id} highlightCommentId={highlightId} />}
     </div>
     </>
   );
