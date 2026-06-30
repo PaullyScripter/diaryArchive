@@ -5,10 +5,10 @@ import { Heart, MessageCircle, UserPlus, Bookmark } from "lucide-react";
 import type { NotificationItem as NotificationItemType } from "@/hooks/use-notifications";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  like: <Heart className="w-4 h-4 text-red-500" />,
-  comment: <MessageCircle className="w-4 h-4 text-blue-500" />,
-  follow: <UserPlus className="w-4 h-4 text-green-500" />,
-  bookmark: <Bookmark className="w-4 h-4 text-amber-500" />,
+  like: <Heart className="w-4 h-4 text-muted" />,
+  comment: <MessageCircle className="w-4 h-4 text-muted" />,
+  follow: <UserPlus className="w-4 h-4 text-muted" />,
+  bookmark: <Bookmark className="w-4 h-4 text-muted" />,
 };
 
 function getTargetUrl(notification: NotificationItemType): string {

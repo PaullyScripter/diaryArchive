@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { BellIcon } from "@/components/shared/icons";
 import { NotificationItem } from "./notification-item";
 import type { NotificationItem as NotificationItemType } from "@/hooks/use-notifications";
 
@@ -24,12 +24,12 @@ export function NotificationBell({
     <div className="relative">
       <button
         onClick={onToggle}
-        className="relative p-1.5 rounded-md hover:bg-overlay transition-colors cursor-pointer"
+        className="text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
         aria-label={`Notifications, ${unreadCount} unread`}
         aria-expanded={isOpen}
         type="button"
       >
-        <Bell className="w-5 h-5 text-muted hover:text-foreground" />
+        <BellIcon className="inline-block" />
         {unreadCount > 0 && (
           <span
             className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none"
