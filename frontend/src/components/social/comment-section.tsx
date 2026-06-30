@@ -8,7 +8,7 @@ import { Avatar } from "@/components/shared/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function CommentSection({ diaryId }: { diaryId: string }) {
+export function CommentSection({ diaryId, highlightCommentId }: { diaryId: string; highlightCommentId?: string | null }) {
   const user = useAuthStore((s) => s.user);
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useComments(diaryId);
   const createComment = useCreateComment(diaryId);
@@ -90,7 +90,7 @@ export function CommentSection({ diaryId }: { diaryId: string }) {
       ) : (
         <div className="space-y-0">
           {comments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} diaryId={diaryId} />
+            <CommentItem key={comment.id} comment={comment} diaryId={diaryId} highlightCommentId={highlightCommentId} />
           ))}
 
           {hasNextPage && (

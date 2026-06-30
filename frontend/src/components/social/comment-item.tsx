@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import {
   useReplies,
@@ -19,14 +19,22 @@ interface CommentItemProps {
   parentAuthor?: string;
   parentContent?: string;
   isReply?: boolean;
+  highlightCommentId?: string | null;
 }
 
-export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false }: CommentItemProps) {
+export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isReply = false, highlightCommentId }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+
+  const hasTarget = highlightCommentId && comment.reply_count > 0;
+  useEffect(() => {
+    if (hasTarget) {
+      setShowReplies(true);
+    }
+  }, [hasTarget, highlightCommentId]);
 
   const createComment = useCreateComment(diaryId);
   const deleteComment = useDeleteComment(diaryId);
@@ -192,6 +200,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
           diaryId={diaryId}
           parentAuthor={comment.author.username}
           parentContent={comment.content ?? undefined}
+          highlightCommentId={highlightCommentId}
         />
       )}
     </div>
@@ -203,11 +212,13 @@ function RepliesList({
   diaryId,
   parentAuthor,
   parentContent,
+  highlightCommentId,
 }: {
   commentId: string;
   diaryId: string;
   parentAuthor: string;
   parentContent?: string;
+  highlightCommentId?: string | null;
 }) {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useReplies(commentId);
   const replies = data?.pages.flatMap((p) => p.data ?? []) ?? [];
@@ -234,6 +245,7 @@ function RepliesList({
           parentAuthor={parentAuthor}
           parentContent={parentContent}
           isReply
+          highlightCommentId={highlightCommentId}
         />
       ))}
       {hasNextPage && (
