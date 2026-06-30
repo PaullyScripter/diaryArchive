@@ -83,6 +83,7 @@ async def create_comment(
     comment_repo = CommentRepository()
     depth = 0
     root_id = None
+    parent_author_id = None
 
     if parent_comment_id:
         parent = await comment_repo.get_by_id(parent_comment_id)
@@ -94,6 +95,7 @@ async def create_comment(
         if depth > MAX_DEPTH:
             raise ValidationException("Maximum reply depth reached")
         root_id = parent.get("root_comment_id") or parent["_id"]
+        parent_author_id = str(parent["user_id"])
 
     now = datetime.now(UTC)
     comment_doc = {
@@ -134,6 +136,18 @@ async def create_comment(
             "comment_id": str(comment_id),
         },
     )
+    if parent_author_id and parent_author_id != str(diary["user_id"]):
+        _send_notification_async(
+            recipient_id=parent_author_id,
+            actor_id=str(current_user["_id"]),
+            notification_type="comment",
+            target_id=str(diary["_id"]),
+            metadata={
+                "diary_title": diary.get("title"),
+                "comment_excerpt": content[:100],
+                "comment_id": str(comment_id),
+            },
+        )
 
     comment_doc["_id"] = comment_id
     return _build_comment_response(comment_doc, current_user, current_user, diary)
