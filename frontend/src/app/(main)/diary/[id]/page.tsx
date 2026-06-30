@@ -62,6 +62,7 @@ export default function DiaryReaderPage() {
         highlightTimer.current = setTimeout(() => {
           el.classList.remove("comment-highlight");
         }, 1500);
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
         return;
       }
       if (retries > 0) {

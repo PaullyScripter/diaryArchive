@@ -145,6 +145,15 @@ style { display: none; }
 }
 
 @keyframes comment-flash {
-  0% { background-color: var(--color-accent); opacity: 0.3; }
-  100% { background-color: transparent; opacity: 1; }
+  0% { background-color: hsl(48 80% 85%); }
+  100% { background-color: transparent; }
+}
+
+.dark .comment-highlight {
+  animation: comment-flash-dark 1.5s ease-out;
+}
+
+@keyframes comment-flash-dark {
+  0% { background-color: hsl(48 30% 25%); }
+  100% { background-color: transparent; }
 }
