@@ -2,7 +2,18 @@ import { Suspense } from "react";
 import { ExplorePageContent } from "@/components/explore/explore-page-content";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const q = typeof params.q === "string" ? params.q : "";
+  const tags = typeof params.tags === "string" ? params.tags : "";
+  const emotion = typeof params.emotion === "string" ? params.emotion : "";
+  const year = typeof params.year === "string" ? parseInt(params.year) || null : null;
+  const month = typeof params.month === "string" ? parseInt(params.month) || null : null;
+
   return (
     <Suspense
       fallback={
@@ -22,7 +33,13 @@ export default function ExplorePage() {
         </div>
       }
     >
-      <ExplorePageContent />
+      <ExplorePageContent
+        initialQ={q}
+        initialTags={tags}
+        initialEmotion={emotion || null}
+        initialYear={year}
+        initialMonth={month}
+      />
     </Suspense>
   );
 }

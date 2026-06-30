@@ -12,7 +12,21 @@ import { DateArchive } from "@/components/explore/date-archive";
 import { ActiveFilters } from "@/components/explore/active-filters";
 import { SearchResults } from "@/components/explore/search-results";
 
-export function ExplorePageContent() {
+interface ExplorePageContentProps {
+  initialQ: string;
+  initialTags: string;
+  initialEmotion: string | null;
+  initialYear: number | null;
+  initialMonth: number | null;
+}
+
+export function ExplorePageContent({
+  initialQ,
+  initialTags,
+  initialEmotion,
+  initialYear,
+  initialMonth,
+}: ExplorePageContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const store = useExploreStore();
@@ -20,41 +34,66 @@ export function ExplorePageContent() {
   const { data: emotionsResponse } = useEmotions();
 
   useEffect(() => {
+    const s = useExploreStore.getState();
+    if (initialQ !== s.query) s.setQuery(initialQ);
+    if (initialTags) {
+      const tagArr = initialTags.split(",").filter(Boolean);
+      const existing = new Set(s.selectedTags);
+      for (const t of s.selectedTags) {
+        if (!tagArr.includes(t)) s.toggleTag(t);
+      }
+      for (const t of tagArr) {
+        if (!existing.has(t)) s.toggleTag(t);
+      }
+    } else if (s.selectedTags.length > 0) {
+      for (const t of [...s.selectedTags]) s.toggleTag(t);
+    }
+    if (initialEmotion !== (s.selectedEmotion || "")) {
+      s.setEmotion(initialEmotion);
+    }
+    if (initialYear != null && initialYear !== s.selectedYear) {
+      s.setDate(initialYear, initialMonth);
+    }
+  }, []);
+
+  useEffect(() => {
+    const s = useExploreStore.getState();
     const q = searchParams.get("q") || "";
     const tags = searchParams.get("tags") || "";
     const emotion = searchParams.get("emotion") || "";
     const year = searchParams.get("year");
     const month = searchParams.get("month");
 
-    if (q !== store.query) store.setQuery(q);
+    if (q !== s.query) s.setQuery(q);
     if (tags) {
       const tagArr = tags.split(",").filter(Boolean);
-      const existing = new Set(store.selectedTags);
-      for (const t of store.selectedTags) {
-        if (!tagArr.includes(t)) store.toggleTag(t);
+      const existing = new Set(s.selectedTags);
+      for (const t of s.selectedTags) {
+        if (!tagArr.includes(t)) s.toggleTag(t);
       }
       for (const t of tagArr) {
-        if (!existing.has(t)) store.toggleTag(t);
+        if (!existing.has(t)) s.toggleTag(t);
       }
-    } else if (store.selectedTags.length > 0) {
-      for (const t of [...store.selectedTags]) store.toggleTag(t);
+    } else if (s.selectedTags.length > 0) {
+      for (const t of [...s.selectedTags]) s.toggleTag(t);
     }
-    if (emotion !== (store.selectedEmotion || "")) {
-      store.setEmotion(emotion || null);
+    if (emotion !== (s.selectedEmotion || "")) {
+      s.setEmotion(emotion || null);
     }
-    if (year && parseInt(year) !== (store.selectedYear || 0)) {
-      store.setDate(parseInt(year), month ? parseInt(month) : null);
+    if (year && parseInt(year) !== (s.selectedYear || 0)) {
+      s.setDate(parseInt(year), month ? parseInt(month) : null);
     }
   }, [searchParams]);
 
   const updateUrl = () => {
+    const s = useExploreStore.getState();
     const params = new URLSearchParams();
-    if (store.query) params.set("q", store.query);
-    if (store.selectedTags.length > 0) params.set("tags", store.selectedTags.join(","));
-    if (store.selectedEmotion) params.set("emotion", store.selectedEmotion);
-    if (store.selectedYear) {
-      params.set("year", String(store.selectedYear));
-      if (store.selectedMonth) params.set("month", String(store.selectedMonth));
+    if (s.query) params.set("q", s.query);
+    if (s.selectedTags.length > 0) params.set("tags", s.selectedTags.join(","));
+    if (s.selectedEmotion) params.set("emotion", s.selectedEmotion);
+    if (s.selectedYear) {
+      params.set("year", String(s.selectedYear));
+      if (s.selectedMonth) params.set("month", String(s.selectedMonth));
     }
     const qs = params.toString();
     router.push(`/explore${qs ? "?" + qs : ""}`, { scroll: false });
