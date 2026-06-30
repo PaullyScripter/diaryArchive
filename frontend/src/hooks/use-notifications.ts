@@ -19,6 +19,7 @@ export interface NotificationItem {
     diary_title?: string;
     comment_excerpt?: string;
     comment_id?: string;
+    parent_content?: string;
   };
 }
 
