@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { ChevronDownIcon, ChevronRightIcon } from "@/components/shared/icons";
 import { usePopularTags, useEmotions } from "@/hooks/use-diaries";
 
@@ -43,9 +44,16 @@ function CollapsibleSection({
 export function BrowseSidebar() {
   const { data: tagsData } = usePopularTags();
   const { data: emotionsData } = useEmotions();
+  const [tagSearch, setTagSearch] = useState("");
 
   const tags = tagsData ?? [];
   const emotions = emotionsData?.data ?? [];
+
+  const filteredTags = useMemo(() => {
+    if (!tagSearch.trim()) return tags;
+    const q = tagSearch.toLowerCase();
+    return tags.filter((t) => t.tag.toLowerCase().includes(q));
+  }, [tags, tagSearch]);
 
   return (
     <aside className="w-44 shrink-0 hidden lg:block">
@@ -53,7 +61,17 @@ export function BrowseSidebar() {
         <p className="text-[10px] text-subtle uppercase tracking-wider mb-2">Browse</p>
 
         <CollapsibleSection title="Tags">
-          {tags.map((tag) => (
+          <div className="relative mb-2">
+            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-subtle pointer-events-none" />
+            <input
+              type="text"
+              value={tagSearch}
+              onChange={(e) => setTagSearch(e.target.value)}
+              placeholder="Search tags..."
+              className="w-full pl-6 pr-2 py-1 rounded-sm text-xs bg-overlay border border-border text-foreground placeholder:text-subtle focus:outline-none focus:border-accent"
+            />
+          </div>
+          {filteredTags.map((tag) => (
             <div key={tag.tag}>
               <Link
                 href={`/explore?tags=${tag.tag}`}
@@ -64,6 +82,9 @@ export function BrowseSidebar() {
               </Link>
             </div>
           ))}
+          {tagSearch.trim() && filteredTags.length === 0 && (
+            <p className="text-xs text-muted">No tags found.</p>
+          )}
         </CollapsibleSection>
 
         <CollapsibleSection title="Emotions">
