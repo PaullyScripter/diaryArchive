@@ -24,7 +24,7 @@ export function NotificationBell({
     <div className="relative">
       <button
         onClick={onToggle}
-        className="text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+        className="relative text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
         aria-label={`Notifications, ${unreadCount} unread`}
         aria-expanded={isOpen}
         type="button"
@@ -32,7 +32,7 @@ export function NotificationBell({
         <BellIcon className="inline-block" />
         {unreadCount > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-white text-[10px] font-bold leading-none"
+            className="absolute -top-1 -right-1.5 flex items-center justify-center min-w-[14px] h-[14px] px-0.5 rounded-full bg-destructive text-white text-[9px] font-semibold leading-none"
             aria-live="polite"
           >
             {unreadCount > 99 ? "99+" : unreadCount}
@@ -50,7 +50,7 @@ export function NotificationBell({
             }}
           />
           <div
-            className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-md shadow-lg z-50"
+            className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-md shadow-lg z-50 overflow-hidden"
             role="menu"
           >
             <div className="px-3 py-2 border-b border-border flex items-center justify-between">
@@ -65,7 +65,7 @@ export function NotificationBell({
                 View all
               </Link>
             </div>
-            <div className="max-h-80 overflow-y-auto px-1 py-1">
+            <div className="max-h-80 overflow-y-auto">
               {recentNotifications.length === 0 ? (
                 <p className="text-xs text-muted text-center py-6">
                   No notifications yet.
