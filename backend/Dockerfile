@@ -9,12 +9,18 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY --from=builder /root/.local /root/.local
-COPY app /app/app
+COPY --from=builder /root/.local /usr/local
 
-ENV PATH=/root/.local/bin:$PATH \
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser && \
+    mkdir -p /app && chown -R appuser:appuser /app
+
+COPY --chown=appuser:appuser app /app/app
+
+ENV PATH=/usr/local/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
+
+USER appuser
 
 EXPOSE 8000
 

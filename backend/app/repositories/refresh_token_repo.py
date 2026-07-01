@@ -22,6 +22,13 @@ class RefreshTokenRepository(BaseRepository):
         result = await self._collection.delete_one({"token_hash": token_hash})
         return result.deleted_count > 0
 
+    async def find_one_and_delete(self, token_hash: str) -> dict | None:
+        result = await self._collection.find_one_and_delete(
+            {"token_hash": token_hash},
+            {"expires_at": 1, "user_id": 1},
+        )
+        return result
+
     async def delete_all_for_user(self, user_id: str) -> int:
         result = await self._collection.delete_many({"user_id": user_id})
         return result.deleted_count

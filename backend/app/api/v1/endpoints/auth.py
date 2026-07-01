@@ -241,13 +241,12 @@ async def refresh(
 
     token_hash = hash_token(refresh_token)
     refresh_repo = RefreshTokenRepository()
-    stored = await refresh_repo.find_by_hash(token_hash)
+    stored = await refresh_repo.find_one_and_delete(token_hash)
 
     if stored is None:
         raise AuthenticationException("Invalid refresh token")
 
     if stored["expires_at"].replace(tzinfo=UTC) < datetime.now(UTC):
-        await refresh_repo.delete_by_hash(token_hash)
         raise AuthenticationException("Refresh token has expired")
 
     user_repo = UserRepository()
@@ -258,8 +257,6 @@ async def refresh(
 
     if user.get("is_banned"):
         raise PermissionDeniedException("Your account has been banned")
-
-    await refresh_repo.delete_by_hash(token_hash)
 
     access_token = create_access_token(
         str(user["_id"]), user["username"], user.get("is_admin", False)

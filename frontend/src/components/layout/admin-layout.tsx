@@ -33,7 +33,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <header className="flex h-8 items-center border-b border-border px-4">
           <span className="text-xs text-muted">Admin Dashboard</span>
         </header>
-        <main className="flex-1 p-4">{children}</main>
+        <main id="main-content" className="flex-1 p-4">{children}</main>
       </div>
     </div>
   );
