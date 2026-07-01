@@ -75,7 +75,7 @@ export function NotificationBell({
                 View all
               </Link>
             </div>
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto overflow-x-hidden scrollbar-thin">
               {recentNotifications.length === 0 ? (
                 <p className="text-xs text-muted text-center py-6">
                   No notifications yet.
