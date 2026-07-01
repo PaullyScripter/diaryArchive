@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
@@ -74,6 +74,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
+  const saveRef = useRef<() => Promise<void>>(async () => {});
 
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
 
@@ -189,26 +190,37 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   };
 
   useEffect(() => {
+    saveRef.current = doSave;
+  });
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        doSave();
+        saveRef.current();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [doSave]);
+  }, []);
+
+  const dirtyRef = useRef(isDirty);
+  const titleRef = useRef(title);
+  const contentTextRef = useRef(contentText);
+  dirtyRef.current = isDirty;
+  titleRef.current = title;
+  contentTextRef.current = contentText;
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isDirty && (title.trim() || contentText.trim())) {
+      if (dirtyRef.current && (titleRef.current.trim() || contentTextRef.current.trim())) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty, title, contentText]);
+  }, []);
 
   const handleDelete = async () => {
     if (!diaryId) return;

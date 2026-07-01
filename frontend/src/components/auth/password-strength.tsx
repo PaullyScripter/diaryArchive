@@ -25,13 +25,20 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
 
   return (
     <div className="space-y-1">
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={score}
+        aria-valuemin={0}
+        aria-valuemax={5}
+        aria-valuetext={`Password strength: ${label}`}
+      >
         <div
           className={`h-full rounded-full transition-all ${color}`}
           style={{ width }}
         />
       </div>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted" aria-hidden="true">
         Strength: <span className="font-medium">{label}</span>
       </p>
     </div>

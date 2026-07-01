@@ -37,6 +37,7 @@ export function NotificationBell({
         className="relative text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
         aria-label={unreadCount === 0 ? "Notifications" : `Notifications, ${unreadCount} unread`}
         aria-expanded={isOpen}
+        aria-controls="notifications-panel"
         type="button"
       >
         <BellIcon className="inline-block" />
@@ -62,6 +63,7 @@ export function NotificationBell({
           <div
             className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-md shadow-lg z-50 overflow-hidden"
             role="menu"
+            id="notifications-panel"
           >
             <div className="px-3 py-2 border-b border-border flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">

@@ -27,9 +27,6 @@ async def _optional_user(
                 return user
     except AuthenticationException:
         return None
-    except Exception:
-        logger.warning("Unexpected error in _optional_user", exc_info=True)
-        return None
     return None
 
 
