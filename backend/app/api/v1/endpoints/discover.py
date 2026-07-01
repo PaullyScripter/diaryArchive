@@ -64,7 +64,7 @@ async def emotions(
     db = DatabaseManager.get_db()
 
     total_pipeline = [
-        {"$match": {"privacy": "public", "is_deleted": {"$ne": True}}},
+        {"$match": {"privacy": "public"}},
         {"$count": "total"},
     ]
     total_cursor = db.diaries.aggregate(total_pipeline)
@@ -75,7 +75,6 @@ async def emotions(
         {
             "$match": {
                 "privacy": "public",
-                "is_deleted": {"$ne": True},
                 "emotion": {"$ne": None},
                 "created_at": {"$gte": since},
             }

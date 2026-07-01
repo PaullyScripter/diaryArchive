@@ -77,7 +77,7 @@ export async function decryptMasterKey(
     passwordKey,
     { name: "AES-GCM", iv: ivBytes as BufferSource },
     { name: "AES-GCM", length: 256 },
-    false,
+    true,
     ["encrypt", "decrypt"]
   );
 }
@@ -179,11 +179,4 @@ function hexToBuffer(hex: string): Uint8Array {
     bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
   }
   return bytes;
-}
-
-function toBuf(bytes: Uint8Array): Uint8Array {
-  const buf = new ArrayBuffer(bytes.length);
-  const copy = new Uint8Array(buf);
-  copy.set(bytes);
-  return copy;
 }
