@@ -268,7 +268,7 @@ async def _enrich_and_format(
     }
 
 
-async def delete_comment(comment_id: str, diary_id: str, current_user: dict) -> None:
+async def delete_comment(comment_id: str, diary_id: str, current_user: dict, admin_delete_reason: str | None = None) -> None:
     comment_repo = CommentRepository()
     comment = await comment_repo.get_by_id(comment_id)
     if comment is None:
@@ -286,6 +286,19 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict) -> 
 
     if not is_author and not is_diary_owner and not is_admin:
         raise PermissionDeniedException("You do not have permission to delete this comment")
+
+    if is_admin and not is_author and not is_diary_owner:
+        if not admin_delete_reason or len(admin_delete_reason.strip()) < 10:
+            raise ValidationException("Admin deletion requires a reason of at least 10 characters")
+        from app.services.audit_service import log_audit
+        await log_audit(
+            admin_id=str(current_user["_id"]),
+            admin_username=current_user["username"],
+            action="delete_comment",
+            target_type="comment",
+            target_id=comment_id,
+            details={"diary_id": diary_id, "reason": admin_delete_reason.strip()},
+        )
 
     parent_id = comment.get("parent_comment_id")
     await comment_repo.soft_delete(comment_id)

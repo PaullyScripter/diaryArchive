@@ -366,7 +366,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
     return _build_diary_response(updated_diary, author, current_user)
 
 
-async def delete_diary(diary_id: str, current_user: dict) -> None:
+async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: str | None = None) -> None:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
@@ -376,6 +376,19 @@ async def delete_diary(diary_id: str, current_user: dict) -> None:
     is_admin = current_user.get("is_admin", False)
     if not is_owner and not is_admin:
         raise PermissionDeniedException("You do not own this diary")
+
+    if is_admin and not is_owner:
+        if not admin_delete_reason or len(admin_delete_reason.strip()) < 10:
+            raise ValidationException("Admin deletion requires a reason of at least 10 characters")
+        from app.services.audit_service import log_audit
+        await log_audit(
+            admin_id=str(current_user["_id"]),
+            admin_username=current_user["username"],
+            action="delete_diary",
+            target_type="diary",
+            target_id=diary_id,
+            details={"title": diary.get("title"), "reason": admin_delete_reason.strip()},
+        )
 
     deleted = await diary_repo.delete_cascade(diary_id)
     if deleted > 0:
