@@ -14,7 +14,7 @@ const SECTIONS = [
   "9. Third-Party Sharing",
   "10. Password Reset Warning",
   "11. Account Deletion",
-  "12. Children&apos;s Privacy",
+  "12. Children's Privacy",
   "13. Changes to This Policy",
   "14. Open Source - Verify Everything",
 ];
@@ -396,7 +396,7 @@ export default function PolicyPage() {
           </p>
         </Section>
 
-        <Section title="12. Children&apos;s Privacy">
+        <Section title="12. Children's Privacy">
           <p className="text-sm leading-relaxed text-muted">
             We do not collect age information. We recommend users be at least 13.
             If you believe a child under 13 has created an account, contact us for
@@ -446,7 +446,7 @@ export default function PolicyPage() {
               github.com/PaullyScripter/diaryArchive
             </a>
             <p className="text-xs text-subtle mt-3">
-              Don&apos;t trust our claims. Read the source. Run it yourself.
+              Don't trust our claims. Read the source. Run it yourself.
               Every line of code that handles your data is public.
             </p>
           </InfoCard>
