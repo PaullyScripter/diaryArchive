@@ -87,6 +87,102 @@ async def admin_update_report(
     return {"data": result}
 
 
+# ─── Diary Hide ──────────────────────────────────────────────
+
+@router.put("/diaries/{diary_id}/hide")
+async def admin_hide_diary(
+    diary_id: str,
+    body: dict,
+    request: Request,
+    current_admin: dict = Depends(get_current_admin),
+):
+    reason = body.get("reason", "").strip()
+    if len(reason) < 10:
+        raise ValidationException("Hide reason must be at least 10 characters")
+
+    diary_repo = DiaryRepository()
+    diary = await diary_repo.get_by_id(diary_id)
+    if diary is None:
+        raise NotFoundException("Diary not found")
+
+    await diary_repo.update(diary_id, {"privacy": "hidden"})
+
+    await log_audit(
+        admin_id=str(current_admin["_id"]),
+        admin_username=current_admin["username"],
+        action="hide_diary",
+        target_type="diary",
+        target_id=diary_id,
+        details={"title": diary.get("title"), "reason": reason},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    _remove_from_index(diary_id)
+
+    try:
+        await _send_admin_notification(
+            recipient_id=str(diary["user_id"]),
+            admin_id=str(current_admin["_id"]),
+            admin_username=current_admin["username"],
+            notification_type="diary_hidden",
+            diary_title=diary.get("title", "Untitled"),
+            reason=reason,
+        )
+    except Exception:
+        logger.warning("Failed to send hide notification", exc_info=True)
+
+    return {"data": {"id": diary_id, "hidden": True}}
+
+
+@router.put("/diaries/{diary_id}/unhide")
+async def admin_unhide_diary(
+    diary_id: str,
+    body: dict,
+    request: Request,
+    current_admin: dict = Depends(get_current_admin),
+):
+    diary_repo = DiaryRepository()
+    diary = await diary_repo.get_by_id(diary_id)
+    if diary is None:
+        raise NotFoundException("Diary not found")
+
+    reason = body.get("reason", "").strip() or "Restored by admin"
+
+    await diary_repo.update(diary_id, {"privacy": "public"})
+
+    await log_audit(
+        admin_id=str(current_admin["_id"]),
+        admin_username=current_admin["username"],
+        action="unhide_diary",
+        target_type="diary",
+        target_id=diary_id,
+        details={"title": diary.get("title"), "reason": reason},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    updated = await diary_repo.get_by_id(diary_id)
+    if updated and updated.get("privacy") == "public":
+        _index_diary(updated)
+
+    return {"data": {"id": diary_id, "hidden": False}}
+
+
+def _remove_from_index(diary_id: str) -> None:
+    try:
+        from app.services.diary_service import _remove_from_index_async
+        _remove_from_index_async(diary_id)
+    except Exception:
+        pass
+
+
+def _index_diary(diary: dict) -> None:
+    try:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
+    except Exception:
+        pass
+
+
 # ─── Users ──────────────────────────────────────────────────
 
 @router.get("/users")
@@ -377,3 +473,62 @@ async def admin_health(
             "timestamp": datetime.now(UTC).isoformat(),
         },
     }
+
+
+POLICY_REMINDER = (
+    " Repeated violations of our Community Guidelines may result in account suspension or banning."
+)
+
+
+async def _send_admin_notification(
+    recipient_id: str,
+    admin_id: str,
+    admin_username: str,
+    notification_type: str,
+    diary_title: str | None = None,
+    comment_text: str | None = None,
+    reason: str | None = None,
+) -> None:
+    from app.services.notification_service import create_notification
+
+    type_labels = {
+        "diary_hidden": "your diary",
+        "diary_deleted": "your diary",
+        "comment_deleted": "your comment",
+    }
+    type_actions = {
+        "diary_hidden": "hidden",
+        "diary_deleted": "removed",
+        "comment_deleted": "removed",
+    }
+    target = type_labels.get(notification_type, "your content")
+    action = type_actions.get(notification_type, "moderated")
+    title = f'Your {target} "{diary_title or "Untitled"}" was {action}'
+
+    if reason:
+        title += f" — {reason}"
+
+    body = (
+        f"Hello,\n\n"
+        f"Your {target} \"{diary_title or 'Untitled'}\" has been {action} by an administrator"
+        f" for the following reason: {reason or 'Content policy violation'}.\n\n"
+        f"Please review our Community Guidelines. Repeated violations may result"
+        f" in account suspension or banning.\n\n"
+        f"Regards,\nDiaryArchive Moderation"
+    )
+
+    result = await create_notification(
+        recipient_id=recipient_id,
+        actor_id=admin_id,
+        notification_type=notification_type,
+        target_id=None,
+        target_type="diary",
+        metadata={
+            "diary_title": diary_title,
+            "reason": reason,
+            "title": title,
+            "body": body,
+        },
+    )
+    logger.info("Admin notification sent: id=%s type=%s recipient=%s",
+                 result, notification_type, recipient_id)

@@ -20,7 +20,8 @@ def _send_notification_async(
 ) -> None:
     async def _do_send():
         try:
-            await create_notification(
+            logger.info("Creating async notification: type=%s recipient=%s", notification_type, recipient_id)
+            result = await create_notification(
                 recipient_id=recipient_id,
                 actor_id=actor_id,
                 notification_type=notification_type,
@@ -28,6 +29,7 @@ def _send_notification_async(
                 target_type=target_type,
                 metadata=metadata,
             )
+            logger.info("Notification created: id=%s", result)
         except Exception:
             logger.warning(
                 "Failed to create notification type=%s actor=%s recipient=%s",
@@ -45,12 +47,22 @@ async def create_notification(
     target_type: str | None = None,
     metadata: dict | None = None,
 ) -> str | None:
-    if recipient_id == actor_id:
+    logger.info(
+        "Notification request: type=%s actor=%s recipient=%s",
+        notification_type, actor_id, recipient_id,
+    )
+
+    is_admin_action = notification_type in (
+        "diary_hidden", "diary_deleted", "comment_deleted",
+    )
+    if recipient_id == actor_id and not is_admin_action:
+        logger.info("Notification skipped: self-notification type=%s", notification_type)
         return None
 
     user_repo = UserRepository()
     recipient = await user_repo.get_by_id(recipient_id)
     if recipient is None:
+        logger.warning("Notification skipped: recipient not found id=%s", recipient_id)
         return None
 
     prefs = recipient.get("preferences", {})
@@ -67,8 +79,14 @@ async def create_notification(
         "comment": f"{actor_username} commented on your diary",
         "follow": f"{actor_username} started following you",
         "bookmark": f"{actor_username} bookmarked your diary",
+        "diary_hidden": f"Your diary was hidden",
+        "diary_deleted": f"Your diary was removed",
+        "comment_deleted": f"Your comment was removed",
     }
     message = messages.get(notification_type, f"{actor_username} interacted with your content")
+
+    if metadata and metadata.get("title"):
+        message = metadata["title"]
 
     if metadata:
         if metadata.get("diary_title"):
@@ -104,4 +122,6 @@ async def create_notification(
         "created_at": datetime.now(UTC),
     }
     result = await repo.create(doc)
+    logger.info("Notification persisted: id=%s type=%s recipient=%s message=%s",
+                 str(result), notification_type, recipient_id, message[:80])
     return str(result) if result else None

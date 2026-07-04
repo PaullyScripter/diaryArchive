@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 
 export interface NotificationItem {
   id: string;
-  type: "like" | "comment" | "follow" | "bookmark";
+  type: "like" | "comment" | "follow" | "bookmark" | "diary_hidden" | "diary_deleted" | "comment_deleted";
   actor_username: string;
   actor_avatar_path: string | null;
   message: string;
@@ -20,6 +20,9 @@ export interface NotificationItem {
     comment_excerpt?: string;
     comment_id?: string;
     parent_content?: string;
+    title?: string;
+    body?: string;
+    reason?: string;
   };
 }
 

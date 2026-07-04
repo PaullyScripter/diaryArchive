@@ -90,10 +90,48 @@ async def list_reports(
         users = await user_repo.find_by_ids(reporter_ids)
         reporters_map = {str(u["_id"]): u for u in users}
 
+    diary_ids = [str(r["target_id"]) for r in reports if r["target_type"] == "diary"]
+    comment_ids = [str(r["target_id"]) for r in reports if r["target_type"] == "comment"]
+    user_target_ids = [str(r["target_id"]) for r in reports if r["target_type"] == "user"]
+
+    diary_repo = DiaryRepository()
+    comment_repo = CommentRepository()
+
+    diaries_map = {}
+    if diary_ids:
+        diaries = await diary_repo.find_by_ids(diary_ids)
+        diaries_map = {str(d["_id"]): d for d in diaries}
+
+    comments_map = {}
+    if comment_ids:
+        comments = await comment_repo.find_by_ids(comment_ids)
+        comments_map = {str(c["_id"]): c for c in comments}
+
+    users_map = {}
+    if user_target_ids:
+        users_list = await user_repo.find_by_ids(user_target_ids)
+        users_map = {str(u["_id"]): u for u in users_list}
+
+    all_user_ids = set()
+    for d in diaries_map.values():
+        all_user_ids.add(str(d.get("user_id", "")))
+    for c in comments_map.values():
+        all_user_ids.add(str(c.get("user_id", "")))
+    all_user_ids.discard("")
+
+    author_map = {}
+    if all_user_ids:
+        authors = await user_repo.find_by_ids(list(all_user_ids))
+        author_map = {str(u["_id"]): u for u in authors}
+
     result = []
     for r in reports:
         rid = str(r["reporter_id"])
         reporter_user = reporters_map.get(rid, {})
+        target_preview = _build_target_preview(
+            r["target_type"], str(r["target_id"]),
+            diaries_map, comments_map, users_map, author_map,
+        )
         result.append({
             "id": str(r["_id"]),
             "reporter": {
@@ -102,6 +140,7 @@ async def list_reports(
             },
             "target_type": r["target_type"],
             "target_id": str(r["target_id"]),
+            "target_preview": target_preview,
             "reason": r["reason"],
             "description": r.get("description"),
             "status": r.get("status", "pending"),
@@ -124,6 +163,56 @@ async def list_reports(
             "has_prev": has_prev,
         },
     }
+
+
+def _build_target_preview(
+    target_type: str,
+    target_id: str,
+    diaries_map: dict,
+    comments_map: dict,
+    users_map: dict,
+    author_map: dict,
+) -> dict:
+    if target_type == "diary":
+        diary = diaries_map.get(target_id)
+        if diary:
+            author_id = str(diary.get("user_id", ""))
+            author = author_map.get(author_id, {})
+            content_text = diary.get("content_text", "") or ""
+            return {
+                "title": diary.get("title") or "Untitled",
+                "author_username": author.get("username") or "unknown",
+                "excerpt": content_text[:300] if content_text else None,
+                "tags": diary.get("tags", []),
+                "content_deleted": diary.get("is_deleted", False),
+            }
+        return {"title": "[Deleted]", "author_username": "unknown", "excerpt": None, "tags": [], "content_deleted": True}
+
+    if target_type == "comment":
+        comment = comments_map.get(target_id)
+        if comment:
+            author_id = str(comment.get("user_id", ""))
+            author = author_map.get(author_id, {})
+            content = comment.get("content") if not comment.get("is_deleted") else None
+            return {
+                "content": content,
+                "author_username": author.get("username") or "unknown",
+                "content_deleted": comment.get("is_deleted", False),
+                "diary_id": str(comment.get("diary_id", "")),
+            }
+        return {"content": None, "author_username": "unknown", "content_deleted": True, "diary_id": ""}
+
+    if target_type == "user":
+        target_user = users_map.get(target_id)
+        if target_user:
+            return {
+                "username": target_user.get("username", "unknown"),
+                "about": target_user.get("about"),
+                "is_banned": target_user.get("is_banned", False),
+            }
+        return {"username": "unknown", "about": None, "is_banned": False}
+
+    return {}
 
 
 async def update_report(

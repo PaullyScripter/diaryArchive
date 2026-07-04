@@ -54,8 +54,9 @@ async function createComment(diaryId: string, content: string, parentCommentId?:
   return response.data.data;
 }
 
-async function deleteComment(diaryId: string, commentId: string) {
-  await apiClient.delete(`/diaries/${diaryId}/comments/${commentId}`);
+async function deleteComment(diaryId: string, commentId: string, adminDeleteReason?: string) {
+  const payload = adminDeleteReason ? { admin_delete_reason: adminDeleteReason } : undefined;
+  await apiClient.delete(`/diaries/${diaryId}/comments/${commentId}`, { data: payload });
 }
 
 async function toggleLike(diaryId: string) {
@@ -142,7 +143,8 @@ export function useCreateComment(diaryId: string) {
 export function useDeleteComment(diaryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (commentId: string) => deleteComment(diaryId, commentId),
+    mutationFn: ({ commentId, reason }: { commentId: string; reason?: string }) =>
+      deleteComment(diaryId, commentId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments", diaryId] });
       queryClient.invalidateQueries({ queryKey: ["replies"] });
