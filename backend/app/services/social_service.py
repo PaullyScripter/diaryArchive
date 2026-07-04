@@ -316,6 +316,8 @@ async def list_my_likes(
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
 
+    banned_ids = await user_repo.get_banned_user_ids()
+
     diaries = await diary_repo.find_by_ids(diary_ids)
     diaries = [d for d in diaries if d.get("privacy") == "public"]
 
@@ -326,11 +328,13 @@ async def list_my_likes(
     ).to_list(length=10000)
     all_diary_ids = list({str(l["diary_id"]) for l in all_likes})
     valid_oids = [ObjectId(did) for did in all_diary_ids if ObjectId.is_valid(did)]
-    public_diaries = await diary_repo._collection.count_documents({
+    count_query: dict = {
         "_id": {"$in": valid_oids},
         "privacy": "public",
-    })
-    total = public_diaries
+    }
+    if banned_ids:
+        count_query["user_id"] = {"$nin": banned_ids}
+    total = await diary_repo._collection.count_documents(count_query)
 
     if not diaries:
         return {
@@ -378,6 +382,8 @@ async def list_my_bookmarks(
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
 
+    banned_ids = await user_repo.get_banned_user_ids()
+
     from bson import ObjectId
     all_bookmarks = await bookmark_repo._collection.find(
         {"user_id": ObjectId(current_user["_id"])},
@@ -385,10 +391,13 @@ async def list_my_bookmarks(
     ).to_list(length=10000)
     all_diary_ids = list({str(b["diary_id"]) for b in all_bookmarks})
     valid_oids = [ObjectId(did) for did in all_diary_ids if ObjectId.is_valid(did)]
-    total = await diary_repo._collection.count_documents({
+    count_query: dict = {
         "_id": {"$in": valid_oids},
         "privacy": "public",
-    })
+    }
+    if banned_ids:
+        count_query["user_id"] = {"$nin": banned_ids}
+    total = await diary_repo._collection.count_documents(count_query)
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     diaries = [d for d in diaries if d.get("privacy") == "public"]

@@ -106,6 +106,8 @@ async def get_user_diaries(
     if user is None:
         raise NotFoundException("User not found")
 
+    banned_ids = await user_repo.get_banned_user_ids()
+
     sort_field = sort if sort in ("created_at", "updated_at") else "created_at"
     sort_dir = -1 if order == "desc" else 1
     skip = (page - 1) * per_page
@@ -116,6 +118,7 @@ async def get_user_diaries(
         sort=[(sort_field, sort_dir)],
         skip=skip,
         limit=per_page,
+        exclude_user_ids=banned_ids if banned_ids else None,
     )
     total = await diary_repo.count_public_by_user(str(user["_id"]))
 
