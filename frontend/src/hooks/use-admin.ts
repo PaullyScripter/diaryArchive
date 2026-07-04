@@ -40,11 +40,25 @@ interface Reporter {
   username: string;
 }
 
+interface TargetPreview {
+  title?: string;
+  author_username?: string;
+  excerpt?: string | null;
+  tags?: string[];
+  content_deleted?: boolean;
+  content?: string | null;
+  diary_id?: string;
+  username?: string;
+  about?: string | null;
+  is_banned?: boolean;
+}
+
 interface ReportItem {
   id: string;
   reporter: Reporter;
   target_type: string;
   target_id: string;
+  target_preview: TargetPreview;
   reason: string;
   description: string | null;
   status: string;
