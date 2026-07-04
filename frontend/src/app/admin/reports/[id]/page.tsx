@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAdminReports } from "@/hooks/use-admin";
+import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
 
 function fmtDate(d: string) {
@@ -20,6 +22,9 @@ export default function AdminReportDetailPage() {
   const router = useRouter();
   const reportId = params.id as string;
   const [note, setNote] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { list, resolve, dismiss } = useAdminReports("all");
 
   const reports = list.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
@@ -85,7 +90,47 @@ export default function AdminReportDetailPage() {
     });
   };
 
+  const handleDeleteContent = async () => {
+    if (deleteReason.trim().length < 10) {
+      showToast("Deletion reason must be at least 10 characters");
+      return;
+    }
+    setDeleting(true);
+    try {
+      if (report.target_type === "diary") {
+        await apiClient.delete(`/diaries/${report.target_id}`, {
+          data: { admin_delete_reason: deleteReason.trim() },
+        });
+      } else if (report.target_type === "comment") {
+        const diaryId = report.target_preview.diary_id;
+        if (!diaryId) { showToast("Cannot find diary for this comment"); return; }
+        await apiClient.delete(`/diaries/${diaryId}/comments/${report.target_id}`, {
+          data: { admin_delete_reason: deleteReason.trim() },
+        });
+      }
+      showToast("Content deleted");
+      setShowDeleteDialog(false);
+      setDeleteReason("");
+      router.push("/admin/reports");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message || "Failed to delete content";
+      showToast(msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const viewUrl =
+    report.target_type === "diary"
+      ? `/diary/${report.target_id}`
+      : report.target_type === "comment" && report.target_preview.diary_id
+        ? `/diary/${report.target_preview.diary_id}#comment-${report.target_id}`
+        : null;
+
   return (
+    <>
     <div>
       <div className="flex items-center gap-2 mb-4">
         <button
@@ -136,7 +181,18 @@ export default function AdminReportDetailPage() {
         </div>
 
         <div className="border-t border-border pt-3">
-          <div className="text-xs text-muted mb-2 font-medium">Reported Content</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs text-muted font-medium">Reported Content</div>
+            {viewUrl && !report.target_preview.content_deleted && (
+              <Link
+                href={viewUrl}
+                target="_blank"
+                className="text-xs text-link hover:underline no-underline"
+              >
+                View in context &rarr;
+              </Link>
+            )}
+          </div>
           {report.target_type === "diary" && (
             <div className="border border-border p-3 bg-overlay">
               {report.target_preview.content_deleted ? (
@@ -227,6 +283,16 @@ export default function AdminReportDetailPage() {
 
         {report.status === "pending" && (
           <div className="border-t border-border pt-3 space-y-3">
+            {(report.target_type === "diary" || report.target_type === "comment") && !report.target_preview.content_deleted && (
+              <div>
+                <button
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80"
+                >
+                  Delete {report.target_type === "diary" ? "Diary" : "Comment"}
+                </button>
+              </div>
+            )}
             <div>
               <label className="text-xs text-muted block mb-1">
                 Resolution Note (required, min 10 chars)
@@ -260,5 +326,43 @@ export default function AdminReportDetailPage() {
         )}
       </div>
     </div>
+
+    {showDeleteDialog && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDeleteDialog(false)}>
+        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-sm font-medium mb-2">
+            Delete {report.target_type === "diary" ? "Diary" : "Comment"}
+          </h3>
+          <p className="text-xs text-muted mb-3">
+            This will permanently delete the reported content. This action will be audit logged.
+            Please provide a reason (min 10 characters).
+          </p>
+          <textarea
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
+            placeholder="Reason for deletion..."
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setShowDeleteDialog(false); setDeleteReason(""); }}
+              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteContent}
+              disabled={deleteReason.trim().length < 10 || deleting}
+              className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80 disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
