@@ -27,6 +27,7 @@ export default function AdminReportDetailPage() {
   const [showHideDialog, setShowHideDialog] = useState(false);
   const [hideReason, setHideReason] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [contentActionTaken, setContentActionTaken] = useState(false);
   const { list, resolve, dismiss } = useAdminReports("all");
 
   const reports = list.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
@@ -113,6 +114,7 @@ export default function AdminReportDetailPage() {
       showToast("Content deleted");
       setShowDeleteDialog(false);
       setDeleteReason("");
+      setContentActionTaken(true);
       router.push("/admin/reports");
     } catch (err: unknown) {
       const msg =
@@ -137,6 +139,7 @@ export default function AdminReportDetailPage() {
       showToast("Diary hidden from public view");
       setShowHideDialog(false);
       setHideReason("");
+      setContentActionTaken(true);
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })
@@ -153,6 +156,14 @@ export default function AdminReportDetailPage() {
       : report.target_type === "comment" && report.target_preview.diary_id
         ? `/diary/${report.target_preview.diary_id}#comment-${report.target_id}`
         : null;
+
+  const needsContentAction =
+    (report.target_type === "diary" || report.target_type === "comment") &&
+    !report.target_preview.content_deleted;
+
+  const canResolve =
+    note.trim().length >= 10 &&
+    (!needsContentAction || contentActionTaken);
 
   return (
     <>
@@ -340,10 +351,10 @@ export default function AdminReportDetailPage() {
                 placeholder="Describe why this report is being resolved..."
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <button
                 onClick={handleResolve}
-                disabled={resolve.isPending || note.trim().length < 10}
+                disabled={!canResolve || resolve.isPending}
                 className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {resolve.isPending ? "Resolving..." : "Resolve Report"}
@@ -356,6 +367,11 @@ export default function AdminReportDetailPage() {
                 {dismiss.isPending ? "Dismissing..." : "Dismiss Report"}
               </button>
             </div>
+            {needsContentAction && !contentActionTaken && note.trim().length >= 10 && (
+              <p className="text-xs text-accent">
+                You must Hide or Delete the reported content before resolving this report.
+              </p>
+            )}
           </div>
         )}
       </div>
