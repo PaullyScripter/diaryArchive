@@ -23,11 +23,15 @@ class DiaryRepository(BaseRepository):
         sort: list[tuple] | None = None,
         skip: int = 0,
         limit: int = 20,
+        exclude_user_ids: list[ObjectId] | None = None,
     ) -> list[dict]:
         if sort is None:
             sort = [("created_at", -1)]
+        user_oid = self._oid(user_id)
+        if exclude_user_ids and user_oid in exclude_user_ids:
+            return []
         return await self.find(
-            {"user_id": self._oid(user_id), "privacy": "public"},
+            {"user_id": user_oid, "privacy": "public"},
             sort=sort,
             skip=skip,
             limit=limit,
@@ -45,12 +49,17 @@ class DiaryRepository(BaseRepository):
         sort: list[tuple] | None = None,
         skip: int = 0,
         limit: int = 20,
+        exclude_user_ids: list[ObjectId] | None = None,
     ) -> list[dict]:
         if not user_ids:
             return []
         if sort is None:
             sort = [("created_at", -1)]
         oids = [self._oid(uid) for uid in user_ids]
+        if exclude_user_ids:
+            oids = [oid for oid in oids if oid not in exclude_user_ids]
+        if not oids:
+            return []
         return await self.find(
             {"user_id": {"$in": oids}, "privacy": "public"},
             sort=sort,
@@ -64,16 +73,25 @@ class DiaryRepository(BaseRepository):
         limit: int = 20,
         sort_field: str = "created_at",
         sort_dir: int = -1,
+        exclude_user_ids: list[ObjectId] | None = None,
     ) -> list[dict]:
+        query: dict = {"privacy": "public"}
+        if exclude_user_ids:
+            query["user_id"] = {"$nin": exclude_user_ids}
         return await self.find(
-            {"privacy": "public"},
+            query,
             sort=[(sort_field, sort_dir)],
             skip=skip,
             limit=limit,
         )
 
-    async def count_public_feed(self) -> int:
-        return await self.count({"privacy": "public"})
+    async def count_public_feed(
+        self, exclude_user_ids: list[ObjectId] | None = None
+    ) -> int:
+        query: dict = {"privacy": "public"}
+        if exclude_user_ids:
+            query["user_id"] = {"$nin": exclude_user_ids}
+        return await self.count(query)
 
     async def find_public_feed_filtered(
         self,
@@ -85,8 +103,11 @@ class DiaryRepository(BaseRepository):
         limit: int = 20,
         sort_field: str = "created_at",
         sort_dir: int = -1,
+        exclude_user_ids: list[ObjectId] | None = None,
     ) -> list[dict]:
         query: dict = {"privacy": "public"}
+        if exclude_user_ids:
+            query["user_id"] = {"$nin": exclude_user_ids}
         if tags:
             query["tags"] = {"$in": tags}
         if emotion:
@@ -108,8 +129,11 @@ class DiaryRepository(BaseRepository):
         emotion: str | None = None,
         year: int | None = None,
         month: int | None = None,
+        exclude_user_ids: list[ObjectId] | None = None,
     ) -> int:
         query: dict = {"privacy": "public"}
+        if exclude_user_ids:
+            query["user_id"] = {"$nin": exclude_user_ids}
         if tags:
             query["tags"] = {"$in": tags}
         if emotion:
@@ -120,11 +144,13 @@ class DiaryRepository(BaseRepository):
             query["month"] = month
         return await self.count(query)
 
-    async def find_random_public(self) -> dict | None:
-        pipeline = [
-            {"$match": {"privacy": "public"}},
-            {"$sample": {"size": 1}},
-        ]
+    async def find_random_public(
+        self, exclude_user_ids: list[ObjectId] | None = None
+    ) -> dict | None:
+        pipeline: list[dict] = [{"$match": {"privacy": "public"}}]
+        if exclude_user_ids:
+            pipeline[0]["$match"]["user_id"] = {"$nin": exclude_user_ids}
+        pipeline.append({"$sample": {"size": 1}})
         cursor = self._collection.aggregate(pipeline)
         results = await cursor.to_list(length=1)
         return results[0] if results else None

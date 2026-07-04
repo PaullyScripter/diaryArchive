@@ -11,31 +11,68 @@ class CommentRepository(BaseRepository):
         diary_id: str,
         skip: int = 0,
         limit: int = 20,
+        exclude_user_ids: list[ObjectId] | None = None,
     ) -> list[dict]:
+        filter_dict: dict = {
+            "diary_id": ObjectId(diary_id),
+            "parent_comment_id": None,
+            "is_deleted": {"$ne": True},
+        }
+        if exclude_user_ids:
+            filter_dict["user_id"] = {"$nin": exclude_user_ids}
         return await self.find(
-            {"diary_id": ObjectId(diary_id), "parent_comment_id": None, "is_deleted": {"$ne": True}},
+            filter_dict,
             sort=[("created_at", 1)],
             skip=skip,
             limit=limit,
         )
 
-    async def find_replies(self, parent_id: str, skip: int = 0, limit: int = 10) -> list[dict]:
+    async def find_replies(
+        self,
+        parent_id: str,
+        skip: int = 0,
+        limit: int = 10,
+        exclude_user_ids: list[ObjectId] | None = None,
+    ) -> list[dict]:
+        filter_dict: dict = {
+            "parent_comment_id": ObjectId(parent_id),
+            "is_deleted": {"$ne": True},
+        }
+        if exclude_user_ids:
+            filter_dict["user_id"] = {"$nin": exclude_user_ids}
         return await self.find(
-            {"parent_comment_id": ObjectId(parent_id), "is_deleted": {"$ne": True}},
+            filter_dict,
             sort=[("created_at", 1)],
             skip=skip,
             limit=limit,
         )
 
-    async def count_replies(self, parent_id: str) -> int:
-        return await self.count({"parent_comment_id": ObjectId(parent_id), "is_deleted": {"$ne": True}})
+    async def count_replies(
+        self,
+        parent_id: str,
+        exclude_user_ids: list[ObjectId] | None = None,
+    ) -> int:
+        filter_dict: dict = {
+            "parent_comment_id": ObjectId(parent_id),
+            "is_deleted": {"$ne": True},
+        }
+        if exclude_user_ids:
+            filter_dict["user_id"] = {"$nin": exclude_user_ids}
+        return await self.count(filter_dict)
 
-    async def count_by_diary(self, diary_id: str) -> int:
-        return await self.count({
+    async def count_by_diary(
+        self,
+        diary_id: str,
+        exclude_user_ids: list[ObjectId] | None = None,
+    ) -> int:
+        filter_dict: dict = {
             "diary_id": ObjectId(diary_id),
             "is_deleted": {"$ne": True},
             "parent_comment_id": None,
-        })
+        }
+        if exclude_user_ids:
+            filter_dict["user_id"] = {"$nin": exclude_user_ids}
+        return await self.count(filter_dict)
 
     async def inc_reply_count(self, comment_id: str, delta: int) -> None:
         await self._collection.update_one(
