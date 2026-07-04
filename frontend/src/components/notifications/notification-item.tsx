@@ -10,9 +10,9 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   comment: <MessageCircle className="w-4 h-4 text-muted" />,
   follow: <UserPlus className="w-4 h-4 text-muted" />,
   bookmark: <Bookmark className="w-4 h-4 text-muted" />,
-  diary_hidden: <Wrench className="w-4 h-4 text-accent" />,
-  diary_deleted: <Wrench className="w-4 h-4 text-destructive" />,
-  comment_deleted: <Wrench className="w-4 h-4 text-destructive" />,
+  diary_hidden: <Wrench className="w-4 h-4 text-muted" />,
+  diary_deleted: <Wrench className="w-4 h-4 text-muted" />,
+  comment_deleted: <Wrench className="w-4 h-4 text-muted" />,
 };
 
 const ADMIN_TYPES = ["diary_hidden", "diary_deleted", "comment_deleted"];
