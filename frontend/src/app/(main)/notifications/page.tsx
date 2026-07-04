@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import Link from "next/link";
@@ -34,7 +34,7 @@ export default function NotificationsPage() {
           {unread > 0 && (
             <div className="flex items-center gap-2">
               {markAllRead.isError && (
-                <span className="text-xs text-destructive">Failed — try again</span>
+                <span className="text-xs text-destructive">Failed - try again</span>
               )}
               <Button
                 variant="ghost"

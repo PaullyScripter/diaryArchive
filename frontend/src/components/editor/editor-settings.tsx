@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Lock } from "lucide-react";
 
@@ -50,9 +50,9 @@ export function EditorSettings({
         <label className="block text-xs font-medium text-foreground mb-2">Privacy</label>
         <div className="space-y-2">
           {[
-            { value: "public", label: "Public — visible to everyone" },
-            { value: "private", label: "Private — end-to-end encrypted, only you can read" },
-            { value: "draft", label: "Draft — only visible to you" },
+            { value: "public", label: "Public - visible to everyone" },
+            { value: "private", label: "Private - end-to-end encrypted, only you can read" },
+            { value: "draft", label: "Draft - only visible to you" },
           ].map(({ value, label }) => {
             const isPrivate = value === "private";
             const disabled = isEditMode;
