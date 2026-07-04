@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LikeButton } from "@/components/social/like-button";
 import { BookmarkButton } from "@/components/social/bookmark-button";
+import { ReportButton } from "@/components/social/report-button";
 import { CommentSection } from "@/components/social/comment-section";
 
 export default function DiaryReaderPage() {
@@ -28,6 +29,7 @@ export default function DiaryReaderPage() {
   const { data: diary, isLoading, isError } = useDiary(id);
   const deleteDiary = useDeleteDiary();
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [warningAcknowledged, setWarningAcknowledged] = useState(false);
 
   const { masterKey, loadMasterKey, isAvailable: masterKeyAvailable, isLoading: isKeyLoading } = useMasterKey();
@@ -411,6 +413,7 @@ export default function DiaryReaderPage() {
           >
             <Share2 className="w-4 h-4" />
           </Button>
+          {!isOwner && isAuthenticated && <ReportButton targetType="diary" targetId={id} />}
         </div>
       )}
 

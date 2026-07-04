@@ -9,8 +9,10 @@ import {
   useToggleCommentLike,
   type CommentData,
 } from "@/hooks/use-social";
+import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { Button } from "@/components/ui/button";
+import { ReportButton } from "@/components/social/report-button";
 import Link from "next/link";
 
 interface CommentItemProps {
@@ -28,6 +30,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     if (highlightCommentId && !isReply && comment.reply_count > 0) {
@@ -139,6 +142,8 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
                 <MessageCircle className="w-3 h-3" />
                 Reply
               </button>
+
+              {!comment.is_owner && isAuthenticated && <ReportButton targetType="comment" targetId={comment.id} />}
 
             {(comment.is_owner || comment.is_diary_owner) && (
               <button
