@@ -87,3 +87,7 @@ class DiaryListItem(BaseModel):
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None = None
+
+
+class DiaryDelete(BaseModel):
+    admin_delete_reason: str | None = Field(None, min_length=10)

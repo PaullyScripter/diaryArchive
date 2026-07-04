@@ -83,6 +83,18 @@ class TestDetectMimeType:
         data = b"MZ\x90\x00" + b"\x00" * 20
         assert detect_mime_type(data) is None
 
+    def test_reject_svg_xml(self):
+        data = b'<?xml version="1.0"?><svg>' + b"\x00" * 20
+        assert detect_mime_type(data) is None
+
+    def test_reject_svg_no_xml(self):
+        data = b"<svg>" + b"\x00" * 20
+        assert detect_mime_type(data) is None
+
+    def test_reject_html(self):
+        data = b"<!DOCTYPE html>" + b"\x00" * 20
+        assert detect_mime_type(data) is None
+
 
 class TestIsAllowedMime:
     def test_allowed_images(self):
