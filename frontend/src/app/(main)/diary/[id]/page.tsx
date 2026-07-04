@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
+import { Share2, Pencil, Trash2, Lock, Shield, Star } from "lucide-react";
 
 import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
@@ -364,6 +364,11 @@ export default function DiaryReaderPage() {
           >
             {diary.author.username}
           </Link>
+          {diary.author.is_admin && (
+            <span className="inline-flex items-center ml-1.5 text-accent" title="Admin">
+              <Star className="w-3.5 h-3.5 fill-current" />
+            </span>
+          )}
           <div className="flex items-center gap-1 text-xs text-subtle">
             <time dateTime={diary.created_at}>
               {new Date(diary.created_at).toLocaleDateString("en-US", {

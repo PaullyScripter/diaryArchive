@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, MessageCircle } from "lucide-react";
+import { Heart, MessageCircle, Star } from "lucide-react";
 import { TagBadge } from "@/components/shared/tag-badge";
 import { PrivacyBadge } from "@/components/shared/privacy-badge";
 import { relativeTime } from "@/lib/utils";
@@ -14,6 +14,7 @@ export interface DiaryCardData {
     id: string;
     username: string;
     avatar_path: string | null;
+    is_admin?: boolean;
   };
   tags: string[];
   emotion: string | null;
@@ -60,6 +61,11 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
           >
             {diary.author.username}
           </Link>
+          {diary.author.is_admin && (
+            <span className="inline-flex items-center ml-1 text-accent" title="Admin">
+              <Star className="w-3 h-3 fill-current" />
+            </span>
+          )}
           <span className="mx-1">·</span>
           <span>{relativeTime(diary.created_at)}</span>
           {diary.emotion && (
