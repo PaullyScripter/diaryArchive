@@ -49,6 +49,18 @@ def _remove_from_index_async(diary_id: str) -> None:
     asyncio.create_task(_do_remove())
 
 
+def _cascade_delete_media_async(diary_id: str) -> None:
+    async def _do():
+        try:
+            from app.services.media_service import cascade_delete_diary_media
+            count = await cascade_delete_diary_media(diary_id)
+            if count > 0:
+                logger.info("Cascade deleted %d media records for diary %s", count, diary_id)
+        except Exception:
+            logger.warning("Media cascade delete failed for diary %s", diary_id, exc_info=True)
+    asyncio.create_task(_do())
+
+
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
 
 
@@ -403,6 +415,7 @@ async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: s
         user_repo = UserRepository()
         await user_repo.update_stats(str(diary["user_id"]), "diary_count", -1)
         _remove_from_index_async(diary_id)
+        _cascade_delete_media_async(diary_id)
 
 
 async def list_public_diaries(

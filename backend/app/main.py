@@ -12,6 +12,7 @@ from app.core.error_handlers import diaryarchive_exception_handler
 from app.core.exceptions import DiaryArchiveException
 from app.core.indexes import create_indexes
 from app.core.middleware import CSPSecurityMiddleware, RequestIDMiddleware
+from app.core.minio_client import initialize_minio
 from app.search.config import initialize_search_indexes
 from app.search.sync import full_reindex
 
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     await DatabaseManager.connect_redis()
     await create_indexes()
     await initialize_search_indexes()
+    await initialize_minio()
 
     async def _initial_reindex():
         try:

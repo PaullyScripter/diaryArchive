@@ -11,3 +11,5 @@ httpx>=0.28.0
 bleach[css]>=6.0.0
 tinycss2>=1.0.0
 meilisearch>=0.41.0
+minio>=7.2.0
+Pillow>=11.0.0

@@ -10,6 +10,9 @@ import { Eye, Lock, Shield } from "lucide-react";
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
 import { useMasterKey } from "@/hooks/use-master-key";
+import { useMediaUpload } from "@/hooks/use-media";
+import { showToast } from "@/components/shared/toast";
+import { validateImageFile } from "@/lib/media-validator";
 import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
@@ -17,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EditorSettings } from "@/components/editor/editor-settings";
 import { EditorStats } from "@/components/editor/editor-stats";
+import { MediaGalleryModal } from "@/components/media/media-gallery-modal";
 import { useAuthStore } from "@/store/auth-store";
 
 import { useDraft } from "@/hooks/use-draft";
@@ -44,6 +48,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const createDiary = useCreateDiary();
   const updateDiary = useUpdateDiary();
   const deleteDiary = useDeleteDiary();
+  const uploadMedia = useMediaUpload();
 
   const { data: existingDiary, isLoading: isLoadingDiary } = useDiary(diaryId ?? "");
   const isEditMode = !!diaryId;
@@ -71,10 +76,35 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showKeySetup, setShowKeySetup] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
   const saveRef = useRef<() => Promise<void>>(async () => {});
+
+  const handleImageUpload = useCallback(
+    async (file: File, editorInstance: Editor) => {
+      const validation = validateImageFile(file);
+      if (!validation.valid) {
+        showToast(validation.error || "Invalid file");
+        return;
+      }
+      try {
+        const result = await uploadMedia.mutateAsync({
+          file,
+          isPrivate: privacy === "private",
+        });
+        editorInstance
+          .chain()
+          .focus()
+          .setImage({ src: result.url })
+          .run();
+      } catch {
+        // toast already shown by hook
+      }
+    },
+    [uploadMedia, privacy],
+  );
 
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
 
@@ -308,7 +338,15 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         />
       </div>
 
-      <EditorToolbar editor={editor} sourceMode={sourceMode} onToggleSource={() => setSourceMode(!sourceMode)} />
+      <EditorToolbar
+        editor={editor}
+        sourceMode={sourceMode}
+        onToggleSource={() => setSourceMode(!sourceMode)}
+        onImageUpload={(file) => {
+          if (editor) handleImageUpload(file, editor);
+        }}
+        onOpenGallery={() => setShowGallery(true)}
+      />
 
       <div className="relative">
         <FloatingToolbar editor={editor} />
@@ -328,6 +366,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             content={contentHtml}
             onChange={onContentChange}
             onEditorReady={setEditor}
+            onImageDrop={(file, editor) => handleImageUpload(file, editor)}
+            onImagePaste={(file, editor) => handleImageUpload(file, editor)}
           />
         )}
       </div>
@@ -573,6 +613,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           </div>
         </div>
       )}
+      <MediaGalleryModal
+        editor={editor}
+        isOpen={showGallery}
+        onClose={() => setShowGallery(false)}
+      />
     </div>
   );
 }
