@@ -119,6 +119,14 @@ async def admin_hide_diary(
 
     _remove_from_index(diary_id)
 
+    _send_admin_notification(
+        recipient_id=str(diary["user_id"]),
+        admin_username=current_admin["username"],
+        notification_type="diary_hidden",
+        diary_title=diary.get("title", "Untitled"),
+        reason=reason,
+    )
+
     return {"data": {"id": diary_id, "hidden": True}}
 
 
@@ -461,3 +469,42 @@ async def admin_health(
             "timestamp": datetime.now(UTC).isoformat(),
         },
     }
+
+
+POLICY_REMINDER = (
+    " Repeated violations of our Community Guidelines may result in account suspension or banning."
+)
+
+
+def _send_admin_notification(
+    recipient_id: str,
+    admin_username: str,
+    notification_type: str,
+    diary_title: str | None = None,
+    comment_text: str | None = None,
+    reason: str | None = None,
+) -> None:
+    from app.services.notification_service import _send_notification_async
+
+    type_messages = {
+        "diary_hidden": f'Your diary "{diary_title or "Untitled"}" has been hidden by an administrator.',
+        "diary_deleted": f'Your diary "{diary_title or "Untitled"}" has been removed by an administrator.',
+        "comment_deleted": f'Your comment on "{diary_title or "a diary"}" has been removed by an administrator.',
+    }
+    message = type_messages.get(notification_type, f"An administrator has taken action on your content.")
+    if reason:
+        message += f" Reason: {reason}."
+    message += POLICY_REMINDER
+
+    _send_notification_async(
+        recipient_id=recipient_id,
+        actor_id="admin",
+        notification_type=notification_type,
+        target_id=None,
+        target_type="diary",
+        metadata={
+            "diary_title": diary_title,
+            "reason": reason,
+            "message": message,
+        },
+    )

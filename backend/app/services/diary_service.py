@@ -389,6 +389,13 @@ async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: s
             target_id=diary_id,
             details={"title": diary.get("title"), "reason": admin_delete_reason.strip()},
         )
+        _send_delete_notification(
+            recipient_id=str(diary["user_id"]),
+            admin_username=current_user["username"],
+            notification_type="diary_deleted",
+            diary_title=diary.get("title"),
+            reason=admin_delete_reason.strip(),
+        )
 
     deleted = await diary_repo.delete_cascade(diary_id)
     if deleted > 0:
@@ -562,3 +569,42 @@ async def get_my_diaries_stats(user_id: str) -> dict:
         "draft": draft_count,
         "private": private_count,
     }
+
+
+def _send_delete_notification(
+    recipient_id: str,
+    admin_username: str,
+    notification_type: str,
+    diary_title: str | None = None,
+    comment_text: str | None = None,
+    reason: str | None = None,
+) -> None:
+    from app.services.notification_service import _send_notification_async
+
+    type_messages = {
+        "diary_deleted": f'Your diary "{diary_title or "Untitled"}" has been removed by an administrator.',
+        "comment_deleted": f'Your comment on "{diary_title or "a diary"}" has been removed by an administrator.',
+    }
+    message = type_messages.get(
+        notification_type,
+        "An administrator has taken action on your content.",
+    )
+    if reason:
+        message += f" Reason: {reason}."
+    message += (
+        " Repeated violations of our Community Guidelines may result"
+        " in account suspension or banning."
+    )
+
+    _send_notification_async(
+        recipient_id=recipient_id,
+        actor_id="admin",
+        notification_type=notification_type,
+        target_id=None,
+        target_type="diary",
+        metadata={
+            "diary_title": diary_title,
+            "reason": reason,
+            "message": message,
+        },
+    )
