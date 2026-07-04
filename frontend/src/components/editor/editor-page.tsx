@@ -97,7 +97,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editorInstance
           .chain()
           .focus()
-          .setImage({ src: result.url })
+          .setResizableImage({ src: result.url })
           .run();
       } catch {
         // toast already shown by hook
