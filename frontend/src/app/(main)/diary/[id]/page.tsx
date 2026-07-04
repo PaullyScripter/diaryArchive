@@ -436,6 +436,19 @@ export default function DiaryReaderPage() {
           </Button>
         </div>
       )}
+      {!isOwner && user?.is_admin && (
+        <div className="mt-6 pt-4 border-t border-border">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+            disabled={deleteDiary.isPending}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {deleteDiary.isPending ? "Deleting..." : "Delete as Admin"}
+          </Button>
+        </div>
+      )}
 
       {!isPrivate && <CommentSection diaryId={id} highlightCommentId={highlightId} />}
     </div>

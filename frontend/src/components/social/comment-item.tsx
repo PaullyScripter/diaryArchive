@@ -31,6 +31,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const currentUser = useAuthStore((s) => s.user);
 
   useEffect(() => {
     if (highlightCommentId && !isReply && comment.reply_count > 0) {
@@ -145,7 +146,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
 
               {!comment.is_owner && isAuthenticated && <ReportButton targetType="comment" targetId={comment.id} />}
 
-            {(comment.is_owner || comment.is_diary_owner) && (
+            {(comment.is_owner || comment.is_diary_owner || currentUser?.is_admin) && (
               <button
                 onClick={handleDelete}
                 className="inline-flex items-center gap-1 text-xs text-subtle hover:text-destructive cursor-pointer transition-colors"
