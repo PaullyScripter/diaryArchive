@@ -66,3 +66,6 @@ async def get_current_admin(
     if not current_user.get("is_admin"):
         raise PermissionDeniedException("Admin access required")
     return current_user
+
+
+require_admin = get_current_admin
