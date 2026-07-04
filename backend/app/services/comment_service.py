@@ -302,7 +302,7 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
         from app.services.notification_service import _send_notification_async
         _send_notification_async(
             recipient_id=str(comment["user_id"]),
-            actor_id="admin",
+            actor_id=str(current_user["_id"]),
             notification_type="comment_deleted",
             target_id=comment_id,
             target_type="comment",

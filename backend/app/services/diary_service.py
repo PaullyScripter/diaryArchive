@@ -391,6 +391,7 @@ async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: s
         )
         _send_delete_notification(
             recipient_id=str(diary["user_id"]),
+            admin_id=str(current_user["_id"]),
             admin_username=current_user["username"],
             notification_type="diary_deleted",
             diary_title=diary.get("title"),
@@ -573,6 +574,7 @@ async def get_my_diaries_stats(user_id: str) -> dict:
 
 def _send_delete_notification(
     recipient_id: str,
+    admin_id: str,
     admin_username: str,
     notification_type: str,
     diary_title: str | None = None,
@@ -598,7 +600,7 @@ def _send_delete_notification(
 
     _send_notification_async(
         recipient_id=recipient_id,
-        actor_id="admin",
+        actor_id=admin_id,
         notification_type=notification_type,
         target_id=None,
         target_type="diary",
