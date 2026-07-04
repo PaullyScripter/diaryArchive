@@ -581,8 +581,6 @@ def _send_delete_notification(
     comment_text: str | None = None,
     reason: str | None = None,
 ) -> None:
-    from app.services.notification_service import _send_notification_async
-
     type_messages = {
         "diary_deleted": f'Your diary "{diary_title or "Untitled"}" has been removed by an administrator.',
         "comment_deleted": f'Your comment on "{diary_title or "a diary"}" has been removed by an administrator.',
@@ -598,15 +596,25 @@ def _send_delete_notification(
         " in account suspension or banning."
     )
 
-    _send_notification_async(
-        recipient_id=recipient_id,
-        actor_id=admin_id,
-        notification_type=notification_type,
-        target_id=None,
-        target_type="diary",
-        metadata={
-            "diary_title": diary_title,
-            "reason": reason,
-            "message": message,
-        },
-    )
+    import asyncio as _asyncio
+    from app.services.notification_service import create_notification
+
+    async def _do():
+        try:
+            result = await create_notification(
+                recipient_id=recipient_id,
+                actor_id=admin_id,
+                notification_type=notification_type,
+                target_id=None,
+                target_type="diary",
+                metadata={
+                    "diary_title": diary_title,
+                    "reason": reason,
+                    "message": message,
+                },
+            )
+            logger.info("Delete notification sent: id=%s type=%s", result, notification_type)
+        except Exception:
+            logger.warning("Failed delete notification type=%s", notification_type, exc_info=True)
+
+    _asyncio.create_task(_do())

@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 from app.core.exceptions import (
@@ -8,6 +9,8 @@ from app.core.exceptions import (
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
+
+logger = logging.getLogger(__name__)
 from app.core.utils import fmt_dt
 
 
@@ -299,19 +302,39 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
             target_id=comment_id,
             details={"diary_id": diary_id, "reason": admin_delete_reason.strip()},
         )
-        from app.services.notification_service import _send_notification_async
-        _send_notification_async(
-            recipient_id=str(comment["user_id"]),
-            actor_id=str(current_user["_id"]),
-            notification_type="comment_deleted",
-            target_id=comment_id,
-            target_type="comment",
-            metadata={
-                "diary_title": diary.get("title"),
-                "comment_excerpt": (comment.get("content") or "")[:80],
-                "reason": admin_delete_reason.strip(),
-            },
-        )
+        import asyncio as _asyncio
+        from app.services.notification_service import create_notification
+
+        async def _do_comment_notify():
+            try:
+                msg = (
+                    f'Your comment on "{diary.get("title", "a diary")}"'
+                    f" has been removed by an administrator."
+                )
+                if admin_delete_reason:
+                    msg += f" Reason: {admin_delete_reason.strip()}."
+                msg += (
+                    " Repeated violations of our Community Guidelines"
+                    " may result in account suspension or banning."
+                )
+                result = await create_notification(
+                    recipient_id=str(comment["user_id"]),
+                    actor_id=str(current_user["_id"]),
+                    notification_type="comment_deleted",
+                    target_id=comment_id,
+                    target_type="comment",
+                    metadata={
+                        "diary_title": diary.get("title"),
+                        "comment_excerpt": (comment.get("content") or "")[:80],
+                        "reason": admin_delete_reason.strip(),
+                        "message": msg,
+                    },
+                )
+                logger.info("Comment delete notification sent: id=%s", result)
+            except Exception:
+                logger.warning("Failed comment delete notification", exc_info=True)
+
+        _asyncio.create_task(_do_comment_notify())
 
     parent_id = comment.get("parent_comment_id")
     await comment_repo.soft_delete(comment_id)
