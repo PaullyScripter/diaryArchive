@@ -278,18 +278,17 @@ class TestListDiaries:
     async def test_list_diaries_filter_year_month(
         self, client: AsyncClient, auth_token: str
     ):
+        from datetime import UTC, datetime
+        now = datetime.now(UTC)
         create_resp = await client.post(
             "/api/v1/diaries",
             headers={"Authorization": f"Bearer {auth_token}"},
-            json={"title": "June 2026", "content_text": "test"},
+            json={"title": "Current month", "content_text": "test"},
         )
         diary_id = create_resp.json()["data"]["id"]
 
-        now_year = 2026
-        now_month = 6
-
         response = await client.get(
-            f"/api/v1/diaries?year={now_year}&month={now_month}"
+            f"/api/v1/diaries?year={now.year}&month={now.month}"
         )
         assert response.status_code == 200
         body = response.json()
