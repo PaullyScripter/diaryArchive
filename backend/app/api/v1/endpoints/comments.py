@@ -81,6 +81,7 @@ async def delete(
     diary_id: str,
     comment_id: str,
     request: Request,
+    body: dict = {},
     current_user: dict = Depends(get_current_user),
 ):
     is_limited, _ = await check_rate_limit(
@@ -88,4 +89,5 @@ async def delete(
     )
     if is_limited:
         raise RateLimitException("Too many comment deletion attempts")
-    await delete_comment(comment_id, diary_id, current_user)
+    reason = body.get("admin_delete_reason") if isinstance(body, dict) else None
+    await delete_comment(comment_id, diary_id, current_user, reason)
