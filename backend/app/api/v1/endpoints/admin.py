@@ -87,6 +87,90 @@ async def admin_update_report(
     return {"data": result}
 
 
+# ─── Diary Hide ──────────────────────────────────────────────
+
+@router.put("/diaries/{diary_id}/hide")
+async def admin_hide_diary(
+    diary_id: str,
+    body: dict,
+    request: Request,
+    current_admin: dict = Depends(get_current_admin),
+):
+    reason = body.get("reason", "").strip()
+    if len(reason) < 10:
+        raise ValidationException("Hide reason must be at least 10 characters")
+
+    diary_repo = DiaryRepository()
+    diary = await diary_repo.get_by_id(diary_id)
+    if diary is None:
+        raise NotFoundException("Diary not found")
+
+    await diary_repo.update(diary_id, {"privacy": "hidden"})
+
+    await log_audit(
+        admin_id=str(current_admin["_id"]),
+        admin_username=current_admin["username"],
+        action="hide_diary",
+        target_type="diary",
+        target_id=diary_id,
+        details={"title": diary.get("title"), "reason": reason},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    _remove_from_index(diary_id)
+
+    return {"data": {"id": diary_id, "hidden": True}}
+
+
+@router.put("/diaries/{diary_id}/unhide")
+async def admin_unhide_diary(
+    diary_id: str,
+    body: dict,
+    request: Request,
+    current_admin: dict = Depends(get_current_admin),
+):
+    diary_repo = DiaryRepository()
+    diary = await diary_repo.get_by_id(diary_id)
+    if diary is None:
+        raise NotFoundException("Diary not found")
+
+    reason = body.get("reason", "").strip() or "Restored by admin"
+
+    await diary_repo.update(diary_id, {"privacy": "public"})
+
+    await log_audit(
+        admin_id=str(current_admin["_id"]),
+        admin_username=current_admin["username"],
+        action="unhide_diary",
+        target_type="diary",
+        target_id=diary_id,
+        details={"title": diary.get("title"), "reason": reason},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    updated = await diary_repo.get_by_id(diary_id)
+    if updated and updated.get("privacy") == "public":
+        _index_diary(updated)
+
+    return {"data": {"id": diary_id, "hidden": False}}
+
+
+def _remove_from_index(diary_id: str) -> None:
+    try:
+        from app.services.diary_service import _remove_from_index_async
+        _remove_from_index_async(diary_id)
+    except Exception:
+        pass
+
+
+def _index_diary(diary: dict) -> None:
+    try:
+        from app.services.diary_service import _index_diary_async
+        _index_diary_async(diary)
+    except Exception:
+        pass
+
+
 # ─── Users ──────────────────────────────────────────────────
 
 @router.get("/users")
