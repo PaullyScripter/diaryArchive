@@ -192,6 +192,16 @@ export function NavBar() {
                   >
                     Settings
                   </Link>
+                  {user?.is_admin && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setMenuOpen(false)}
+                      className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+                      role="menuitem"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
                   <hr className="my-1 border-border" />
                   <button
                     onClick={handleLogout}
