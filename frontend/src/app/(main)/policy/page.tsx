@@ -15,8 +15,9 @@ const SECTIONS = [
   "10. Password Reset Warning",
   "11. Account Deletion",
   "12. Children's Privacy",
-  "13. Changes to This Policy",
-  "14. Open Source - Verify Everything",
+  "13. Content Moderation",
+  "14. Changes to This Policy",
+  "15. Open Source - Verify Everything",
 ];
 
 function slugify(text: string) {
@@ -404,7 +405,45 @@ export default function PolicyPage() {
           </p>
         </Section>
 
-        <Section title="13. Changes to This Policy">
+        <Section title="13. Content Moderation">
+          <InfoCard>
+            <p className="text-sm leading-relaxed text-muted mb-4">
+              DiaryArchive does <strong className="text-foreground">not</strong> use
+              automated content moderation. There are no algorithms scanning your
+              writing, no AI flagging your entries, and no automated takedowns.
+            </p>
+            <p className="text-sm leading-relaxed text-muted mb-4">
+              Moderation on DiaryArchive is <strong className="text-foreground">light-touch and manual</strong>.
+              Content is only reviewed when a user submits a report, and each
+              report is reviewed individually by a human administrator. We take
+              action only against clear violations:
+            </p>
+            <ul className="space-y-2 text-sm text-muted mb-4">
+              {[
+                "Harassment or targeted abuse of another user",
+                "Illegal content",
+                "Spam or automated posting",
+                "Impersonation",
+                "Content that promotes self-harm",
+              ].map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm leading-relaxed text-muted">
+              Outside of these specific categories, we default to
+              <strong className="text-foreground"> leaving content alone</strong>.
+              Controversial opinions, unpopular ideas, and personal expression
+              that don't violate the above are not removed. Our philosophy is
+              that a diary platform should protect free expression - moderation
+              exists only to keep the community safe, not to police thought.
+            </p>
+          </InfoCard>
+        </Section>
+
+        <Section title="14. Changes to This Policy">
           <p className="text-sm leading-relaxed text-muted">
             Material changes will be announced via a notice on the homepage.
             Continued use after changes constitutes acceptance. Last updated
@@ -412,7 +451,7 @@ export default function PolicyPage() {
           </p>
         </Section>
 
-        <Section title="14. Open Source - Verify Everything">
+        <Section title="15. Open Source - Verify Everything">
           <InfoCard>
             <p className="text-sm leading-relaxed text-muted mb-4">
               Every claim in this privacy policy is independently verifiable.
