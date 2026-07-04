@@ -13,6 +13,7 @@ export interface DiaryData {
     id: string;
     username: string;
     avatar_path: string | null;
+    is_admin?: boolean;
   };
   tags: string[];
   emotion: string | null;
