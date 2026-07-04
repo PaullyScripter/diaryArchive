@@ -29,6 +29,10 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    max_media_per_user: int = 500
+    max_media_per_diary: int = 20
+    max_daily_uploads: int = 50
+
     @field_validator("secret_key")
     @classmethod
     def secret_key_required(cls, v: str) -> str:
