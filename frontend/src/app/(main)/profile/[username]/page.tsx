@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
-import { BookOpen, Users, UserPlus } from "lucide-react";
+import { BookOpen, Users, UserPlus, Star } from "lucide-react";
 
 import { useUserDiaries, useUserProfile } from "@/hooks/use-user";
 import { useFollowers, useFollowing } from "@/hooks/use-social";
@@ -56,6 +56,11 @@ export default function ProfilePage() {
         />
         <h1 className="font-serif text-2xl font-semibold text-foreground">
           {profile.username}
+          {profile.is_admin && (
+            <span className="inline-flex items-center ml-2 text-accent align-middle" title="Admin">
+              <Star className="w-5 h-5 fill-current" />
+            </span>
+          )}
         </h1>
 
         {profile.about && (

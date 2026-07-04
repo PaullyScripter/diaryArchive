@@ -22,6 +22,7 @@ def build_public_profile(user: dict, is_following: bool = False) -> dict:
         }),
         "created_at": fmt_dt(user.get("created_at")),
         "is_following": is_following,
+        "is_admin": bool(user.get("is_admin")),
     }
 
 

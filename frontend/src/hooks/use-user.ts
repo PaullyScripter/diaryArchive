@@ -17,6 +17,7 @@ export interface UserProfile {
   };
   created_at: string;
   is_following: boolean;
+  is_admin?: boolean;
 }
 
 export interface DiaryEntry {
