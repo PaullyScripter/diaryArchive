@@ -121,6 +121,7 @@ async def admin_hide_diary(
 
     _send_admin_notification(
         recipient_id=str(diary["user_id"]),
+        admin_id=str(current_admin["_id"]),
         admin_username=current_admin["username"],
         notification_type="diary_hidden",
         diary_title=diary.get("title", "Untitled"),
@@ -478,6 +479,7 @@ POLICY_REMINDER = (
 
 def _send_admin_notification(
     recipient_id: str,
+    admin_id: str,
     admin_username: str,
     notification_type: str,
     diary_title: str | None = None,
@@ -498,7 +500,7 @@ def _send_admin_notification(
 
     _send_notification_async(
         recipient_id=recipient_id,
-        actor_id="admin",
+        actor_id=admin_id,
         notification_type=notification_type,
         target_id=None,
         target_type="diary",
