@@ -6,6 +6,14 @@ from app.repositories.base import BaseRepository
 class CommentRepository(BaseRepository):
     collection_name = "comments"
 
+    async def find_by_ids(self, ids: list[str]) -> list[dict]:
+        if not ids:
+            return []
+        oids = [ObjectId(cid) for cid in ids if ObjectId.is_valid(cid)]
+        if not oids:
+            return []
+        return await self.find({"_id": {"$in": oids}}, limit=len(oids))
+
     async def find_by_diary(
         self,
         diary_id: str,

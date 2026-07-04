@@ -135,6 +135,71 @@ export default function AdminReportDetailPage() {
           </div>
         </div>
 
+        <div className="border-t border-border pt-3">
+          <div className="text-xs text-muted mb-2 font-medium">Reported Content</div>
+          {report.target_type === "diary" && (
+            <div className="border border-border p-3 bg-overlay">
+              {report.target_preview.content_deleted ? (
+                <span className="text-xs text-muted italic">[This diary has been deleted]</span>
+              ) : (
+                <>
+                  <div className="text-xs font-medium mb-1">
+                    {report.target_preview.title || "Untitled"}
+                  </div>
+                  {report.target_preview.author_username && (
+                    <div className="text-xs text-muted mb-1">
+                      by @{report.target_preview.author_username}
+                    </div>
+                  )}
+                  {report.target_preview.tags && report.target_preview.tags.length > 0 && (
+                    <div className="text-xs text-muted mb-1">
+                      Tags: {report.target_preview.tags.join(", ")}
+                    </div>
+                  )}
+                  {report.target_preview.excerpt && (
+                    <div className="text-xs text-foreground mt-1 leading-relaxed">
+                      {report.target_preview.excerpt}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {report.target_type === "comment" && (
+            <div className="border border-border p-3 bg-overlay">
+              {report.target_preview.content_deleted ? (
+                <span className="text-xs text-muted italic">[This comment has been deleted]</span>
+              ) : (
+                <>
+                  {report.target_preview.author_username && (
+                    <div className="text-xs text-muted mb-1">
+                      @{report.target_preview.author_username}
+                    </div>
+                  )}
+                  {report.target_preview.content && (
+                    <div className="text-xs text-foreground leading-relaxed">
+                      {report.target_preview.content}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {report.target_type === "user" && (
+            <div className="border border-border p-3 bg-overlay">
+              <div className="text-xs font-medium mb-1">
+                @{report.target_preview.username || "unknown"}
+                {report.target_preview.is_banned && (
+                  <span className="ml-1 text-destructive">(banned)</span>
+                )}
+              </div>
+              {report.target_preview.about && (
+                <div className="text-xs text-muted mt-1">{report.target_preview.about}</div>
+              )}
+            </div>
+          )}
+        </div>
+
         {report.description && (
           <div>
             <div className="text-xs text-muted mb-1">Description</div>

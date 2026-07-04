@@ -83,7 +83,28 @@ export default function AdminReportsPage() {
                       href={`/admin/reports/${r.id}`}
                       className="text-foreground hover:underline no-underline"
                     >
-                      {r.target_type}/{r.target_id.slice(-6)}
+                      <div className="text-xs font-medium">
+                        {r.target_type}
+                        {r.target_preview.author_username && ` by @${r.target_preview.author_username}`}
+                      </div>
+                      {r.target_type === "diary" && r.target_preview.title && (
+                        <div className="text-[11px] text-muted truncate max-w-[200px]">
+                          {r.target_preview.content_deleted
+                            ? "[Deleted]"
+                            : r.target_preview.title}
+                        </div>
+                      )}
+                      {r.target_type === "comment" && r.target_preview.content && (
+                        <div className="text-[11px] text-muted truncate max-w-[200px]">
+                          {r.target_preview.content}
+                        </div>
+                      )}
+                      {r.target_type === "user" && r.target_preview.username && (
+                        <div className="text-[11px] text-muted">
+                          @{r.target_preview.username}
+                          {r.target_preview.is_banned && " (banned)"}
+                        </div>
+                      )}
                     </Link>
                   </td>
                   <td className="py-2 pr-3 text-muted">{r.reason}</td>
