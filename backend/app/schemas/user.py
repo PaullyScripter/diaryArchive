@@ -9,4 +9,5 @@ user_indexes: list[tuple[dict, dict]] = [
         },
     ),
     ({"created_at": -1}, {"name": "idx_created_at"}),
+    ({"is_banned": 1}, {"name": "idx_is_banned"}),
 ]

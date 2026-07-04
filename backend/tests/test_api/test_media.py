@@ -381,3 +381,99 @@ class TestCascadeDelete:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert get_resp.status_code == 404
+
+
+class TestMediaDetailAuthorization:
+    async def test_owner_can_access(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+
+        files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        upload_resp = await client.post(
+            "/api/v1/media/upload", files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        media_id = upload_resp.json()["data"]["id"]
+
+        resp = await client.get(
+            f"/api/v1/media/{media_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+
+    async def test_non_owner_gets_404(self, client: AsyncClient):
+        user_a = await _register_user(client, "usera")
+        user_b = await _register_user(client, "userb")
+
+        files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        upload_resp = await client.post(
+            "/api/v1/media/upload", files=files,
+            headers={"Authorization": f"Bearer {user_a['access_token']}"},
+        )
+        media_id = upload_resp.json()["data"]["id"]
+
+        resp = await client.get(
+            f"/api/v1/media/{media_id}",
+            headers={"Authorization": f"Bearer {user_b['access_token']}"},
+        )
+        assert resp.status_code == 404
+
+
+class TestSVGRejection:
+    async def test_svg_upload_rejected(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+        svg_data = b'<?xml version="1.0"?><svg></svg>' + b"\x00" * 50
+        files = {"file": ("image.svg", io.BytesIO(svg_data), "image/svg+xml")}
+        resp = await client.post(
+            "/api/v1/media/upload", files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code in (400, 422)
+
+    async def test_svg_no_namespace_rejected(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+        svg_data = b"<svg><script>alert(1)</script></svg>" + b"\x00" * 20
+        files = {"file": ("evil.svg", io.BytesIO(svg_data), "image/png")}
+        resp = await client.post(
+            "/api/v1/media/upload", files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code in (400, 422)
+
+
+class TestFilenameSanitization:
+    async def test_html_filename_sanitized(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+        files = {"file": ("<script>alert(1)</script>.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        resp = await client.post(
+            "/api/v1/media/upload", files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+        filename = resp.json()["data"]["filename"]
+        assert "<" not in filename
+        assert ">" not in filename
+
+    async def test_special_chars_removed(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+        files = {"file": ("test\x00null.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        resp = await client.post(
+            "/api/v1/media/upload", files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 201
+        filename = resp.json()["data"]["filename"]
+        assert "\x00" not in filename
+
+
+class TestDecompressionBomb:
+    async def test_decompression_bomb_setting_applied(self):
+        from PIL import Image
+        from app.services.image_service import MAX_PIXELS
+        from app.core.media_validator import MAX_PIXELS as V_MAX
+        assert Image.MAX_IMAGE_PIXELS == V_MAX
+        assert Image.MAX_IMAGE_PIXELS == 64_000_000

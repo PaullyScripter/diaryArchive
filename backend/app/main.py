@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import DatabaseManager
-from app.core.error_handlers import diaryarchive_exception_handler
+from app.core.error_handlers import diaryarchive_exception_handler, generic_exception_handler
 from app.core.exceptions import DiaryArchiveException
 from app.core.indexes import create_indexes
 from app.core.middleware import CSPSecurityMiddleware, RequestIDMiddleware
@@ -63,6 +63,7 @@ app.add_middleware(RequestIDMiddleware)
 app.add_middleware(CSPSecurityMiddleware)
 
 app.add_exception_handler(DiaryArchiveException, diaryarchive_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 
 @app.get("/")

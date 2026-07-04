@@ -36,6 +36,10 @@ def detect_mime_type(data: bytes) -> str | None:
     if data[:6] in (b"GIF87a", b"GIF89a"):
         return "image/gif"
 
+    stripped = data.lstrip()
+    if stripped.startswith((b"<?xml", b"<svg", b"<html", b"<!DOCTYPE")):
+        return None
+
     if data[:4] == b"RIFF":
         if len(data) >= 12 and data[8:12] == b"WEBP":
             return "image/webp"
