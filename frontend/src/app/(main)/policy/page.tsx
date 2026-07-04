@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const SECTIONS = [
   "1. What We Collect",
   "2. How Your Data Is Stored",
-  "3. Media &amp; Uploads",
+  "3. Media and Uploads",
   "4. Who Can See Your Data",
   "5. Data Retention",
   "6. Your Rights",
@@ -200,7 +200,7 @@ export default function PolicyPage() {
           </div>
         </Section>
 
-        <Section title="3. Media &amp; Uploads">
+        <Section title="3. Media and Uploads">
           <InfoCard>
             <ul className="space-y-2.5 text-sm leading-relaxed text-muted">
               <li className="flex gap-2">
@@ -271,7 +271,7 @@ export default function PolicyPage() {
         <Section title="6. Your Rights">
           <div className="grid gap-4 sm:grid-cols-2">
             <InfoCard>
-              <h3 className="text-sm font-semibold text-foreground mb-2">Access &amp; Export</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">Access and Export</h3>
               <p className="text-sm leading-relaxed text-muted">
                 Download all your data anytime via Settings. Public diaries as
                 JSON/Markdown, private diaries as encrypted JSON with decryption
