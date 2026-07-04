@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, UserPlus, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, Bookmark, Wrench } from "lucide-react";
 import type { NotificationItem as NotificationItemType } from "@/hooks/use-notifications";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
@@ -9,7 +10,12 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   comment: <MessageCircle className="w-4 h-4 text-muted" />,
   follow: <UserPlus className="w-4 h-4 text-muted" />,
   bookmark: <Bookmark className="w-4 h-4 text-muted" />,
+  diary_hidden: <Wrench className="w-4 h-4 text-accent" />,
+  diary_deleted: <Wrench className="w-4 h-4 text-destructive" />,
+  comment_deleted: <Wrench className="w-4 h-4 text-destructive" />,
 };
+
+const ADMIN_TYPES = ["diary_hidden", "diary_deleted", "comment_deleted"];
 
 function getTargetUrl(notification: NotificationItemType): string {
   switch (notification.type) {
@@ -21,7 +27,6 @@ function getTargetUrl(notification: NotificationItemType): string {
       return commentId ? `${base}#comment-${commentId}` : base;
     }
     case "like":
-      return `/diary/${notification.target_id}`;
     case "bookmark":
       return `/diary/${notification.target_id}`;
     default:
@@ -35,54 +40,78 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onMarkRead }: NotificationItemProps) {
+  const [expanded, setExpanded] = useState(false);
+  const isAdmin = ADMIN_TYPES.includes(notification.type);
+
   const handleClick = () => {
     if (!notification.read) {
       onMarkRead(notification.id);
     }
+    if (isAdmin) {
+      setExpanded(!expanded);
+    }
   };
 
+  const body = notification.metadata?.body as string | undefined;
+
   return (
-    <Link
-      href={getTargetUrl(notification)}
-      onClick={handleClick}
-      className={`flex items-start gap-3 px-3 py-2.5 rounded-sm transition-colors no-underline ${
-        notification.read
-          ? "hover:bg-overlay"
-          : "bg-accent/5 border-l-2 border-l-accent hover:bg-accent/10"
-      }`}
-      aria-label={`${notification.read ? "" : "Unread: "}${notification.message}`}
-    >
-      <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-overlay flex items-center justify-center border border-border" aria-hidden="true">
-        {ICON_MAP[notification.type] || ICON_MAP.like}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p
-          className={`text-sm leading-snug ${
-            notification.read ? "text-muted" : "text-foreground font-medium"
-          }`}
-        >
-          {notification.message}
-        </p>
-        {notification.type === "comment" && (
-          <div className="mt-1 space-y-0.5">
-            {notification.metadata?.parent_content && (
-              <p className="text-xs text-subtle truncate">
-                <span className="text-muted">You: </span>
-                {notification.metadata.parent_content}
-              </p>
-            )}
-            {notification.metadata?.comment_excerpt && (
-              <p className="text-xs text-subtle truncate">
-                <span className="text-muted">
-                  {notification.metadata.parent_content ? "Reply: " : ""}
-                </span>
-                {notification.metadata.comment_excerpt}
-              </p>
-            )}
-          </div>
-        )}
-        <p className="text-xs text-subtle mt-0.5">{notification.time_ago}</p>
-      </div>
-    </Link>
+    <div>
+      <Link
+        href={isAdmin ? "#" : getTargetUrl(notification)}
+        onClick={(e) => {
+          if (isAdmin) {
+            e.preventDefault();
+            handleClick();
+          } else {
+            handleClick();
+          }
+        }}
+        className={`flex items-start gap-3 px-3 py-2.5 rounded-sm transition-colors no-underline cursor-pointer block ${
+          notification.read
+            ? "hover:bg-overlay"
+            : "bg-accent/5 border-l-2 border-l-accent hover:bg-accent/10"
+        }`}
+        aria-label={`${notification.read ? "" : "Unread: "}${notification.message}`}
+      >
+        <div className="mt-0.5 shrink-0 w-8 h-8 rounded-full bg-overlay flex items-center justify-center border border-border" aria-hidden="true">
+          {ICON_MAP[notification.type] || ICON_MAP.like}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p
+            className={`text-sm leading-snug ${
+              notification.read ? "text-muted" : "text-foreground font-medium"
+            }`}
+          >
+            {notification.message}
+          </p>
+          {notification.type === "comment" && (
+            <div className="mt-1 space-y-0.5">
+              {notification.metadata?.parent_content && (
+                <p className="text-xs text-subtle truncate">
+                  <span className="text-muted">You: </span>
+                  {notification.metadata.parent_content}
+                </p>
+              )}
+              {notification.metadata?.comment_excerpt && (
+                <p className="text-xs text-subtle truncate">
+                  <span className="text-muted">
+                    {notification.metadata.parent_content ? "Reply: " : ""}
+                  </span>
+                  {notification.metadata.comment_excerpt}
+                </p>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-subtle mt-0.5">{notification.time_ago}</p>
+        </div>
+      </Link>
+      {isAdmin && expanded && body && (
+        <div className="ml-14 mr-3 mb-2 border border-border bg-overlay p-3 rounded-sm">
+          <pre className="text-xs text-foreground whitespace-pre-wrap font-sans leading-relaxed">
+            {body}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 }

@@ -305,18 +305,20 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
         import asyncio as _asyncio
         from app.services.notification_service import create_notification
 
+        comment_reason = admin_delete_reason.strip() if admin_delete_reason else "Content policy violation"
+        diary_title = diary.get("title", "a diary")
+        title = f'Your comment on "{diary_title}" was removed — {comment_reason}'
+        body = (
+            f"Hello,\n\n"
+            f"Your comment on \"{diary_title}\" has been removed by an administrator"
+            f" for the following reason: {comment_reason}.\n\n"
+            f"Please review our Community Guidelines. Repeated violations may result"
+            f" in account suspension or banning.\n\n"
+            f"Regards,\nDiaryArchive Moderation"
+        )
+
         async def _do_comment_notify():
             try:
-                msg = (
-                    f'Your comment on "{diary.get("title", "a diary")}"'
-                    f" has been removed by an administrator."
-                )
-                if admin_delete_reason:
-                    msg += f" Reason: {admin_delete_reason.strip()}."
-                msg += (
-                    " Repeated violations of our Community Guidelines"
-                    " may result in account suspension or banning."
-                )
                 result = await create_notification(
                     recipient_id=str(comment["user_id"]),
                     actor_id=str(current_user["_id"]),
@@ -326,8 +328,9 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
                     metadata={
                         "diary_title": diary.get("title"),
                         "comment_excerpt": (comment.get("content") or "")[:80],
-                        "reason": admin_delete_reason.strip(),
-                        "message": msg,
+                        "reason": comment_reason,
+                        "title": title,
+                        "body": body,
                     },
                 )
                 logger.info("Comment delete notification sent: id=%s", result)

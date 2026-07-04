@@ -79,14 +79,14 @@ async def create_notification(
         "comment": f"{actor_username} commented on your diary",
         "follow": f"{actor_username} started following you",
         "bookmark": f"{actor_username} bookmarked your diary",
-        "diary_hidden": f"{actor_username} hid your diary",
-        "diary_deleted": f"{actor_username} deleted your diary",
-        "comment_deleted": f"{actor_username} deleted your comment",
+        "diary_hidden": f"Your diary was hidden",
+        "diary_deleted": f"Your diary was removed",
+        "comment_deleted": f"Your comment was removed",
     }
     message = messages.get(notification_type, f"{actor_username} interacted with your content")
 
-    if metadata and metadata.get("message"):
-        message = metadata["message"]
+    if metadata and metadata.get("title"):
+        message = metadata["title"]
 
     if metadata:
         if metadata.get("diary_title"):
