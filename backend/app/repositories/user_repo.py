@@ -1,3 +1,5 @@
+import re
+
 from bson import ObjectId
 
 from app.core.exceptions import ConflictException
@@ -39,6 +41,54 @@ class UserRepository(BaseRepository):
             {"_id": self._to_object_id(user_id)},
             {"$inc": {f"stats.{field}": delta}},
         )
+
+    async def search_users(
+        self,
+        query: str | None = None,
+        is_banned: bool | None = None,
+        skip: int = 0,
+        limit: int = 20,
+        sort: list[tuple] | None = None,
+    ) -> list[dict]:
+        filter_dict: dict = {}
+        if query:
+            escaped = re.escape(query.lower())
+            filter_dict["username"] = {"$regex": f"^{escaped}"}
+        if is_banned is not None:
+            filter_dict["is_banned"] = is_banned
+        return await self.find(
+            filter=filter_dict,
+            sort=sort or [("created_at", -1)],
+            skip=skip,
+            limit=limit,
+        )
+
+    async def count_users(
+        self,
+        query: str | None = None,
+        is_banned: bool | None = None,
+    ) -> int:
+        filter_dict: dict = {}
+        if query:
+            escaped = re.escape(query.lower())
+            filter_dict["username"] = {"$regex": f"^{escaped}"}
+        if is_banned is not None:
+            filter_dict["is_banned"] = is_banned
+        return await self.count(filter_dict)
+
+    async def count_admins(self) -> int:
+        return await self.count({"is_admin": True})
+
+    async def set_ban_status(self, user_id: str, is_banned: bool) -> bool:
+        return await self.update(user_id, {"is_banned": is_banned})
+
+    async def set_admin_role(self, user_id: str, is_admin: bool) -> bool:
+        return await self.update(user_id, {"is_admin": is_admin})
+
+    async def get_banned_user_ids(self) -> list[ObjectId]:
+        cursor = self._collection.find({"is_banned": True}, {"_id": 1})
+        docs = await cursor.to_list(length=10000)
+        return [d["_id"] for d in docs]
 
     def _to_object_id(self, id: str):
         return ObjectId(id)
