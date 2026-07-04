@@ -1,10 +1,11 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
+import { useRef } from "react";
 import {
   Bold,
   Italic,
-  Underline,
+  Underline as UnderlineIcon,
   Strikethrough,
   Heading1,
   Heading2,
@@ -17,6 +18,8 @@ import {
   Undo2,
   Redo2,
   Code2,
+  Image,
+  Images,
 } from "lucide-react";
 
 const FONTS = [
@@ -40,10 +43,28 @@ interface EditorToolbarProps {
   editor: Editor | null;
   sourceMode: boolean;
   onToggleSource: () => void;
+  onImageUpload?: (file: File) => void;
+  onOpenGallery?: () => void;
 }
 
-export function EditorToolbar({ editor, sourceMode, onToggleSource }: EditorToolbarProps) {
+export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUpload, onOpenGallery }: EditorToolbarProps) {
   if (!editor || editor.isDestroyed) return null;
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImageUpload) {
+      onImageUpload(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const activeFont =
     (editor.getAttributes("textStyle") as { fontFamily?: string }).fontFamily || "";
@@ -95,7 +116,7 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource }: EditorTool
       {[
         { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: () => editor.isActive("bold"), label: "Bold" },
         { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: () => editor.isActive("italic"), label: "Italic" },
-        { icon: Underline, action: () => editor.chain().focus().toggleUnderline().run(), active: () => editor.isActive("underline"), label: "Underline" },
+        { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: () => editor.isActive("underline"), label: "Underline" },
         { icon: Strikethrough, action: () => editor.chain().focus().toggleStrike().run(), active: () => editor.isActive("strike"), label: "Strikethrough" },
       ].map((btn) => (
         <button
@@ -173,6 +194,40 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource }: EditorTool
       ))}
 
       <div className="w-px h-5 bg-border mx-1" />
+
+      {onImageUpload && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-label="Upload image"
+          />
+          <button
+            type="button"
+            onClick={handleImageClick}
+            title="Insert image"
+            aria-label="Insert image"
+            className={`${btnBase} ${btnNormal}`}
+          >
+            <Image className="w-3.5 h-3.5" />
+          </button>
+          {onOpenGallery && (
+            <button
+              type="button"
+              onClick={onOpenGallery}
+              title="Media gallery"
+              aria-label="Open media gallery"
+              className={`${btnBase} ${btnNormal}`}
+            >
+              <Images className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <div className="w-px h-5 bg-border mx-1" />
+        </>
+      )}
 
       <button
         type="button"

@@ -25,7 +25,8 @@ class CSPSecurityMiddleware(BaseHTTPMiddleware):
         )
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; "
+            "img-src 'self' data: blob: http://localhost:9000 http://minio:9000; "
+            "connect-src 'self' http://localhost:9000 http://minio:9000; font-src 'self'; "
             "object-src 'none'; base-uri 'self'; form-action 'self'"
         )
         return response

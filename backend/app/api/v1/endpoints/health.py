@@ -1,6 +1,9 @@
+import asyncio
+
 from fastapi import APIRouter
 
 from app.core.database import DatabaseManager
+from app.core.minio_client import get_minio_client
 
 router = APIRouter()
 
@@ -22,6 +25,13 @@ async def health_check():
         checks["redis"] = "ok"
     except Exception:
         checks["redis"] = "unreachable"
+
+    try:
+        client = get_minio_client()
+        await asyncio.to_thread(client.list_buckets)
+        checks["minio"] = "ok"
+    except Exception:
+        checks["minio"] = "unreachable"
 
     overall = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
 

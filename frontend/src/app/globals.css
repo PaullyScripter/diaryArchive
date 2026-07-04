@@ -184,3 +184,11 @@ style { display: none; }
   0% { background-color: hsl(48 30% 25%); }
   100% { background-color: transparent; }
 }
+
+.resizable-image-wrapper:hover .resize-handle {
+  opacity: 1 !important;
+}
+
+.resizable-image-wrapper.ProseMirror-selectednode .resize-handle {
+  opacity: 1 !important;
+}
