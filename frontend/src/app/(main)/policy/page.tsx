@@ -148,7 +148,7 @@ export default function PolicyPage() {
               { label: "Email (optional)", value: "AES-256-GCM encrypted at rest - never displayed in UI" },
               { label: "Diary content", value: "Plaintext (public) or AES-256-GCM E2E encrypted (private)" },
               { label: "Uploaded media", value: "UUID filenames in object storage - EXIF stripped, WebP converted" },
-              { label: "IP address", value: "Temporarily logged - deleted after 30 days" },
+              { label: "IP address", value: "Temporarily logged for rate limiting and abuse prevention - deleted after 30 days" },
             ]}
           />
           <h3 className="text-base font-semibold text-foreground mt-6 mb-3">We Never Collect</h3>
@@ -248,7 +248,7 @@ export default function PolicyPage() {
               { label: "Username", value: "Everyone" },
               { label: "Email address", value: "Owner only - encrypted, never shown" },
               { label: "Password", value: "Nobody - one-way hash" },
-              { label: "IP address", value: "System only - 30-day temporary log" },
+              { label: "IP address", value: "System only - rate limiting, abuse prevention - 30 days" },
             ]}
           />
         </Section>
@@ -262,7 +262,7 @@ export default function PolicyPage() {
               { label: "Notifications", value: "90 days (auto-cleaned)" },
               { label: "Refresh tokens", value: "7 days or until logout" },
               { label: "Audit logs", value: "1 year (legal compliance)" },
-              { label: "IP address logs", value: "30 days" },
+              { label: "IP address logs", value: "30 days (rate limiting and abuse prevention)" },
               { label: "Orphaned media", value: "24 hours (auto-cleaned)" },
             ]}
           />
