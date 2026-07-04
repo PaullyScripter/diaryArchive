@@ -24,6 +24,8 @@ export default function AdminReportDetailPage() {
   const [note, setNote] = useState("");
   const [deleteReason, setDeleteReason] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showHideDialog, setShowHideDialog] = useState(false);
+  const [hideReason, setHideReason] = useState("");
   const [deleting, setDeleting] = useState(false);
   const { list, resolve, dismiss } = useAdminReports("all");
 
@@ -116,6 +118,29 @@ export default function AdminReportDetailPage() {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message || "Failed to delete content";
+      showToast(msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleHideDiary = async () => {
+    if (hideReason.trim().length < 10) {
+      showToast("Hide reason must be at least 10 characters");
+      return;
+    }
+    setDeleting(true);
+    try {
+      await apiClient.put(`/admin/diaries/${report.target_id}/hide`, {
+        reason: hideReason.trim(),
+      });
+      showToast("Diary hidden from public view");
+      setShowHideDialog(false);
+      setHideReason("");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message || "Failed to hide diary";
       showToast(msg);
     } finally {
       setDeleting(false);
@@ -284,7 +309,15 @@ export default function AdminReportDetailPage() {
         {report.status === "pending" && (
           <div className="border-t border-border pt-3 space-y-3">
             {(report.target_type === "diary" || report.target_type === "comment") && !report.target_preview.content_deleted && (
-              <div>
+              <div className="flex gap-2">
+                {report.target_type === "diary" && (
+                  <button
+                    onClick={() => setShowHideDialog(true)}
+                    className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
+                  >
+                    Hide Diary
+                  </button>
+                )}
                 <button
                   onClick={() => setShowDeleteDialog(true)}
                   className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80"
@@ -358,6 +391,41 @@ export default function AdminReportDetailPage() {
               className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80 disabled:opacity-50"
             >
               {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showHideDialog && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowHideDialog(false)}>
+        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-sm font-medium mb-2">Hide Diary</h3>
+          <p className="text-xs text-muted mb-3">
+            This will remove the diary from public view. The author can still see and edit it.
+            This action will be audit logged. Please provide a reason (min 10 characters).
+          </p>
+          <textarea
+            value={hideReason}
+            onChange={(e) => setHideReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
+            placeholder="Reason for hiding..."
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setShowHideDialog(false); setHideReason(""); }}
+              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleHideDiary}
+              disabled={hideReason.trim().length < 10 || deleting}
+              className="text-xs px-3 py-1 border border-border cursor-pointer bg-foreground text-background hover:opacity-80 disabled:opacity-50"
+            >
+              {deleting ? "Hiding..." : "Hide Diary"}
             </button>
           </div>
         </div>
