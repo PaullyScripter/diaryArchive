@@ -1,4 +1,4 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+﻿import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 import { useAuthStore } from "@/store/auth-store";
 
@@ -83,7 +83,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 429) {
       if (typeof window !== "undefined") {
         import("@/components/shared/toast").then(({ showToast }) => {
-          showToast("You're going too fast — wait a moment and try again.");
+          showToast("You're going too fast - wait a moment and try again.");
         });
       }
     }

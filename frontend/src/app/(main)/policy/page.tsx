@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — DiaryArchive",
+  title: "Privacy Policy - DiaryArchive",
   description: "How DiaryArchive handles your data, privacy, security, and your rights.",
 };
 
@@ -61,7 +61,7 @@ export default function PolicyPage() {
     <div className="mx-auto max-w-3xl py-8">
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground mb-1">Privacy Policy</h1>
-        <p className="text-sm text-subtle">Last updated &mdash; July 4, 2026</p>
+        <p className="text-sm text-subtle">Last updated - July 4, 2026</p>
       </div>
 
       <Section title="1. What We Collect">
@@ -71,12 +71,12 @@ export default function PolicyPage() {
         </p>
         <DataTable
           rows={[
-            { label: "Username", value: "Plaintext — your public identity" },
-            { label: "Password", value: "Argon2id hash — one-way, unrecoverable" },
-            { label: "Email (optional)", value: "AES-256-GCM encrypted at rest — never displayed in UI" },
+            { label: "Username", value: "Plaintext - your public identity" },
+            { label: "Password", value: "Argon2id hash - one-way, unrecoverable" },
+            { label: "Email (optional)", value: "AES-256-GCM encrypted at rest - never displayed in UI" },
             { label: "Diary content", value: "Plaintext (public) or AES-256-GCM E2E encrypted (private)" },
-            { label: "Uploaded media", value: "UUID filenames in object storage — EXIF stripped, WebP converted" },
-            { label: "IP address", value: "Temporarily logged — deleted after 30 days" },
+            { label: "Uploaded media", value: "UUID filenames in object storage - EXIF stripped, WebP converted" },
+            { label: "IP address", value: "Temporarily logged - deleted after 30 days" },
           ]}
         />
 
@@ -108,7 +108,7 @@ export default function PolicyPage() {
             <h3 className="text-sm font-semibold text-foreground mb-2">Private Diaries</h3>
             <p className="text-sm leading-relaxed text-muted">
               AES-256-GCM encrypted in your browser <em>before</em> upload. The
-              server stores only ciphertext and <strong>cannot decrypt</strong> —
+              server stores only ciphertext and <strong>cannot decrypt</strong> -
               even if the database is compromised.
             </p>
           </InfoCard>
@@ -135,7 +135,7 @@ export default function PolicyPage() {
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
               Files validated by <strong className="text-foreground">magic-byte inspection</strong>
-              &mdash; not file extension or claimed MIME type. Executables, PDFs,
+              - not file extension or claimed MIME type. Executables, PDFs,
               and ZIPs disguised as images are rejected.
             </li>
             <li className="flex gap-2">
@@ -147,7 +147,7 @@ export default function PolicyPage() {
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
               Files stored with <strong className="text-foreground">random UUID filenames</strong>
-              &mdash; your original filename is never used in URLs.
+              - your original filename is never used in URLs.
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
@@ -173,11 +173,11 @@ export default function PolicyPage() {
         <DataTable
           rows={[
             { label: "Public diary content", value: "Everyone" },
-            { label: "Private diary content", value: "Owner only — server cannot decrypt" },
+            { label: "Private diary content", value: "Owner only - server cannot decrypt" },
             { label: "Username", value: "Everyone" },
-            { label: "Email address", value: "Owner only — encrypted, never shown" },
-            { label: "Password", value: "Nobody — one-way hash" },
-            { label: "IP address", value: "System only — 30-day temporary log" },
+            { label: "Email address", value: "Owner only - encrypted, never shown" },
+            { label: "Password", value: "Nobody - one-way hash" },
+            { label: "IP address", value: "System only - 30-day temporary log" },
           ]}
         />
       </Section>
@@ -236,7 +236,7 @@ export default function PolicyPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2">
           {[
             { label: "E2E Encryption", desc: "AES-256-GCM per-diary keys" },
-            { label: "Password Hashing", desc: "Argon2id — 64 MB memory" },
+            { label: "Password Hashing", desc: "Argon2id - 64 MB memory" },
             { label: "Auth Tokens", desc: "JWT 15-min + revocable refresh" },
             { label: "Transport", desc: "HTTPS + HSTS preload" },
             { label: "Rate Limiting", desc: "IP + per-user windows" },
@@ -261,7 +261,7 @@ export default function PolicyPage() {
         </p>
         <DataTable
           rows={[
-            { label: "refresh_token", value: "Session persistence — HTTP only, Secure, SameSite Strict — 7 days" },
+            { label: "refresh_token", value: "Session persistence - HTTP only, Secure, SameSite Strict - 7 days" },
           ]}
         />
         <p className="text-xs text-subtle mt-3">
@@ -276,7 +276,7 @@ export default function PolicyPage() {
             <strong className="text-foreground">None.</strong> We do not share
             data with any third party. No Google Analytics. No advertising
             networks. No social media integrations. No behavioral tracking.
-            No data selling &mdash; ever. All infrastructure (database, search,
+            No data selling - ever. All infrastructure (database, search,
             storage, caching) is self-hosted.
           </p>
         </InfoCard>
@@ -286,7 +286,7 @@ export default function PolicyPage() {
         <WarningCard>
           <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200">
             Password reset <strong>permanently destroys</strong> all your
-            private diary content. This is by design &mdash; the encryption
+            private diary content. This is by design - the encryption
             keys that protect your private diaries are derived from your
             password. We cannot recover them because we never have them.
           </p>
