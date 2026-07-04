@@ -241,6 +241,8 @@ async def list_followers(
     for f in follows:
         fid = str(f["follower_id"])
         u = followers_map.get(fid, {"_id": fid, "username": "unknown"})
+        if u.get("is_banned"):
+            continue
         data.append({
             "id": str(u.get("_id", fid)),
             "username": u.get("username", "unknown"),
@@ -286,6 +288,8 @@ async def list_following(
     for f in follows:
         fid = str(f["following_id"])
         u = following_map.get(fid, {"_id": fid, "username": "unknown"})
+        if u.get("is_banned"):
+            continue
         data.append({
             "id": str(u.get("_id", fid)),
             "username": u.get("username", "unknown"),
@@ -319,7 +323,11 @@ async def list_my_likes(
     banned_ids = await user_repo.get_banned_user_ids()
 
     diaries = await diary_repo.find_by_ids(diary_ids)
-    diaries = [d for d in diaries if d.get("privacy") == "public"]
+    if banned_ids:
+        diaries = [d for d in diaries
+                   if d.get("privacy") == "public" and d["user_id"] not in banned_ids]
+    else:
+        diaries = [d for d in diaries if d.get("privacy") == "public"]
 
     from bson import ObjectId
     all_likes = await like_repo._collection.find(
@@ -400,7 +408,11 @@ async def list_my_bookmarks(
     total = await diary_repo._collection.count_documents(count_query)
 
     diaries = await diary_repo.find_by_ids(diary_ids)
-    diaries = [d for d in diaries if d.get("privacy") == "public"]
+    if banned_ids:
+        diaries = [d for d in diaries
+                   if d.get("privacy") == "public" and d["user_id"] not in banned_ids]
+    else:
+        diaries = [d for d in diaries if d.get("privacy") == "public"]
 
     if not diaries:
         return {
@@ -445,10 +457,13 @@ async def list_following_feed(
         return {"data": [], "meta": {"total": 0, "limit": limit}}
 
     diary_repo = DiaryRepository()
+    user_repo = UserRepository()
+    banned_ids = await user_repo.get_banned_user_ids()
     diaries = await diary_repo.find_public_by_user_ids(
         following_ids,
         sort=[("published_at", -1)],
         limit=limit,
+        exclude_user_ids=banned_ids if banned_ids else None,
     )
 
     if not diaries:

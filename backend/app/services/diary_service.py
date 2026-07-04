@@ -277,6 +277,9 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
     if author is None:
         raise NotFoundException("Author not found")
 
+    if author.get("is_banned") and not is_owner:
+        raise NotFoundException("Diary not found")
+
     is_liked = False
     is_bookmarked = False
     if current_user and diary.get("privacy") == "public":
