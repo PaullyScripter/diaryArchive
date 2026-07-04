@@ -225,7 +225,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const handleDelete = async () => {
     if (!diaryId) return;
     if (!confirm("Delete this diary permanently?")) return;
-    await deleteDiary.mutateAsync(diaryId);
+    await deleteDiary.mutateAsync({ id: diaryId });
     router.push("/me");
   };
 

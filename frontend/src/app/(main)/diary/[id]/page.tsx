@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LikeButton } from "@/components/social/like-button";
 import { BookmarkButton } from "@/components/social/bookmark-button";
+import { ReportButton } from "@/components/social/report-button";
 import { CommentSection } from "@/components/social/comment-section";
 
 export default function DiaryReaderPage() {
@@ -28,6 +29,7 @@ export default function DiaryReaderPage() {
   const { data: diary, isLoading, isError } = useDiary(id);
   const deleteDiary = useDeleteDiary();
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [warningAcknowledged, setWarningAcknowledged] = useState(false);
 
   const { masterKey, loadMasterKey, isAvailable: masterKeyAvailable, isLoading: isKeyLoading } = useMasterKey();
@@ -43,7 +45,11 @@ export default function DiaryReaderPage() {
   } | null>(null);
   const [decryptError, setDecryptError] = useState("");
 
+  const [showAdminDeleteDialog, setShowAdminDeleteDialog] = useState(false);
+  const [adminDeleteReason, setAdminDeleteReason] = useState("");
+
   const isOwner = user?.id === diary?.author.id;
+  const isAdmin = user?.is_admin ?? false;
   const isPrivate = diary?.privacy === "private";
 
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -203,9 +209,23 @@ export default function DiaryReaderPage() {
   const showWarning = (diary.content_warnings?.length ?? 0) > 0 && !warningAcknowledged && !isOwner;
 
   const handleDelete = async () => {
+    if (isAdmin && !isOwner) {
+      setShowAdminDeleteDialog(true);
+      return;
+    }
     if (!confirm("Delete this diary permanently? This cannot be undone.")) return;
     try {
-      await deleteDiary.mutateAsync(id);
+      await deleteDiary.mutateAsync({ id });
+      router.push("/me");
+    } catch {
+      // handled by mutation
+    }
+  };
+
+  const handleAdminDeleteConfirm = async () => {
+    if (adminDeleteReason.trim().length < 10) return;
+    try {
+      await deleteDiary.mutateAsync({ id, reason: adminDeleteReason.trim() });
       router.push("/me");
     } catch {
       // handled by mutation
@@ -411,6 +431,7 @@ export default function DiaryReaderPage() {
           >
             <Share2 className="w-4 h-4" />
           </Button>
+          {!isOwner && isAuthenticated && <ReportButton targetType="diary" targetId={id} />}
         </div>
       )}
 
@@ -433,9 +454,58 @@ export default function DiaryReaderPage() {
           </Button>
         </div>
       )}
+      {!isOwner && user?.is_admin && (
+        <div className="mt-6 pt-4 border-t border-border">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+            disabled={deleteDiary.isPending}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {deleteDiary.isPending ? "Deleting..." : "Delete as Admin"}
+          </Button>
+        </div>
+      )}
 
       {!isPrivate && <CommentSection diaryId={id} highlightCommentId={highlightId} />}
     </div>
+
+    {showAdminDeleteDialog && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAdminDeleteDialog(false)}>
+        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
+          <h3 className="text-sm font-medium mb-2">Admin Deletion</h3>
+          <p className="text-xs text-muted mb-3">
+            You are about to delete someone else&apos;s diary. This action will be audit logged.
+            Please provide a reason (min 10 characters).
+          </p>
+          <textarea
+            value={adminDeleteReason}
+            onChange={(e) => setAdminDeleteReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
+            placeholder="Reason for deletion..."
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); }}
+              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleAdminDeleteConfirm}
+              disabled={adminDeleteReason.trim().length < 10 || deleteDiary.isPending}
+            >
+              {deleteDiary.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

@@ -117,8 +117,9 @@ async function updateDiary(id: string, data: Record<string, unknown>) {
   return response.data.data;
 }
 
-async function deleteDiary(id: string) {
-  await apiClient.delete(`/diaries/${id}`);
+async function deleteDiary(id: string, adminDeleteReason?: string) {
+  const payload = adminDeleteReason ? { admin_delete_reason: adminDeleteReason } : undefined;
+  await apiClient.delete(`/diaries/${id}`, { data: payload });
 }
 
 export function useDiaries(filters?: {
@@ -208,7 +209,7 @@ export function useUpdateDiary() {
 export function useDeleteDiary() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: deleteDiary,
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => deleteDiary(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diaries"] });
       queryClient.invalidateQueries({ queryKey: ["myDiaries"] });

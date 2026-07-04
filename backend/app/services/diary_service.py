@@ -366,7 +366,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
     return _build_diary_response(updated_diary, author, current_user)
 
 
-async def delete_diary(diary_id: str, current_user: dict) -> None:
+async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: str | None = None) -> None:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
@@ -376,6 +376,27 @@ async def delete_diary(diary_id: str, current_user: dict) -> None:
     is_admin = current_user.get("is_admin", False)
     if not is_owner and not is_admin:
         raise PermissionDeniedException("You do not own this diary")
+
+    if is_admin and not is_owner:
+        if not admin_delete_reason or len(admin_delete_reason.strip()) < 10:
+            raise ValidationException("Admin deletion requires a reason of at least 10 characters")
+        from app.services.audit_service import log_audit
+        await log_audit(
+            admin_id=str(current_user["_id"]),
+            admin_username=current_user["username"],
+            action="delete_diary",
+            target_type="diary",
+            target_id=diary_id,
+            details={"title": diary.get("title"), "reason": admin_delete_reason.strip()},
+        )
+        _send_delete_notification(
+            recipient_id=str(diary["user_id"]),
+            admin_id=str(current_user["_id"]),
+            admin_username=current_user["username"],
+            notification_type="diary_deleted",
+            diary_title=diary.get("title"),
+            reason=admin_delete_reason.strip(),
+        )
 
     deleted = await diary_repo.delete_cascade(diary_id)
     if deleted > 0:
@@ -549,3 +570,60 @@ async def get_my_diaries_stats(user_id: str) -> dict:
         "draft": draft_count,
         "private": private_count,
     }
+
+
+def _send_delete_notification(
+    recipient_id: str,
+    admin_id: str,
+    admin_username: str,
+    notification_type: str,
+    diary_title: str | None = None,
+    comment_text: str | None = None,
+    reason: str | None = None,
+) -> None:
+    import asyncio as _asyncio
+    from app.services.notification_service import create_notification
+
+    type_labels = {
+        "diary_deleted": "your diary",
+        "comment_deleted": "your comment",
+    }
+    type_actions = {
+        "diary_deleted": "removed",
+        "comment_deleted": "removed",
+    }
+    target = type_labels.get(notification_type, "your content")
+    action = type_actions.get(notification_type, "moderated")
+    title = f'Your {target} "{diary_title or "Untitled"}" was {action}'
+    if reason:
+        title += f" — {reason}"
+
+    body = (
+        f"Hello,\n\n"
+        f"Your {target} \"{diary_title or 'Untitled'}\" has been {action} by an administrator"
+        f" for the following reason: {reason or 'Content policy violation'}.\n\n"
+        f"Please review our Community Guidelines. Repeated violations may result"
+        f" in account suspension or banning.\n\n"
+        f"Regards,\nDiaryArchive Moderation"
+    )
+
+    async def _do():
+        try:
+            result = await create_notification(
+                recipient_id=recipient_id,
+                actor_id=admin_id,
+                notification_type=notification_type,
+                target_id=None,
+                target_type="diary",
+                metadata={
+                    "diary_title": diary_title,
+                    "reason": reason,
+                    "title": title,
+                    "body": body,
+                },
+            )
+            logger.info("Delete notification sent: id=%s type=%s", result, notification_type)
+        except Exception:
+            logger.warning("Failed delete notification type=%s", notification_type, exc_info=True)
+
+    _asyncio.create_task(_do())
