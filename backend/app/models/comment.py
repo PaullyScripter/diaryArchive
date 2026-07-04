@@ -26,3 +26,7 @@ class CommentResponse(BaseModel):
     is_liked: bool = False
     created_at: str
     updated_at: str | None = None
+
+
+class CommentDelete(BaseModel):
+    admin_delete_reason: str | None = Field(None, min_length=10)

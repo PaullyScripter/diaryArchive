@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 
 from app.api.deps import get_current_user, _optional_user
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import check_rate_limit
-from app.models.diary import DiaryCreate, DiaryUpdate
+from app.models.diary import DiaryCreate, DiaryDelete, DiaryUpdate
 from app.services.diary_service import (
     create_diary,
     delete_diary,
@@ -97,7 +97,7 @@ async def update(
 async def delete(
     diary_id: str,
     request: Request,
-    body: dict = {},
+    body: DiaryDelete = Body(None),
     current_user: dict = Depends(get_current_user),
 ):
     is_limited, _ = await check_rate_limit(
@@ -105,5 +105,5 @@ async def delete(
     )
     if is_limited:
         raise RateLimitException("Too many diary deletion attempts")
-    reason = body.get("admin_delete_reason") if isinstance(body, dict) else None
+    reason = body.admin_delete_reason if body else None
     await delete_diary(diary_id, current_user, reason)

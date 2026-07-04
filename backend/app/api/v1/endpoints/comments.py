@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Query, Request
 
 from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
-from app.models.comment import CommentCreate
+from app.models.comment import CommentCreate, CommentDelete
 from app.services.comment_service import (
     create_comment,
     delete_comment,
@@ -34,14 +34,10 @@ async def create(
 @router.get("/diaries/{diary_id}/comments")
 async def list_all(
     diary_id: str,
-    request: Request,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=50),
+    current_user: dict | None = Depends(_optional_user),
 ):
-    auth_header = request.headers.get("Authorization", "")
-    current_user = None
-    if auth_header:
-        current_user = await _optional_user(authorization=auth_header)
     result = await list_comments(diary_id, page=page, per_page=per_page, current_user=current_user)
     return result
 
@@ -49,14 +45,10 @@ async def list_all(
 @router.get("/comments/{comment_id}/replies")
 async def get_replies(
     comment_id: str,
-    request: Request,
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=50),
+    current_user: dict | None = Depends(_optional_user),
 ):
-    auth_header = request.headers.get("Authorization", "")
-    current_user = None
-    if auth_header:
-        current_user = await _optional_user(authorization=auth_header)
     result = await list_replies(comment_id, page=page, per_page=per_page, current_user=current_user)
     return result
 
@@ -80,8 +72,7 @@ async def like_comment(
 async def delete(
     diary_id: str,
     comment_id: str,
-    request: Request,
-    body: dict = {},
+    body: CommentDelete = Body(None),
     current_user: dict = Depends(get_current_user),
 ):
     is_limited, _ = await check_rate_limit(
@@ -89,5 +80,5 @@ async def delete(
     )
     if is_limited:
         raise RateLimitException("Too many comment deletion attempts")
-    reason = body.get("admin_delete_reason") if isinstance(body, dict) else None
+    reason = body.admin_delete_reason if body else None
     await delete_comment(comment_id, diary_id, current_user, reason)

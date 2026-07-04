@@ -71,12 +71,13 @@ async def check_rate_limit(
         redis: Redis = DatabaseManager.get_redis()
     except RuntimeError:
         return False, max_attempts
-    now = int(time.time())
-    window_start = now - window_seconds
+    now = int(time.time() * 1000)
+    window_start = now - (window_seconds * 1000)
+    member = f"{now}:{secrets.token_hex(4)}"
     pipe = redis.pipeline()
     pipe.zremrangebyscore(key, 0, window_start)
     pipe.zcard(key)
-    pipe.zadd(key, {str(now): now})
+    pipe.zadd(key, {member: now})
     pipe.expire(key, window_seconds)
     _, count, _, _ = await pipe.execute()
     remaining = max(0, max_attempts - count)

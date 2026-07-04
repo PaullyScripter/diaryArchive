@@ -5,8 +5,9 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.api.deps import get_current_admin, get_db
+from app.api.deps import get_current_admin
 from app.core.database import DatabaseManager
+from app.repositories.diary_repo import DiaryRepository
 from app.core.exceptions import (
     NotFoundException,
     PermissionDeniedException,
