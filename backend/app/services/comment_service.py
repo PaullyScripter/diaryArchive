@@ -174,10 +174,19 @@ async def list_comments(
         if not is_owner:
             raise NotFoundException("Diary not found")
 
+    user_repo = UserRepository()
+    banned_ids = await user_repo.get_banned_user_ids()
+
     comment_repo = CommentRepository()
     skip = (page - 1) * per_page
-    comments = await comment_repo.find_by_diary(diary_id, skip=skip, limit=per_page)
-    total = await comment_repo.count_by_diary(diary_id)
+    comments = await comment_repo.find_by_diary(
+        diary_id, skip=skip, limit=per_page,
+        exclude_user_ids=banned_ids if banned_ids else None,
+    )
+    total = await comment_repo.count_by_diary(
+        diary_id,
+        exclude_user_ids=banned_ids if banned_ids else None,
+    )
 
     return await _enrich_and_format(comments, current_user, diary, page, per_page, total)
 
@@ -203,9 +212,18 @@ async def list_replies(
         if not is_owner:
             raise NotFoundException("Diary not found")
 
+    user_repo = UserRepository()
+    banned_ids = await user_repo.get_banned_user_ids()
+
     skip = (page - 1) * per_page
-    comments = await comment_repo.find_replies(comment_id, skip=skip, limit=per_page)
-    total = await comment_repo.count_replies(comment_id)
+    comments = await comment_repo.find_replies(
+        comment_id, skip=skip, limit=per_page,
+        exclude_user_ids=banned_ids if banned_ids else None,
+    )
+    total = await comment_repo.count_replies(
+        comment_id,
+        exclude_user_ids=banned_ids if banned_ids else None,
+    )
 
     return await _enrich_and_format(comments, current_user, diary, page, per_page, total)
 

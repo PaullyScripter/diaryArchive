@@ -398,6 +398,8 @@ async def list_public_diaries(
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
 
+    banned_ids = await user_repo.get_banned_user_ids()
+
     sort_map = {"latest": "created_at", "updated": "updated_at", "popular": "stats.like_count"}
     sort_field = sort_map.get(sort, "created_at")
     sort_dir = -1 if order == "desc" else 1
@@ -417,12 +419,14 @@ async def list_public_diaries(
             limit=per_page,
             sort_field=sort_field,
             sort_dir=sort_dir,
+            exclude_user_ids=banned_ids if banned_ids else None,
         )
         total = await diary_repo.count_public_feed_filtered(
             tags=tag_list,
             emotion=emotion_val,
             year=year,
             month=month,
+            exclude_user_ids=banned_ids if banned_ids else None,
         )
     else:
         diaries = await diary_repo.find_public_feed(
@@ -430,8 +434,11 @@ async def list_public_diaries(
             limit=per_page,
             sort_field=sort_field,
             sort_dir=sort_dir,
+            exclude_user_ids=banned_ids if banned_ids else None,
         )
-        total = await diary_repo.count_public_feed()
+        total = await diary_repo.count_public_feed(
+            exclude_user_ids=banned_ids if banned_ids else None,
+        )
 
     diary_ids = [d["_id"] for d in diaries]
     comment_counts = await diary_repo._collection.database.comments.aggregate([
@@ -472,7 +479,11 @@ async def list_public_diaries(
 
 async def get_random_diary(current_user: dict | None = None) -> dict | None:
     diary_repo = DiaryRepository()
-    diary = await diary_repo.find_random_public()
+    user_repo = UserRepository()
+    banned_ids = await user_repo.get_banned_user_ids()
+    diary = await diary_repo.find_random_public(
+        exclude_user_ids=banned_ids if banned_ids else None,
+    )
     if diary is None:
         raise NotFoundException("No public diaries available")
 

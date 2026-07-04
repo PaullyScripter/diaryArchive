@@ -85,5 +85,10 @@ class UserRepository(BaseRepository):
     async def set_admin_role(self, user_id: str, is_admin: bool) -> bool:
         return await self.update(user_id, {"is_admin": is_admin})
 
+    async def get_banned_user_ids(self) -> list[ObjectId]:
+        cursor = self._collection.find({"is_banned": True}, {"_id": 1})
+        docs = await cursor.to_list(length=10000)
+        return [d["_id"] for d in docs]
+
     def _to_object_id(self, id: str):
         return ObjectId(id)
