@@ -22,12 +22,9 @@ export default function AdminReportDetailPage() {
   const router = useRouter();
   const reportId = params.id as string;
   const [note, setNote] = useState("");
-  const [deleteReason, setDeleteReason] = useState("");
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showHideDialog, setShowHideDialog] = useState(false);
-  const [hideReason, setHideReason] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [contentActionTaken, setContentActionTaken] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<"hide" | "delete" | null>(null);
+  const [actionReason, setActionReason] = useState("");
+  const [acting, setActing] = useState(false);
   const { list, resolve, dismiss } = useAdminReports("all");
 
   const reports = list.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
@@ -56,26 +53,53 @@ export default function AdminReportDetailPage() {
     );
   }
 
-  const handleResolve = () => {
+  const handleResolve = async () => {
     if (note.trim().length < 10) {
       showToast("Resolution note must be at least 10 characters");
       return;
     }
-    resolve.mutate(
-      { id: report.id, note: note.trim() },
-      {
-        onSuccess: () => {
-          showToast("Report resolved");
-          router.push("/admin/reports");
+    setActing(true);
+    try {
+      if (selectedAction === "hide") {
+        await apiClient.put(`/admin/diaries/${report.target_id}/hide`, {
+          reason: actionReason.trim(),
+        });
+      } else if (selectedAction === "delete") {
+        if (report.target_type === "diary") {
+          await apiClient.delete(`/diaries/${report.target_id}`, {
+            data: { admin_delete_reason: actionReason.trim() },
+          });
+        } else if (report.target_type === "comment") {
+          const diaryId = report.target_preview.diary_id;
+          if (!diaryId) { showToast("Cannot find diary for this comment"); return; }
+          await apiClient.delete(`/diaries/${diaryId}/comments/${report.target_id}`, {
+            data: { admin_delete_reason: actionReason.trim() },
+          });
+        }
+      }
+      resolve.mutate(
+        { id: report.id, note: note.trim() },
+        {
+          onSuccess: () => {
+            showToast("Report resolved");
+            router.push("/admin/reports");
+          },
+          onError: (err: unknown) => {
+            const msg =
+              (err as { response?: { data?: { error?: { message?: string } } } })
+                ?.response?.data?.error?.message || "Failed to resolve";
+            showToast(msg);
+          },
         },
-        onError: (err: unknown) => {
-          const msg =
-            (err as { response?: { data?: { error?: { message?: string } } } })
-              ?.response?.data?.error?.message || "Failed to resolve";
-          showToast(msg);
-        },
-      },
-    );
+      );
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message || "Action failed";
+      showToast(msg);
+    } finally {
+      setActing(false);
+    }
   };
 
   const handleDismiss = () => {
@@ -93,63 +117,6 @@ export default function AdminReportDetailPage() {
     });
   };
 
-  const handleDeleteContent = async () => {
-    if (deleteReason.trim().length < 10) {
-      showToast("Deletion reason must be at least 10 characters");
-      return;
-    }
-    setDeleting(true);
-    try {
-      if (report.target_type === "diary") {
-        await apiClient.delete(`/diaries/${report.target_id}`, {
-          data: { admin_delete_reason: deleteReason.trim() },
-        });
-      } else if (report.target_type === "comment") {
-        const diaryId = report.target_preview.diary_id;
-        if (!diaryId) { showToast("Cannot find diary for this comment"); return; }
-        await apiClient.delete(`/diaries/${diaryId}/comments/${report.target_id}`, {
-          data: { admin_delete_reason: deleteReason.trim() },
-        });
-      }
-      showToast("Content deleted");
-      setShowDeleteDialog(false);
-      setDeleteReason("");
-      setContentActionTaken(true);
-      router.push("/admin/reports");
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message || "Failed to delete content";
-      showToast(msg);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handleHideDiary = async () => {
-    if (hideReason.trim().length < 10) {
-      showToast("Hide reason must be at least 10 characters");
-      return;
-    }
-    setDeleting(true);
-    try {
-      await apiClient.put(`/admin/diaries/${report.target_id}/hide`, {
-        reason: hideReason.trim(),
-      });
-      showToast("Diary hidden from public view");
-      setShowHideDialog(false);
-      setHideReason("");
-      setContentActionTaken(true);
-    } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message || "Failed to hide diary";
-      showToast(msg);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const viewUrl =
     report.target_type === "diary"
       ? `/diary/${report.target_id}`
@@ -161,9 +128,10 @@ export default function AdminReportDetailPage() {
     (report.target_type === "diary" || report.target_type === "comment") &&
     !report.target_preview.content_deleted;
 
+  const reasonReady = actionReason.trim().length >= 10;
+  const noteReady = note.trim().length >= 10;
   const canResolve =
-    note.trim().length >= 10 &&
-    (!needsContentAction || contentActionTaken);
+    noteReady && (!needsContentAction || (selectedAction && reasonReady));
 
   return (
     <>
@@ -319,135 +287,108 @@ export default function AdminReportDetailPage() {
 
         {report.status === "pending" && (
           <div className="border-t border-border pt-3 space-y-3">
-            {(report.target_type === "diary" || report.target_type === "comment") && !report.target_preview.content_deleted && (
-              <div className="flex gap-2">
-                {report.target_type === "diary" && (
+            {needsContentAction && (
+              <div>
+                <div className="text-xs text-muted mb-2 font-medium">Content Action</div>
+                <div className="flex gap-2 mb-2">
+                  {report.target_type === "diary" && (
+                    <button
+                      onClick={() => {
+                        setSelectedAction(selectedAction === "hide" ? null : "hide");
+                        setActionReason("");
+                      }}
+                      className={`text-xs px-3 py-1 border cursor-pointer ${
+                        selectedAction === "hide"
+                          ? "border-foreground bg-overlay text-foreground"
+                          : "border-border bg-transparent text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {selectedAction === "hide" ? "✓ Hide Diary" : "Hide Diary"}
+                    </button>
+                  )}
                   <button
-                    onClick={() => setShowHideDialog(true)}
-                    className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
+                    onClick={() => {
+                      setSelectedAction(selectedAction === "delete" ? null : "delete");
+                      setActionReason("");
+                    }}
+                    className={`text-xs px-3 py-1 border cursor-pointer ${
+                      selectedAction === "delete"
+                        ? "border-destructive bg-destructive/10 text-destructive"
+                        : "border-border bg-transparent text-muted hover:text-foreground"
+                    }`}
                   >
-                    Hide Diary
+                    {selectedAction === "delete"
+                      ? `✓ Delete ${report.target_type === "diary" ? "Diary" : "Comment"}`
+                      : `Delete ${report.target_type === "diary" ? "Diary" : "Comment"}`}
                   </button>
+                </div>
+                {selectedAction && (
+                  <div>
+                    <label className="text-xs text-muted block mb-1">
+                      Reason the author will see (min 10 chars)
+                    </label>
+                    <textarea
+                      value={actionReason}
+                      onChange={(e) => setActionReason(e.target.value)}
+                      rows={2}
+                      maxLength={500}
+                      className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
+                      placeholder={
+                        selectedAction === "hide"
+                          ? "Why this diary is being hidden..."
+                          : "Why this content is being removed..."
+                      }
+                    />
+                  </div>
                 )}
-                <button
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80"
-                >
-                  Delete {report.target_type === "diary" ? "Diary" : "Comment"}
-                </button>
               </div>
             )}
-            <div>
-              <label className="text-xs text-muted block mb-1">
-                Resolution Note (required, min 10 chars)
-                <span className="ml-1">({note.trim().length}/10)</span>
-              </label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={3}
-                maxLength={1000}
-                className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
-                placeholder="Describe why this report is being resolved..."
-              />
-            </div>
+            {(!needsContentAction || (selectedAction && reasonReady)) && (
+              <div>
+                <label className="text-xs text-muted block mb-1">
+                  Resolution Note (required, min 10 chars)
+                  <span className="ml-1">({note.trim().length}/10)</span>
+                </label>
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
+                  placeholder="Describe why this report is being resolved..."
+                />
+              </div>
+            )}
             <div className="flex gap-2 items-center">
               <button
                 onClick={handleResolve}
-                disabled={!canResolve || resolve.isPending}
+                disabled={!canResolve || resolve.isPending || acting}
                 className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resolve.isPending ? "Resolving..." : "Resolve Report"}
+                {acting || resolve.isPending ? "Resolving..." : "Resolve Report"}
               </button>
               <button
                 onClick={handleDismiss}
-                disabled={dismiss.isPending}
+                disabled={dismiss.isPending || acting}
                 className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground disabled:opacity-50"
               >
                 {dismiss.isPending ? "Dismissing..." : "Dismiss Report"}
               </button>
             </div>
-            {needsContentAction && !contentActionTaken && note.trim().length >= 10 && (
+            {needsContentAction && !selectedAction && noteReady && (
               <p className="text-xs text-accent">
-                You must Hide or Delete the reported content before resolving this report.
+                Select Hide or Delete above to proceed with resolution.
+              </p>
+            )}
+            {needsContentAction && selectedAction && !reasonReady && (
+              <p className="text-xs text-accent">
+                Enter a reason (min 10 characters) that will be sent to the author.
               </p>
             )}
           </div>
         )}
       </div>
     </div>
-
-    {showDeleteDialog && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowDeleteDialog(false)}>
-        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-sm font-medium mb-2">
-            Delete {report.target_type === "diary" ? "Diary" : "Comment"}
-          </h3>
-          <p className="text-xs text-muted mb-3">
-            This will permanently delete the reported content. This action will be audit logged.
-            Please provide a reason (min 10 characters).
-          </p>
-          <textarea
-            value={deleteReason}
-            onChange={(e) => setDeleteReason(e.target.value)}
-            rows={3}
-            maxLength={500}
-            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
-            placeholder="Reason for deletion..."
-          />
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => { setShowDeleteDialog(false); setDeleteReason(""); }}
-              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDeleteContent}
-              disabled={deleteReason.trim().length < 10 || deleting}
-              className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80 disabled:opacity-50"
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {showHideDialog && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowHideDialog(false)}>
-        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-sm font-medium mb-2">Hide Diary</h3>
-          <p className="text-xs text-muted mb-3">
-            This will remove the diary from public view. The author can still see and edit it.
-            This action will be audit logged. Please provide a reason (min 10 characters).
-          </p>
-          <textarea
-            value={hideReason}
-            onChange={(e) => setHideReason(e.target.value)}
-            rows={3}
-            maxLength={500}
-            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
-            placeholder="Reason for hiding..."
-          />
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => { setShowHideDialog(false); setHideReason(""); }}
-              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleHideDiary}
-              disabled={hideReason.trim().length < 10 || deleting}
-              className="text-xs px-3 py-1 border border-border cursor-pointer bg-foreground text-background hover:opacity-80 disabled:opacity-50"
-            >
-              {deleting ? "Hiding..." : "Hide Diary"}
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
     </>
   );
 }
