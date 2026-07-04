@@ -29,10 +29,15 @@ from app.services.image_service import process_image, get_image_dimensions
 logger = logging.getLogger(__name__)
 
 SIGNED_URL_EXPIRY = timedelta(minutes=15)
+_MAX_FILENAME_LEN = 255
 
 
-def _generate_stored_path(user_id: str, filename: str) -> str:
-    return f"users/{user_id}/{uuid.uuid4().hex}/{filename}"
+def _sanitize_filename(filename: str) -> str:
+    safe = "".join(c for c in filename if c.isalnum() or c in " ._-()")
+    safe = safe.strip()
+    if not safe:
+        safe = "untitled"
+    return safe[:_MAX_FILENAME_LEN]
 
 
 def _generate_signed_url(stored_path: str) -> str:
@@ -131,6 +136,8 @@ async def upload_media(
     if user.get("is_banned"):
         raise PermissionDeniedException("Your account has been banned")
 
+    safe_filename = _sanitize_filename(original_filename)
+
     repo = MediaRepository()
     user_count = await repo.count_by_user(str(user["_id"]))
     if user_count >= settings.max_media_per_user:
@@ -192,9 +199,6 @@ async def upload_media(
             )
 
     now = datetime.now(UTC)
-    ext = original_filename.rsplit(".", 1)[-1].lower() if "." in original_filename else "bin"
-    if category == "image":
-        ext = "webp"
     base_path = f"users/{str(user['_id'])}/{uuid.uuid4().hex}"
     diary_oid = ObjectId(diary_id) if diary_id and ObjectId.is_valid(diary_id) else None
 
@@ -215,7 +219,7 @@ async def upload_media(
         media_doc = {
             "user_id": user["_id"],
             "diary_id": diary_oid,
-            "filename": original_filename,
+            "filename": safe_filename,
             "stored_path": stored_path,
             "standard_path": standard_path,
             "thumbnail_path": thumb_path,
@@ -235,7 +239,7 @@ async def upload_media(
         media_doc = {
             "user_id": user["_id"],
             "diary_id": diary_oid,
-            "filename": original_filename,
+            "filename": safe_filename,
             "stored_path": stored_path,
             "mime_type": detected_mime,
             "size_bytes": len(file_data),
@@ -277,10 +281,21 @@ async def delete_media(media_id: str, current_user: dict) -> None:
     if not is_owner and not is_admin:
         raise PermissionDeniedException("You do not own this media")
 
+    failed_paths: list[str] = []
     for path_key in ("stored_path", "standard_path", "thumbnail_path"):
         path_val = media.get(path_key)
         if path_val:
-            await _delete_object_async(path_val)
+            ok = await _delete_object_async(path_val)
+            if not ok:
+                failed_paths.append(path_val)
+
+    if failed_paths:
+        logger.error(
+            "Failed to delete MinIO objects for media %s: %s",
+            media_id, failed_paths,
+        )
+    else:
+        logger.info("Deleted all MinIO objects for media %s", media_id)
 
     await repo.delete(media_id)
 
@@ -314,11 +329,17 @@ async def get_media_gallery(
     }
 
 
-async def get_media_detail(media_id: str) -> dict:
+async def get_media_detail(media_id: str, current_user: dict) -> dict:
     repo = MediaRepository()
     media = await repo.get_by_id(media_id)
     if media is None:
         raise NotFoundException("Media not found")
+
+    is_owner = str(media["user_id"]) == str(current_user["_id"])
+    is_admin = current_user.get("is_admin", False)
+    if not is_owner and not is_admin:
+        raise NotFoundException("Media not found")
+
     return _build_media_response(media, include_signed_url=bool(media.get("is_private")))
 
 

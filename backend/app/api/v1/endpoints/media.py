@@ -74,7 +74,7 @@ async def gallery(
 
 @router.get("/{media_id}")
 async def get_media(media_id: str, current_user: dict = Depends(get_current_user)):
-    result = await get_media_detail(media_id)
+    result = await get_media_detail(media_id, current_user)
     return {"data": result}
 
 
