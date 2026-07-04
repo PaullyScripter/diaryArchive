@@ -5,338 +5,344 @@ export const metadata: Metadata = {
   description: "How DiaryArchive handles your data, privacy, security, and your rights.",
 };
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-10">
+      <h2 className="text-xl font-semibold text-foreground border-b border-border pb-2 mb-4">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function InfoCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-background p-5 mb-5 shadow-sm">
+      {children}
+    </div>
+  );
+}
+
+function WarningCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50 p-5 my-6">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400 mb-2">
+        Important
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function DataTable({ rows }: { rows: { label: string; value: string }[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-collapse">
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className={i % 2 === 0 ? "bg-overlay/5" : ""}>
+              <td className="px-4 py-2.5 border-b border-border/50 font-medium text-foreground whitespace-nowrap">
+                {row.label}
+              </td>
+              <td className="px-4 py-2.5 border-b border-border/50 text-muted">
+                {row.value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function PolicyPage() {
   return (
-    <article className="prose prose-neutral dark:prose-invert max-w-none">
-      <h1>Privacy Policy</h1>
-      <p className="text-sm text-muted">Last updated: July 4, 2026</p>
-
-      <h2>1. What We Collect</h2>
-      <p>
-        DiaryArchive is built on a privacy-first philosophy. We collect
-        only the minimum data necessary to provide the service:
-      </p>
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Purpose</th>
-            <th>Storage</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Username</td>
-            <td>Identity and display</td>
-            <td>Plaintext</td>
-          </tr>
-          <tr>
-            <td>Password</td>
-            <td>Authentication</td>
-            <td>Argon2id hash (one-way)</td>
-          </tr>
-          <tr>
-            <td>Email (optional)</td>
-            <td>Account recovery, security notices</td>
-            <td>AES-256-GCM encrypted</td>
-          </tr>
-          <tr>
-            <td>Diary content</td>
-            <td>Your writing</td>
-            <td>Plaintext (public) or AES-256-GCM encrypted (private)</td>
-          </tr>
-          <tr>
-            <td>Uploaded media</td>
-            <td>Images and files in diaries</td>
-            <td>Object storage with UUID filenames</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>What We <em>Never</em> Collect</h3>
-      <ul>
-        <li>Real name</li>
-        <li>Phone number</li>
-        <li>Birthday or age</li>
-        <li>Address or location</li>
-        <li>Government ID</li>
-        <li>Social media accounts</li>
-        <li>Browser fingerprint</li>
-        <li>Usage analytics (beyond basic server metrics)</li>
-      </ul>
-
-      <h2>2. How Your Data Is Stored</h2>
-      <p>
-        <strong>Public diaries:</strong> Stored in MongoDB. Content is
-        visible to anyone visiting DiaryArchive. HTML is sanitized
-        server-side to prevent XSS attacks.
-      </p>
-      <p>
-        <strong>Private diaries:</strong> Encrypted in your browser
-        using AES-256-GCM <em>before</em> upload. The server stores
-        only ciphertext and <strong>cannot decrypt</strong> your
-        private content — even if the database is compromised.
-      </p>
-      <p>
-        <strong>Passwords:</strong> Hashed with Argon2id (memory: 64 MB,
-        iterations: 3, parallelism: 4). We cannot recover your password.
-      </p>
-      <p>
-        <strong>Email (if provided):</strong> Encrypted at rest with
-        AES-256-GCM. Stored alongside a SHA-256 hash for uniqueness checks.
-        Your actual email address is never displayed in the UI.
-      </p>
-
-      <h2>3. Media &amp; Uploads</h2>
-      <p>
-        When you upload images or files to DiaryArchive:
-      </p>
-      <ul>
-        <li>Files are validated by <strong>magic-byte inspection</strong>
-          — not by file extension or claimed MIME type. Executables, PDFs,
-          and ZIPs disguised as images are rejected.</li>
-        <li>Images are converted to WebP format and stripped of EXIF
-          metadata (location, camera model, timestamps) before storage.</li>
-        <li>Files receive <strong>random UUID filenames</strong> —
-          your original filename is stored in the database but never
-          used in the URL.</li>
-        <li><strong>Public diary media</strong> is served directly from
-          object storage. <strong>Private diary media</strong> uses
-          time-limited (15-minute) signed URLs that only you can access.</li>
-        <li>Orphaned uploads (not attached to any diary) are
-          automatically deleted after 24 hours.</li>
-        <li>Per-user upload limits: 500 total files, 20 per diary,
-          50 per day. This prevents abuse.</li>
-      </ul>
-
-      <h2>4. Data Visibility</h2>
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Visible To</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Public diary contents</td>
-            <td>Everyone</td>
-          </tr>
-          <tr>
-            <td>Private diary contents</td>
-            <td><strong>Owner only</strong> (server cannot decrypt)</td>
-          </tr>
-          <tr>
-            <td>Username</td>
-            <td>Everyone</td>
-          </tr>
-          <tr>
-            <td>Email</td>
-            <td>Owner only (encrypted, never displayed)</td>
-          </tr>
-          <tr>
-            <td>Password hash</td>
-            <td>Nobody (one-way hash)</td>
-          </tr>
-          <tr>
-            <td>IP address</td>
-            <td>System (temporary in logs, deleted after 30 days)</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h2>5. Data Retention</h2>
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Retention</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>User accounts</td>
-            <td>Until deleted by you or banned</td>
-          </tr>
-          <tr>
-            <td>Public diaries</td>
-            <td>Until deleted by you or moderated</td>
-          </tr>
-          <tr>
-            <td>Private diaries</td>
-            <td>Until deleted by you</td>
-          </tr>
-          <tr>
-            <td>Notifications</td>
-            <td>90 days (auto-cleaned)</td>
-          </tr>
-          <tr>
-            <td>Audit logs</td>
-            <td>1 year</td>
-          </tr>
-          <tr>
-            <td>IP address logs</td>
-            <td>30 days</td>
-          </tr>
-          <tr>
-            <td>Refresh tokens</td>
-            <td>7 days or until logout</td>
-          </tr>
-          <tr>
-            <td>Orphaned media</td>
-            <td>24 hours (auto-cleaned)</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h2>6. Your Rights</h2>
-      <ul>
-        <li><strong>Access:</strong> You can export all your data at any
-          time via Settings. Public diaries as JSON/Markdown, private
-          diaries as encrypted JSON with decryption instructions, and
-          profile data as JSON.</li>
-        <li><strong>Delete:</strong> You can delete your account at any
-          time from Settings. This removes all diaries, comments, likes,
-          bookmarks, follows, notifications, and media files. Audit logs
-          are retained (anonymized) for legal purposes.</li>
-        <li><strong>Correct:</strong> You can update your profile, email,
-          and preferences at any time via Settings.</li>
-        <li><strong>Portability:</strong> Your data is delivered as a
-          downloadable zip file with structured formats.</li>
-      </ul>
-
-      <h2>7. Security Measures</h2>
-      <ul>
-        <li><strong>End-to-end encryption:</strong> Private diaries are
-          encrypted with AES-256-GCM using per-diary keys derived via
-          HKDF-SHA256 from a master key that never leaves your device.</li>
-        <li><strong>Password hashing:</strong> Argon2id with 64 MB memory,
-          3 iterations, and 4-way parallelism — resistant to GPU and ASIC
-          cracking.</li>
-        <li><strong>Authentication:</strong> Short-lived JWT access tokens
-          (15 minutes) with revocable refresh tokens stored as SHA-256
-          hashes.</li>
-        <li><strong>Transport:</strong> All traffic is served over HTTPS
-          with HSTS preload. Cookies use Secure, HttpOnly, and SameSite
-          flags.</li>
-        <li><strong>Rate limiting:</strong> Auth endpoints are rate-limited
-          per IP (5 attempts/minute). Uploads are limited per user (10/minute,
-          50/day).</li>
-        <li><strong>XSS prevention:</strong> All diary HTML is sanitized
-          server-side. Content-Security-Policy headers restrict script
-          sources. Uploaded files are validated by magic bytes, not
-          extensions.</li>
-        <li><strong>CSRF protection:</strong> SameSite=Strict cookies.
-          State-changing endpoints require Authorization headers.</li>
-        <li><strong>Injection prevention:</strong> Parameterized MongoDB
-          queries. No shell commands in application code. UUID-based file
-          paths prevent directory traversal.</li>
-        <li><strong>Audit logging:</strong> All administrative actions
-          are logged immutably: bans, content deletions, report resolutions,
-          role changes.</li>
-      </ul>
-
-      <h2>8. Cookies</h2>
-      <p>DiaryArchive uses a single essential cookie:</p>
-      <table className="w-full text-sm">
-        <thead>
-          <tr>
-            <th>Cookie</th>
-            <th>Purpose</th>
-            <th>Duration</th>
-            <th>Accessible</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>refresh_token</code></td>
-            <td>Session persistence</td>
-            <td>7 days</td>
-            <td>HTTP only (not accessible to JavaScript)</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>
-        We use <strong>no tracking cookies, no analytics cookies, and
-        no advertising cookies</strong>. Your theme preference (light/dark)
-        is stored in your browser&apos;s localStorage — not sent to the server.
-      </p>
-
-      <h2>9. Third-Party Services</h2>
-      <p><strong>We do not share data with any third party.</strong></p>
-      <ul>
-        <li>No analytics providers (Google Analytics, etc.)</li>
-        <li>No advertising networks</li>
-        <li>No social media integrations</li>
-        <li>No behavioral tracking</li>
-        <li>No data selling — ever</li>
-      </ul>
-      <p>
-        All infrastructure (database, search, storage, caching) is
-        self-hosted. Meilisearch indexes only public diary content.
-        MinIO/S3 is used solely for user-uploaded media.
-      </p>
-
-      <h2>10. Password Reset &amp; Recovery</h2>
-      <p>
-        If you registered with an email address, you can request a
-        password reset. A time-limited link is sent to your email.
-      </p>
-      <div className="border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950 rounded-md px-4 py-3 my-4">
-        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-          Important warning
-        </p>
-        <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-          Password reset <strong>permanently destroys</strong> all your
-          private diary content. This is by design — the encryption keys
-          that protect your private diaries are derived from your password.
-          We cannot recover them because we never have them. If you forget
-          your password and have no email on file, your private diaries are
-          permanently inaccessible.
-        </p>
+    <div className="mx-auto max-w-3xl py-8">
+      <div className="mb-10">
+        <h1 className="text-3xl font-bold text-foreground mb-1">Privacy Policy</h1>
+        <p className="text-sm text-subtle">Last updated &mdash; July 4, 2026</p>
       </div>
 
-      <h2>11. Account Deletion</h2>
-      <p>
-        You can delete your account at any time from Settings → Account →
-        Danger Zone. Account deletion removes:
-      </p>
-      <ul>
-        <li>Your user profile</li>
-        <li>All diary entries (public and private)</li>
-        <li>All comments you wrote</li>
-        <li>All likes and bookmarks</li>
-        <li>All follow relationships</li>
-        <li>All notifications</li>
-        <li>All uploaded media files</li>
-      </ul>
-      <p>
-        Audit logs are retained (anonymized) for legal compliance.
-        Your username may become available for reuse.
-      </p>
+      <Section title="1. What We Collect">
+        <p className="text-base leading-relaxed text-muted mb-4">
+          DiaryArchive is built on a privacy-first philosophy. We collect
+          only the minimum data necessary to provide the service.
+        </p>
+        <DataTable
+          rows={[
+            { label: "Username", value: "Plaintext — your public identity" },
+            { label: "Password", value: "Argon2id hash — one-way, unrecoverable" },
+            { label: "Email (optional)", value: "AES-256-GCM encrypted at rest — never displayed in UI" },
+            { label: "Diary content", value: "Plaintext (public) or AES-256-GCM E2E encrypted (private)" },
+            { label: "Uploaded media", value: "UUID filenames in object storage — EXIF stripped, WebP converted" },
+            { label: "IP address", value: "Temporarily logged — deleted after 30 days" },
+          ]}
+        />
 
-      <h2>12. Children&apos;s Privacy</h2>
-      <p>
-        We do not collect age information. We recommend users be at
-        least 13 years old. If you believe a child under 13 has created
-        an account, please contact us for removal.
-      </p>
+        <h3 className="text-base font-semibold text-foreground mt-6 mb-3">We Never Collect</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted">
+          {[
+            "Real name", "Phone number", "Birthday or age",
+            "Location / address", "Government ID", "Social media accounts",
+            "Browser fingerprint", "Usage analytics", "Behavioral data",
+          ].map((item) => (
+            <div key={item} className="flex items-center gap-2">
+              <span className="text-destructive text-xs">&#x2715;</span>
+              {item}
+            </div>
+          ))}
+        </div>
+      </Section>
 
-      <h2>13. Changes to This Policy</h2>
-      <p>
-        We will notify users of material changes via a notice on the
-        homepage. Continued use after changes constitutes acceptance.
-        This policy was last updated on July 4, 2026.
-      </p>
+      <Section title="2. How Your Data Is Stored">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Public Diaries</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              Stored in MongoDB. Visible to anyone. HTML is sanitized server-side
+              to prevent XSS. Indexed in search for discovery.
+            </p>
+          </InfoCard>
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Private Diaries</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              AES-256-GCM encrypted in your browser <em>before</em> upload. The
+              server stores only ciphertext and <strong>cannot decrypt</strong> —
+              even if the database is compromised.
+            </p>
+          </InfoCard>
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Passwords</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              Argon2id with 64 MB memory, 3 iterations, 4-way parallelism.
+              Resistant to GPU and ASIC cracking. We cannot recover lost passwords.
+            </p>
+          </InfoCard>
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Email (optional)</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              AES-256-GCM encrypted at rest. Used only for recovery and security
+              notices. Never displayed publicly. Never shared.
+            </p>
+          </InfoCard>
+        </div>
+      </Section>
 
-      <h2>14. Contact</h2>
-      <p>
-        For privacy concerns, data export requests, or account deletion
-        assistance, contact us at{" "}
-        <a href="mailto:privacy@diaryarchive.com" className="text-link">
+      <Section title="3. Media &amp; Uploads">
+        <InfoCard>
+          <ul className="space-y-2.5 text-sm leading-relaxed text-muted">
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              Files validated by <strong className="text-foreground">magic-byte inspection</strong>
+              &mdash; not file extension or claimed MIME type. Executables, PDFs,
+              and ZIPs disguised as images are rejected.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              Images converted to <strong className="text-foreground">WebP format</strong> and
+              stripped of EXIF metadata (location, camera model, timestamps)
+              before storage.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              Files stored with <strong className="text-foreground">random UUID filenames</strong>
+              &mdash; your original filename is never used in URLs.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              Public media served directly. Private media uses
+              <strong className="text-foreground"> 15-minute signed URLs</strong>.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              Orphaned uploads (not attached to any diary) deleted after
+              <strong className="text-foreground"> 24 hours</strong> automatically.
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              Limits: <strong className="text-foreground">500 total files</strong> per user,
+              <strong className="text-foreground"> 20 per diary</strong>,
+              <strong className="text-foreground"> 50 per day</strong>.
+            </li>
+          </ul>
+        </InfoCard>
+      </Section>
+
+      <Section title="4. Who Can See Your Data">
+        <DataTable
+          rows={[
+            { label: "Public diary content", value: "Everyone" },
+            { label: "Private diary content", value: "Owner only — server cannot decrypt" },
+            { label: "Username", value: "Everyone" },
+            { label: "Email address", value: "Owner only — encrypted, never shown" },
+            { label: "Password", value: "Nobody — one-way hash" },
+            { label: "IP address", value: "System only — 30-day temporary log" },
+          ]}
+        />
+      </Section>
+
+      <Section title="5. Data Retention">
+        <DataTable
+          rows={[
+            { label: "User accounts", value: "Until deleted by you" },
+            { label: "Public diaries", value: "Until deleted by you or moderated" },
+            { label: "Private diaries", value: "Until deleted by you" },
+            { label: "Notifications", value: "90 days (auto-cleaned)" },
+            { label: "Refresh tokens", value: "7 days or until logout" },
+            { label: "Audit logs", value: "1 year (legal compliance)" },
+            { label: "IP address logs", value: "30 days" },
+            { label: "Orphaned media", value: "24 hours (auto-cleaned)" },
+          ]}
+        />
+      </Section>
+
+      <Section title="6. Your Rights">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Access &amp; Export</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              Download all your data anytime via Settings. Public diaries as
+              JSON/Markdown, private diaries as encrypted JSON with decryption
+              instructions, profile data as JSON.
+            </p>
+          </InfoCard>
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Delete</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              Delete your account anytime from Settings. Removes all diaries,
+              comments, likes, bookmarks, follows, notifications, and media.
+              Audit logs are retained anonymized.
+            </p>
+          </InfoCard>
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Correct</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              Update your profile, email, preferences, and notification
+              settings at any time via Settings.
+            </p>
+          </InfoCard>
+          <InfoCard>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Portability</h3>
+            <p className="text-sm leading-relaxed text-muted">
+              Your data is delivered as a downloadable zip file with
+              structured, open formats. No proprietary lock-in.
+            </p>
+          </InfoCard>
+        </div>
+      </Section>
+
+      <Section title="7. Security Measures">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2">
+          {[
+            { label: "E2E Encryption", desc: "AES-256-GCM per-diary keys" },
+            { label: "Password Hashing", desc: "Argon2id — 64 MB memory" },
+            { label: "Auth Tokens", desc: "JWT 15-min + revocable refresh" },
+            { label: "Transport", desc: "HTTPS + HSTS preload" },
+            { label: "Rate Limiting", desc: "IP + per-user windows" },
+            { label: "XSS Prevention", desc: "Server-side HTML sanitization" },
+            { label: "CSRF Protection", desc: "SameSite Strict cookies" },
+            { label: "File Validation", desc: "Magic-byte inspection" },
+            { label: "Audit Logging", desc: "Immutable admin action trail" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-md border border-border bg-background p-3">
+              <p className="text-xs font-semibold text-foreground mb-0.5">{item.label}</p>
+              <p className="text-xs text-muted">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="8. Cookies">
+        <p className="text-sm leading-relaxed text-muted mb-4">
+          DiaryArchive uses a single essential cookie. We use
+          <strong className="text-foreground"> no tracking cookies, no analytics
+          cookies, and no advertising cookies</strong>.
+        </p>
+        <DataTable
+          rows={[
+            { label: "refresh_token", value: "Session persistence — HTTP only, Secure, SameSite Strict — 7 days" },
+          ]}
+        />
+        <p className="text-xs text-subtle mt-3">
+          Your theme preference (light/dark) is stored in your browser&apos;s
+          localStorage and is never sent to the server.
+        </p>
+      </Section>
+
+      <Section title="9. Third-Party Sharing">
+        <InfoCard>
+          <p className="text-base leading-relaxed text-muted">
+            <strong className="text-foreground">None.</strong> We do not share
+            data with any third party. No Google Analytics. No advertising
+            networks. No social media integrations. No behavioral tracking.
+            No data selling &mdash; ever. All infrastructure (database, search,
+            storage, caching) is self-hosted.
+          </p>
+        </InfoCard>
+      </Section>
+
+      <Section title="10. Password Reset Warning">
+        <WarningCard>
+          <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200">
+            Password reset <strong>permanently destroys</strong> all your
+            private diary content. This is by design &mdash; the encryption
+            keys that protect your private diaries are derived from your
+            password. We cannot recover them because we never have them.
+          </p>
+          <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-300 mt-2">
+            If you forget your password and have no email on file, your
+            private diaries are <strong>permanently inaccessible</strong>.
+            We recommend adding a recovery email in Settings.
+          </p>
+        </WarningCard>
+      </Section>
+
+      <Section title="11. Account Deletion">
+        <p className="text-sm leading-relaxed text-muted mb-4">
+          Delete your account at <strong className="text-foreground">Settings
+          &rarr; Account &rarr; Danger Zone</strong>. This removes:
+        </p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {["User profile", "All diaries", "All comments", "Likes & bookmarks",
+            "Follow relationships", "Notifications", "Uploaded media"].map((item) => (
+            <span key={item} className="inline-flex items-center rounded-full bg-overlay/10 px-3 py-1 text-xs text-muted">
+              {item}
+            </span>
+          ))}
+        </div>
+        <p className="text-xs text-subtle">
+          Audit logs are retained anonymized for legal compliance.
+        </p>
+      </Section>
+
+      <Section title="12. Children&apos;s Privacy">
+        <p className="text-sm leading-relaxed text-muted">
+          We do not collect age information. We recommend users be at least 13.
+          If you believe a child under 13 has created an account, contact us for
+          immediate removal.
+        </p>
+      </Section>
+
+      <Section title="13. Changes to This Policy">
+        <p className="text-sm leading-relaxed text-muted">
+          Material changes will be announced via a notice on the homepage.
+          Continued use after changes constitutes acceptance. Last updated
+          July 4, 2026.
+        </p>
+      </Section>
+
+      <div className="border-t border-border pt-8 mt-4">
+        <p className="text-sm text-muted leading-relaxed">
+          For privacy concerns, data export requests, or account assistance:
+        </p>
+        <a
+          href="mailto:privacy@diaryarchive.com"
+          className="inline-block mt-1 text-link hover:text-link-hover text-sm font-medium"
+        >
           privacy@diaryarchive.com
-        </a>.
-      </p>
-    </article>
+        </a>
+      </div>
+    </div>
   );
 }
