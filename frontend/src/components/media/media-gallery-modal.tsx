@@ -30,7 +30,7 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
 
   const handleInsert = (item: MediaItem) => {
     if (editor) {
-      editor.chain().focus().setImage({ src: item.url }).run();
+      editor.chain().focus().setResizableImage({ src: item.url }).run();
       onClose();
     }
   };

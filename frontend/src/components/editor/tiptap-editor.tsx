@@ -9,9 +9,9 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
 import LinkExtension from "@tiptap/extension-link";
 import CharacterCount from "@tiptap/extension-character-count";
-import ImageExtension from "@tiptap/extension-image";
 import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
 import { FontSize } from "@/components/editor/extensions/font-size";
+import { ResizableImage } from "@/components/editor/extensions/resizable-image";
 import { useEffect, useCallback } from "react";
 import type { Editor } from "@tiptap/react";
 
@@ -52,7 +52,7 @@ export function TiptapEditor({
       TextStyle,
       FontFamily,
       FontSize,
-      ImageExtension.configure({
+      ResizableImage.configure({
         inline: true,
         allowBase64: false,
         HTMLAttributes: {
