@@ -38,7 +38,7 @@ async def _register(client: AsyncClient, username: str, password: str = "ValidPa
     return data
 
 
-async def _auth_headers(token: str) -> dict:
+def _auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -54,7 +54,7 @@ async def _create_diary(client: AsyncClient, token: str, title: str = "Test Diar
 async def _create_comment(client: AsyncClient, token: str, diary_id: str,
                            text: str = "Test comment") -> str:
     resp = await client.post(f"/api/v1/diaries/{diary_id}/comments",
-                             json={"content_text": text},
+                             json={"content": text},
                              headers=_auth_headers(token))
     body = resp.json()
     return body.get("data", body)["id"]
@@ -364,16 +364,18 @@ class TestAdminUserManagement:
         assert resp.status_code == 403
 
     async def test_cannot_demote_last_admin(self, client: AsyncClient):
-        admin = await _register(client, "onlyadmin", is_admin=True)
-        user = await _register(client, "promoteme")
-        await client.put(f"/api/v1/admin/users/{user['id']}/role",
-                         json={"is_admin": True},
-                         headers=_auth_headers(admin["access_token"]))
-
-        resp = await client.put(f"/api/v1/admin/users/{user['id']}/role",
+        admin_a = await _register(client, "admin_a", is_admin=True)
+        admin_b = await _register(client, "admin_b", is_admin=True)
+        # Admin A tries to demote Admin B — should succeed (2 admins remain, demoting 1 leaves 1)
+        resp = await client.put(f"/api/v1/admin/users/{admin_b['id']}/role",
                                 json={"is_admin": False},
-                                headers=_auth_headers(admin["access_token"]))
-        assert resp.status_code == 403
+                                headers=_auth_headers(admin_a["access_token"]))
+        assert resp.status_code == 200
+        # Admin A tries to demote themselves — should be blocked by self-demotion guard
+        resp2 = await client.put(f"/api/v1/admin/users/{admin_a['id']}/role",
+                                 json={"is_admin": False},
+                                 headers=_auth_headers(admin_a["access_token"]))
+        assert resp2.status_code == 403
 
 
 # ═══════════════════════════════════════════════════════════
