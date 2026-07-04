@@ -290,10 +290,20 @@ export default function PolicyPage() {
             keys that protect your private diaries are derived from your
             password. We cannot recover them because we never have them.
           </p>
+          <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200 mt-3 font-semibold">
+            Without a recovery email, forgetting your password means your
+            account is <strong>permanently and irreversibly lost</strong>.
+          </p>
           <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-300 mt-2">
-            If you forget your password and have no email on file, your
-            private diaries are <strong>permanently inaccessible</strong>.
-            We recommend adding a recovery email in Settings.
+            There is no password reset without an email on file. No
+            administrator can help you. No support ticket can recover
+            your data. No exception can be made. The encryption is designed
+            so that <strong>only you</strong> hold the keys to your
+            account. If you lose them, your account - and everything in
+            it - is gone forever.
+          </p>
+          <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-300 mt-2">
+            We strongly recommend adding a recovery email in Settings.
           </p>
         </WarningCard>
       </Section>
