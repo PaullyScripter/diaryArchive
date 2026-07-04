@@ -491,15 +491,31 @@ async def _send_admin_notification(
 ) -> None:
     from app.services.notification_service import create_notification
 
-    type_messages = {
-        "diary_hidden": f'Your diary "{diary_title or "Untitled"}" has been hidden by an administrator.',
-        "diary_deleted": f'Your diary "{diary_title or "Untitled"}" has been removed by an administrator.',
-        "comment_deleted": f'Your comment on "{diary_title or "a diary"}" has been removed by an administrator.',
+    type_labels = {
+        "diary_hidden": "your diary",
+        "diary_deleted": "your diary",
+        "comment_deleted": "your comment",
     }
-    message = type_messages.get(notification_type, f"An administrator has taken action on your content.")
+    type_actions = {
+        "diary_hidden": "hidden",
+        "diary_deleted": "removed",
+        "comment_deleted": "removed",
+    }
+    target = type_labels.get(notification_type, "your content")
+    action = type_actions.get(notification_type, "moderated")
+    title = f'Your {target} "{diary_title or "Untitled"}" was {action}'
+
     if reason:
-        message += f" Reason: {reason}."
-    message += POLICY_REMINDER
+        title += f" — {reason}"
+
+    body = (
+        f"Hello,\n\n"
+        f"Your {target} \"{diary_title or 'Untitled'}\" has been {action} by an administrator"
+        f" for the following reason: {reason or 'Content policy violation'}.\n\n"
+        f"Please review our Community Guidelines. Repeated violations may result"
+        f" in account suspension or banning.\n\n"
+        f"Regards,\nDiaryArchive Moderation"
+    )
 
     result = await create_notification(
         recipient_id=recipient_id,
@@ -510,7 +526,8 @@ async def _send_admin_notification(
         metadata={
             "diary_title": diary_title,
             "reason": reason,
-            "message": message,
+            "title": title,
+            "body": body,
         },
     )
     logger.info("Admin notification sent: id=%s type=%s recipient=%s",
