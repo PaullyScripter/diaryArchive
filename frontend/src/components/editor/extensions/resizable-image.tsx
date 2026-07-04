@@ -1,5 +1,5 @@
 import Image from "@tiptap/extension-image";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -7,6 +7,80 @@ declare module "@tiptap/core" {
       setResizableImage: (options: { src: string; width?: number; height?: number }) => ReturnType;
     };
   }
+}
+
+function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
+  const { src, alt, title, width, height } = node.attrs;
+
+  return (
+    <NodeViewWrapper className="resizable-image-wrapper" as="span">
+      <span
+        style={{
+          display: "inline-block",
+          position: "relative",
+          maxWidth: "100%",
+        }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          title={title}
+          width={width}
+          height={height}
+          draggable
+          data-drag-handle
+          style={{
+            display: "block",
+            maxWidth: "100%",
+            height: "auto",
+            borderRadius: "0.375rem",
+            width: width ? `${width}px` : undefined,
+          }}
+        />
+        {(selected || node.attrs.width) && (
+          <span
+            className="resize-handle"
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: 14,
+              height: 14,
+              background: "var(--color-accent, #b8735a)",
+              borderRadius: "0 0 0.375rem 0",
+              cursor: "nwse-resize",
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const startX = e.clientX;
+              const imgEl = e.currentTarget.parentElement?.querySelector("img") as HTMLImageElement;
+              const startWidth = width || imgEl?.naturalWidth || 300;
+              const naturalWidth = imgEl?.naturalWidth || 300;
+              const naturalHeight = imgEl?.naturalHeight || 200;
+
+              const onMove = (ev: MouseEvent) => {
+                const delta = ev.clientX - startX;
+                const newWidth = Math.max(50, Math.min(startWidth + delta, 1200));
+                updateAttributes({
+                  width: Math.round(newWidth),
+                  height: Math.round((newWidth / naturalWidth) * naturalHeight),
+                });
+              };
+
+              const onUp = () => {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+              };
+
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            }}
+          />
+        )}
+      </span>
+    </NodeViewWrapper>
+  );
 }
 
 export const ResizableImage = Image.extend({
@@ -58,106 +132,7 @@ export const ResizableImage = Image.extend({
     };
   },
 
-  renderHTML({ HTMLAttributes }) {
-    const { width, height, ...rest } = HTMLAttributes;
-    const style = [
-      rest.style,
-      width ? `width: ${width}px` : "",
-    ]
-      .filter(Boolean)
-      .join("; ");
-
-    return [
-      "div",
-      {
-        class: "resizable-image-wrapper",
-        "data-width": width,
-        style: `display: inline-block; position: relative; max-width: 100%;`,
-      },
-      [
-        "img",
-        {
-          ...rest,
-          style,
-          width,
-          height,
-        },
-      ],
-    ];
-  },
-
   addNodeView() {
-    return ReactNodeViewRenderer(ResizableImageComponent);
+    return ReactNodeViewRenderer(ResizableImageNodeView);
   },
 });
-
-function ResizableImageComponent({ node, updateAttributes }: { node: any; updateAttributes: any }) {
-  const { src, alt, title, width, height } = node.attrs;
-
-  return (
-    <div
-      className="resizable-image-wrapper"
-      style={{
-        display: "inline-block",
-        position: "relative",
-        maxWidth: "100%",
-        width: width ? `${width}px` : "auto",
-      }}
-    >
-      <img
-        src={src}
-        alt={alt}
-        title={title}
-        width={width}
-        height={height}
-        style={{
-          display: "block",
-          maxWidth: "100%",
-          height: "auto",
-          borderRadius: "0.375rem",
-        }}
-      />
-      <div
-        className="resize-handle"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          right: 0,
-          width: 12,
-          height: 12,
-          background: "var(--color-accent, #b8735a)",
-          borderRadius: "0 0 0.375rem 0",
-          cursor: "nwse-resize",
-          opacity: 0,
-          transition: "opacity 0.15s",
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const startX = e.clientX;
-          const startWidth = width || (e.currentTarget.parentElement?.querySelector("img") as HTMLImageElement)?.naturalWidth || 300;
-          const imgEl = e.currentTarget.parentElement?.querySelector("img") as HTMLImageElement;
-          const naturalWidth = imgEl?.naturalWidth || 300;
-          const naturalHeight = imgEl?.naturalHeight || 200;
-
-          const onMove = (ev: MouseEvent) => {
-            const delta = ev.clientX - startX;
-            const newWidth = Math.max(50, Math.min(startWidth + delta, 1200));
-            updateAttributes({
-              width: Math.round(newWidth),
-              height: Math.round((newWidth / naturalWidth) * naturalHeight),
-            });
-          };
-
-          const onUp = () => {
-            document.removeEventListener("mousemove", onMove);
-            document.removeEventListener("mouseup", onUp);
-          };
-
-          document.addEventListener("mousemove", onMove);
-          document.addEventListener("mouseup", onUp);
-        }}
-      />
-    </div>
-  );
-}
