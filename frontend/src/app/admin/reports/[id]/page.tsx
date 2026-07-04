@@ -329,6 +329,7 @@ export default function AdminReportDetailPage() {
             <div>
               <label className="text-xs text-muted block mb-1">
                 Resolution Note (required, min 10 chars)
+                <span className="ml-1">({note.trim().length}/10)</span>
               </label>
               <textarea
                 value={note}
@@ -342,8 +343,8 @@ export default function AdminReportDetailPage() {
             <div className="flex gap-2">
               <button
                 onClick={handleResolve}
-                disabled={resolve.isPending}
-                className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80 disabled:opacity-50"
+                disabled={resolve.isPending || note.trim().length < 10}
+                className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {resolve.isPending ? "Resolving..." : "Resolve Report"}
               </button>
