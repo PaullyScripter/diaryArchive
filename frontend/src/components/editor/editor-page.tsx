@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -413,14 +413,14 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 Available CSS variables
               </summary>
               <div className="mt-2 p-3 border border-border rounded-md bg-tag-bg font-mono text-xs text-muted space-y-1">
-                <p><span className="text-foreground">var(--color-background)</span> — page background</p>
-                <p><span className="text-foreground">var(--color-foreground)</span> — main text</p>
-                <p><span className="text-foreground">var(--color-accent)</span> — warm terracotta</p>
-                <p><span className="text-foreground">var(--color-border)</span> — divider lines</p>
-                <p><span className="text-foreground">var(--color-subtle)</span> — secondary text</p>
-                <p><span className="text-foreground">var(--color-muted)</span> — muted text</p>
-                <p><span className="text-foreground">var(--color-overlay)</span> — subtle hover</p>
-                <p><span className="text-foreground">var(--color-tag-bg)</span> — code block bg</p>
+                <p><span className="text-foreground">var(--color-background)</span> - page background</p>
+                <p><span className="text-foreground">var(--color-foreground)</span> - main text</p>
+                <p><span className="text-foreground">var(--color-accent)</span> - warm terracotta</p>
+                <p><span className="text-foreground">var(--color-border)</span> - divider lines</p>
+                <p><span className="text-foreground">var(--color-subtle)</span> - secondary text</p>
+                <p><span className="text-foreground">var(--color-muted)</span> - muted text</p>
+                <p><span className="text-foreground">var(--color-overlay)</span> - subtle hover</p>
+                <p><span className="text-foreground">var(--color-tag-bg)</span> - code block bg</p>
                 <p className="text-subtle mt-1">These automatically adapt to light/dark mode.</p>
               </div>
             </details>

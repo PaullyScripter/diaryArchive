@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useAdminUsers } from "@/hooks/use-admin";
 import { showToast } from "@/components/shared/toast";
 
 function fmtDate(d: string) {
-  if (!d) return "—";
+  if (!d) return "-";
   return new Date(d).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
