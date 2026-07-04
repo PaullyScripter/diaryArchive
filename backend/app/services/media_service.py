@@ -131,6 +131,20 @@ async def upload_media(
     if user.get("is_banned"):
         raise PermissionDeniedException("Your account has been banned")
 
+    repo = MediaRepository()
+    user_count = await repo.count_by_user(str(user["_id"]))
+    if user_count >= settings.max_media_per_user:
+        raise ValidationException(
+            f"Media limit reached ({settings.max_media_per_user} files)"
+        )
+
+    if diary_id:
+        diary_count = await repo.count_by_user(str(user["_id"]), diary_id=diary_id)
+        if diary_count >= settings.max_media_per_diary:
+            raise ValidationException(
+                f"Media limit per diary reached ({settings.max_media_per_diary} files)"
+            )
+
     detected_mime = detect_mime_type(file_data)
     logger.info(
         "Upload detected_mime=%s content_type_header=%s filename=%s size=%d",

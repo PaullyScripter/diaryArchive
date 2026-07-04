@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Request, UploadFile
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import check_rate_limit
 from app.services.media_service import (
@@ -29,6 +30,12 @@ async def upload(
     )
     if is_limited:
         raise RateLimitException("Too many upload attempts")
+
+    is_daily_limited, _ = await check_rate_limit(
+        f"rate_limit:daily_upload:{current_user['_id']}", settings.max_daily_uploads, 86400
+    )
+    if is_daily_limited:
+        raise RateLimitException(f"Daily upload limit reached ({settings.max_daily_uploads} files)")
 
     file_data = await file.read()
     if len(file_data) > MAX_UPLOAD_SIZE:
