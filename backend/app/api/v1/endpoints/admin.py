@@ -119,14 +119,17 @@ async def admin_hide_diary(
 
     _remove_from_index(diary_id)
 
-    _send_admin_notification(
-        recipient_id=str(diary["user_id"]),
-        admin_id=str(current_admin["_id"]),
-        admin_username=current_admin["username"],
-        notification_type="diary_hidden",
-        diary_title=diary.get("title", "Untitled"),
-        reason=reason,
-    )
+    try:
+        await _send_admin_notification(
+            recipient_id=str(diary["user_id"]),
+            admin_id=str(current_admin["_id"]),
+            admin_username=current_admin["username"],
+            notification_type="diary_hidden",
+            diary_title=diary.get("title", "Untitled"),
+            reason=reason,
+        )
+    except Exception:
+        logger.warning("Failed to send hide notification", exc_info=True)
 
     return {"data": {"id": diary_id, "hidden": True}}
 
@@ -477,7 +480,7 @@ POLICY_REMINDER = (
 )
 
 
-def _send_admin_notification(
+async def _send_admin_notification(
     recipient_id: str,
     admin_id: str,
     admin_username: str,
@@ -486,7 +489,7 @@ def _send_admin_notification(
     comment_text: str | None = None,
     reason: str | None = None,
 ) -> None:
-    from app.services.notification_service import _send_notification_async
+    from app.services.notification_service import create_notification
 
     type_messages = {
         "diary_hidden": f'Your diary "{diary_title or "Untitled"}" has been hidden by an administrator.',
@@ -498,7 +501,7 @@ def _send_admin_notification(
         message += f" Reason: {reason}."
     message += POLICY_REMINDER
 
-    _send_notification_async(
+    result = await create_notification(
         recipient_id=recipient_id,
         actor_id=admin_id,
         notification_type=notification_type,
@@ -510,3 +513,5 @@ def _send_admin_notification(
             "message": message,
         },
     )
+    logger.info("Admin notification sent: id=%s type=%s recipient=%s",
+                 result, notification_type, recipient_id)
