@@ -84,6 +84,14 @@ async def reply_to_ticket(
     )
 
 
+@router.put("/{ticket_id}/close")
+async def close_my_ticket(
+    ticket_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    return await close_ticket(ticket_id=ticket_id, user_id=str(current_user["_id"]))
+
+
 @admin_router.get("")
 async def admin_list_tickets(
     status: str = Query("open", description="open, closed, all"),

@@ -187,7 +187,7 @@ async def add_message(
     return {"data": _build_ticket_response(updated)}
 
 
-async def close_ticket(ticket_id: str) -> dict:
+async def close_ticket(ticket_id: str, user_id: str | None = None) -> dict:
     ticket_repo = TicketRepository()
     ticket = await ticket_repo.get_by_id(ticket_id)
     if ticket is None:
@@ -195,6 +195,9 @@ async def close_ticket(ticket_id: str) -> dict:
 
     if ticket.get("status") == "closed":
         raise ValidationException("Ticket is already closed")
+
+    if user_id and str(ticket["user_id"]) != user_id:
+        raise PermissionDeniedException("You do not have permission to close this ticket")
 
     success = await ticket_repo.close_ticket(ticket_id)
     if not success:

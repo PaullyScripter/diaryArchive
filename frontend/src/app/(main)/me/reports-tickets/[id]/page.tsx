@@ -194,6 +194,21 @@ export default function TicketDetailPage() {
 
   const isOpen = ticket.status === "open";
 
+  const closeMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.put(`/tickets/${ticketId}/close`);
+    },
+    onSuccess: () => {
+      showToast("Ticket closed");
+      queryClient.invalidateQueries({ queryKey: ["my-ticket", ticketId] });
+      queryClient.invalidateQueries({ queryKey: ["my-tickets"] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || "Failed to close ticket";
+      showToast(msg);
+    },
+  });
+
   return (
     <ProtectedRoute>
       <div className="max-w-2xl mx-auto py-8 px-4">
@@ -205,19 +220,32 @@ export default function TicketDetailPage() {
         </button>
 
         <div className="border border-border p-4 mb-4">
-          <h1 className="font-serif text-lg mb-2">{ticket.subject}</h1>
-          <div className="text-xs text-muted space-y-0.5">
-            <div>Category: {CATEGORY_LABELS[ticket.category] || ticket.category}</div>
-            <div>
-              Status:{" "}
-              <span className={isOpen ? "text-link" : "text-muted"}>
-                {isOpen ? "Open" : "Closed"}
-              </span>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="font-serif text-lg mb-2">{ticket.subject}</h1>
+              <div className="text-xs text-muted space-y-0.5">
+                <div>Category: {CATEGORY_LABELS[ticket.category] || ticket.category}</div>
+                <div>
+                  Status:{" "}
+                  <span className={isOpen ? "text-link" : "text-muted"}>
+                    {isOpen ? "Open" : "Closed"}
+                  </span>
+                </div>
+                {ticket.assigned_admin_username && (
+                  <div>Assigned admin: {ticket.assigned_admin_username}</div>
+                )}
+                <div>Created: {fmtDate(ticket.created_at)}</div>
+              </div>
             </div>
-            {ticket.assigned_admin_username && (
-              <div>Assigned admin: {ticket.assigned_admin_username}</div>
+            {isOpen && (
+              <button
+                onClick={() => closeMutation.mutate()}
+                disabled={closeMutation.isPending}
+                className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground disabled:opacity-50 shrink-0"
+              >
+                {closeMutation.isPending ? "Closing..." : "Close ticket"}
+              </button>
             )}
-            <div>Created: {fmtDate(ticket.created_at)}</div>
           </div>
         </div>
 
