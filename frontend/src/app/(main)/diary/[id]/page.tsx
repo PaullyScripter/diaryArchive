@@ -371,7 +371,7 @@ export default function DiaryReaderPage() {
                 <Star className="w-3.5 h-3.5 fill-current admin-star" />
               </span>
             )}
-            <BadgeDisplay badge={diary.author.badge} />
+            <BadgeDisplay badges={diary.author.badges} />
           </span>
           <div className="flex items-center gap-1 text-xs text-subtle">
             <time dateTime={diary.created_at}>

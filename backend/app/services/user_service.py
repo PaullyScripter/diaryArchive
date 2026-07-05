@@ -8,7 +8,7 @@ from app.services.encryption_service import encrypt_email, hash_email
 
 
 def build_public_profile(user: dict, is_following: bool = False) -> dict:
-    badge = user.get("displayed_badge")
+    badges_dict = user.get("displayed_badges") or {}
     return {
         "id": str(user["_id"]),
         "username": user["username"],
@@ -24,7 +24,7 @@ def build_public_profile(user: dict, is_following: bool = False) -> dict:
         "created_at": fmt_dt(user.get("created_at")),
         "is_following": is_following,
         "is_admin": bool(user.get("is_admin")),
-        "badge": badge if badge else None,
+        "badges": list(badges_dict.values()) if badges_dict else [],
     }
 
 
