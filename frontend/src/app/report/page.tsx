@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -45,13 +45,6 @@ export default function ReportPage() {
   const [success, setSuccess] = useState(false);
 
   const [bugDescription, setBugDescription] = useState("");
-  const [bugUrl, setBugUrl] = useState("");
-
-  useEffect(() => {
-    if (reportType === "bug" && !bugUrl && currentUrl) {
-      setBugUrl(currentUrl);
-    }
-  }, [reportType, currentUrl, bugUrl]);
 
   const [ticketCategory, setTicketCategory] = useState<(typeof TICKET_CATEGORIES)[number]["value"]>("general_inquiry");
   const [ticketSubject, setTicketSubject] = useState("");
@@ -74,7 +67,7 @@ export default function ReportPage() {
         await apiClient.post("/reports", {
           reason: "bug",
           description: bugDescription.trim(),
-          url: bugUrl || currentUrl,
+          url: currentUrl,
           user_agent: typeof window !== "undefined" ? window.navigator.userAgent : "",
         });
         setSuccess(true);
@@ -168,7 +161,6 @@ export default function ReportPage() {
     setError("");
     setSuccess(false);
     setBugDescription("");
-    setBugUrl("");
     setTicketCategory("general_inquiry");
     setTicketSubject("");
     setTicketDescription("");
@@ -239,14 +231,10 @@ export default function ReportPage() {
               <h2 className="text-sm font-medium">Report a Bug</h2>
             </div>
             <div>
-              <label htmlFor="bug-url" className="text-xs text-muted">URL</label>
-              <Input
-                id="bug-url"
-                value={bugUrl}
-                onChange={(e) => setBugUrl(e.target.value)}
-                placeholder="https://..."
-                disabled={submitting}
-              />
+              <label className="text-xs text-muted">Current URL</label>
+              <div className="text-xs text-subtle border border-border bg-overlay p-2 mt-1 break-all">
+                {currentUrl || "N/A"}
+              </div>
             </div>
             <div>
               <label htmlFor="bug-description" className="text-xs text-muted">
