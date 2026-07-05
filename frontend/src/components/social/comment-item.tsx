@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
+import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Button } from "@/components/ui/button";
 import { ReportButton } from "@/components/social/report-button";
 import Link from "next/link";
@@ -140,6 +141,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
                     <Star className="w-3 h-3 fill-current admin-star" />
                   </span>
                 )}
+                <BadgeDisplay badge={comment.author.badge} />
               </span>
               <span className="text-xs text-subtle">
                 {new Date(comment.created_at).toLocaleDateString()}

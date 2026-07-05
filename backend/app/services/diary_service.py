@@ -61,15 +61,27 @@ def _cascade_delete_media_async(diary_id: str) -> None:
     asyncio.create_task(_do())
 
 
+def _check_achievements_async(user_id: str) -> None:
+    async def _do():
+        try:
+            from app.services.achievement_service import check_and_award_diary_achievements
+            await check_and_award_diary_achievements(user_id)
+        except Exception:
+            pass
+    asyncio.create_task(_do())
+
+
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
 
 
 def _build_author(user: dict) -> dict:
+    badge = user.get("displayed_badge")
     return {
         "id": str(user["_id"]),
         "username": user["username"],
         "avatar_path": user.get("avatar_path"),
         "is_admin": bool(user.get("is_admin")),
+        "badge": badge if badge else None,
     }
 
 
@@ -254,6 +266,7 @@ async def create_diary(user: dict, data: dict) -> dict:
     if privacy == "public":
         diary_doc["_id"] = diary_id
         _index_diary_async(diary_doc)
+        _check_achievements_async(str(user["_id"]))
 
     return {
         "id": str(diary_id),

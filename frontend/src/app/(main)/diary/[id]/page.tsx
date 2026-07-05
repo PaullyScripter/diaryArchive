@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Share2, Pencil, Trash2, Lock, Shield, Star } from "lucide-react";
 
 import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
@@ -370,6 +371,7 @@ export default function DiaryReaderPage() {
                 <Star className="w-3.5 h-3.5 fill-current admin-star" />
               </span>
             )}
+            <BadgeDisplay badge={diary.author.badge} />
           </span>
           <div className="flex items-center gap-1 text-xs text-subtle">
             <time dateTime={diary.created_at}>

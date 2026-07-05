@@ -87,6 +87,7 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
             target_id=diary_id,
             metadata={"diary_title": diary.get("title")},
         )
+        _check_likes_achievement_async(str(diary["user_id"]))
     return {
         "is_liked": True,
         "like_count": diary["stats"]["like_count"] if diary else 0,
@@ -486,3 +487,16 @@ async def list_following_feed(
         data.append(_build_diary_list_item(diary, author, current_user))
 
     return {"data": data, "meta": {"total": len(data), "limit": limit}}
+
+
+def _check_likes_achievement_async(user_id: str) -> None:
+    import asyncio
+
+    async def _do():
+        try:
+            from app.services.achievement_service import check_and_award_likes_achievements
+            await check_and_award_likes_achievements(user_id)
+        except Exception:
+            pass
+
+    asyncio.create_task(_do())

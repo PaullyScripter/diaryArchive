@@ -14,6 +14,7 @@ export interface DiaryData {
     username: string;
     avatar_path: string | null;
     is_admin?: boolean;
+    badge?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean } | null;
   };
   tags: string[];
   emotion: string | null;
