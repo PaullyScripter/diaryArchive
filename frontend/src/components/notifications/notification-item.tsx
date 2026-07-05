@@ -13,9 +13,11 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   diary_hidden: <Wrench className="w-4 h-4 text-muted" />,
   diary_deleted: <Wrench className="w-4 h-4 text-muted" />,
   comment_deleted: <Wrench className="w-4 h-4 text-muted" />,
+  bio_warning: <Wrench className="w-4 h-4 text-muted" />,
+  username_warning: <Wrench className="w-4 h-4 text-muted" />,
 };
 
-const ADMIN_TYPES = ["diary_hidden", "diary_deleted", "comment_deleted"];
+const ADMIN_TYPES = ["diary_hidden", "diary_deleted", "comment_deleted", "bio_warning", "username_warning"];
 
 function getTargetUrl(notification: NotificationItemType): string {
   switch (notification.type) {
@@ -29,6 +31,9 @@ function getTargetUrl(notification: NotificationItemType): string {
     case "like":
     case "bookmark":
       return `/diary/${notification.target_id}`;
+    case "bio_warning":
+    case "username_warning":
+      return `/notifications#${notification.id}`;
     default:
       return "/notifications";
   }

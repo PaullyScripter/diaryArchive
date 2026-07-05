@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +11,7 @@ class ReportReason(str, Enum):
     harassment = "harassment"
     impersonation = "impersonation"
     copyright_violation = "copyright_violation"
+    bug = "bug"
     other = "other"
 
 
@@ -17,6 +19,7 @@ class ReportTargetType(str, Enum):
     diary = "diary"
     comment = "comment"
     user = "user"
+    bug = "bug"
 
 
 class ReportStatus(str, Enum):
@@ -25,11 +28,20 @@ class ReportStatus(str, Enum):
     dismissed = "dismissed"
 
 
+class BugReportCreate(BaseModel):
+    reason: Literal[ReportReason.bug]
+    description: str = Field(..., min_length=1, max_length=2000)
+    url: str = Field(default="")
+    user_agent: str = Field(default="")
+
+
 class ReportCreate(BaseModel):
-    target_type: ReportTargetType
-    target_id: str = Field(..., min_length=1)
+    target_type: ReportTargetType | None = None
+    target_id: str | None = Field(None, min_length=1)
     reason: ReportReason
-    description: str | None = Field(None, max_length=1000)
+    description: str | None = Field(None, max_length=2000)
+    url: str | None = Field(default=None)
+    user_agent: str | None = Field(default=None)
 
 
 class ReportUpdate(BaseModel):

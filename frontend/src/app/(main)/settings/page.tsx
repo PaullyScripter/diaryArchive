@@ -442,7 +442,7 @@ function SettingsContent() {
                         type="button"
                         role="switch"
                         aria-checked={
-                          user?.preferences?.[key as keyof typeof user.preferences] ?? key !== "notify_on_bookmark"
+                          (user?.preferences?.[key as keyof typeof user.preferences] ?? key !== "notify_on_bookmark") as "true" | "false"
                         }
                         onClick={() => {
                           if (!user) return;

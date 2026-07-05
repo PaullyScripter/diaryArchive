@@ -55,15 +55,18 @@ export default function ProfilePage() {
           size="xl"
           className="mb-4"
         />
-        <h1 className="font-serif text-2xl font-semibold text-foreground inline-flex items-center gap-1.5">
+        <h1 className="font-serif text-2xl font-semibold text-foreground">
           {profile.username}
+        </h1>
+
+        <div className="mt-1 flex items-center justify-center gap-1.5">
           {profile.is_admin && (
-            <span className="text-accent" title="Admin">
+            <span className="text-accent" title="Administrator">
               <Star className="w-5 h-5 fill-current admin-star" />
             </span>
           )}
           <BadgeDisplay badges={profile.badges} size="md" />
-        </h1>
+        </div>
 
         {profile.about && (
           <p className="text-sm text-muted mt-2 max-w-md">{profile.about}</p>
