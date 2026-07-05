@@ -10,6 +10,7 @@ import { useFollowers, useFollowing } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { BadgeDisplay } from "@/components/shared/badge-display";
+import { AdminWarnButton } from "@/components/admin/admin-warn-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -102,7 +103,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex items-center gap-2">
           {isOwnProfile ? (
             <Link href="/settings">
               <Button variant="secondary" size="sm">
@@ -115,6 +116,7 @@ export default function ProfilePage() {
               initialIsFollowing={profile.is_following}
             />
           )}
+          <AdminWarnButton userId={profile.id} username={profile.username} />
         </div>
       </div>
 

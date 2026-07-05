@@ -3,6 +3,7 @@ import { Heart, MessageCircle, Star } from "lucide-react";
 import { TagBadge } from "@/components/shared/tag-badge";
 import { PrivacyBadge } from "@/components/shared/privacy-badge";
 import { BadgeDisplay } from "@/components/shared/badge-display";
+import { AdminWarnButton } from "@/components/admin/admin-warn-button";
 import { relativeTime } from "@/lib/utils";
 
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -70,6 +71,7 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
               </span>
             )}
             <BadgeDisplay badges={diary.author.badges} />
+            <AdminWarnButton userId={diary.author.id} username={diary.author.username} />
           </span>
           <span className="mx-1">·</span>
           <span>{relativeTime(diary.created_at)}</span>
