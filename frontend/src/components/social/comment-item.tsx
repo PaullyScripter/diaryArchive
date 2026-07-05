@@ -132,13 +132,13 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
             )}
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5">
                 <span className="text-xs font-medium text-foreground">
                   {comment.author.username}
                 </span>
                 {comment.author.is_admin && (
                   <span className="text-accent" title="Admin">
-                    <Star className="w-3 h-3 fill-current admin-star" />
+                    <Star className="w-3.5 h-3.5 fill-current admin-star" />
                   </span>
                 )}
                 <BadgeDisplay badges={comment.author.badges} />
