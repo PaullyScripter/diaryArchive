@@ -10,6 +10,7 @@ export interface CommentData {
     id: string;
     username: string;
     avatar_path: string | null;
+    is_admin?: boolean;
   };
   is_deleted: boolean;
   is_owner: boolean;

@@ -54,11 +54,11 @@ export default function ProfilePage() {
           size="xl"
           className="mb-4"
         />
-        <h1 className="font-serif text-2xl font-semibold text-foreground">
+        <h1 className="font-serif text-2xl font-semibold text-foreground inline-flex items-center gap-1.5">
           {profile.username}
           {profile.is_admin && (
-            <span className="inline-flex items-center ml-2 text-accent align-middle" title="Admin">
-              <Star className="w-5 h-5 fill-current" />
+            <span className="text-accent" title="Admin">
+              <Star className="w-5 h-5 fill-current animate-[spin_3s_ease-in-out_infinite]" />
             </span>
           )}
         </h1>

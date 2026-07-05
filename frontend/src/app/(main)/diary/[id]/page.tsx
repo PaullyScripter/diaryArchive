@@ -358,17 +358,19 @@ export default function DiaryReaderPage() {
           />
         </Link>
         <div>
-          <Link
-            href={`/profile/${diary.author.username}`}
-            className="text-sm font-medium text-foreground no-underline hover:underline"
-          >
-            {diary.author.username}
-          </Link>
-          {diary.author.is_admin && (
-            <span className="inline-flex items-center ml-1.5 text-accent" title="Admin">
-              <Star className="w-3.5 h-3.5 fill-current" />
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1">
+            <Link
+              href={`/profile/${diary.author.username}`}
+              className="text-sm font-medium text-foreground no-underline hover:underline"
+            >
+              {diary.author.username}
+            </Link>
+            {diary.author.is_admin && (
+              <span className="text-accent" title="Admin">
+                <Star className="w-3.5 h-3.5 fill-current animate-[spin_3s_ease-in-out_infinite]" />
+              </span>
+            )}
+          </span>
           <div className="flex items-center gap-1 text-xs text-subtle">
             <time dateTime={diary.created_at}>
               {new Date(diary.created_at).toLocaleDateString("en-US", {
