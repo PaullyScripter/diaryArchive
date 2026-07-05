@@ -97,6 +97,11 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
               }
               disabled={warnMutation.isPending}
             />
+            <p className="text-xs text-muted">
+              {warningType === "bio"
+                ? "User will receive instructions to edit their bio in Settings > Profile."
+                : "User will receive instructions to open a username change ticket."}
+            </p>
             <DialogFooter>
               <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
                 Cancel
