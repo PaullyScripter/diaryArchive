@@ -9,20 +9,20 @@ import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
 
 const TICKET_CATEGORIES = [
-  "Account Help",
-  "Username Change",
-  "General Inquiry",
-  "Feature Request",
-  "Report a Problem",
+  { value: "account_help", label: "Account Help" },
+  { value: "username_change", label: "Username Change" },
+  { value: "general_inquiry", label: "General Inquiry" },
+  { value: "feature_request", label: "Feature Request" },
+  { value: "report_problem", label: "Report a Problem" },
 ] as const;
 
 const PROFILE_REASONS = [
-  "Inappropriate bio/about",
-  "Inappropriate username",
-  "Impersonation",
-  "Spam profile",
-  "Harassment",
-  "Other",
+  { label: "Inappropriate bio/about", value: "inappropriate_content" },
+  { label: "Inappropriate username", value: "inappropriate_content" },
+  { label: "Impersonation", value: "impersonation" },
+  { label: "Spam profile", value: "spam" },
+  { label: "Harassment", value: "harassment" },
+  { label: "Other", value: "other" },
 ] as const;
 
 type ReportType = "bug" | "ticket" | "content" | null;
@@ -46,13 +46,13 @@ export default function ReportPage() {
 
   const [bugDescription, setBugDescription] = useState("");
 
-  const [ticketCategory, setTicketCategory] = useState<(typeof TICKET_CATEGORIES)[number]>("General Inquiry");
+  const [ticketCategory, setTicketCategory] = useState<(typeof TICKET_CATEGORIES)[number]["value"]>("general_inquiry");
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
 
   const [contentSubType, setContentSubType] = useState<ContentSubType>(null);
   const [profileUsername, setProfileUsername] = useState("");
-  const [profileReason, setProfileReason] = useState<(typeof PROFILE_REASONS)[number]>("Other");
+  const [profileReason, setProfileReason] = useState<(typeof PROFILE_REASONS)[number]["value"]>("other");
 
   const handleSubmitBug = useCallback(
     async (e: React.FormEvent) => {
@@ -66,13 +66,11 @@ export default function ReportPage() {
       try {
         await apiClient.post("/reports", {
           target_type: "bug",
-          target_id: "bug_report",
-          reason: "Bug Report",
+          target_id: "",
+          reason: "bug",
           description: bugDescription.trim(),
-          metadata: {
-            url: currentUrl,
-            user_agent: typeof window !== "undefined" ? window.navigator.userAgent : "",
-          },
+          url: currentUrl,
+          user_agent: typeof window !== "undefined" ? window.navigator.userAgent : "",
         });
         setSuccess(true);
         showToast("Bug report submitted");
@@ -105,7 +103,7 @@ export default function ReportPage() {
         await apiClient.post("/tickets", {
           category: ticketCategory,
           subject: ticketSubject.trim(),
-          message: ticketDescription.trim(),
+          description: ticketDescription.trim(),
         });
         setSuccess(true);
         showToast("Ticket submitted");
@@ -132,9 +130,16 @@ export default function ReportPage() {
         }
         setSubmitting(true);
         try {
+          const userResponse = await apiClient.get(`/users/${profileUsername.trim()}`);
+          const userId = userResponse.data?.data?.id;
+          if (!userId) {
+            setError("User not found");
+            setSubmitting(false);
+            return;
+          }
           await apiClient.post("/reports", {
             target_type: "user",
-            target_id: profileUsername.trim(),
+            target_id: userId,
             reason: profileReason,
           });
           setSuccess(true);
@@ -158,11 +163,11 @@ export default function ReportPage() {
     setError("");
     setSuccess(false);
     setBugDescription("");
-    setTicketCategory("General Inquiry");
+    setTicketCategory("general_inquiry");
     setTicketSubject("");
     setTicketDescription("");
     setProfileUsername("");
-    setProfileReason("Other");
+    setProfileReason("other");
   };
 
   if (success) {
@@ -274,13 +279,13 @@ export default function ReportPage() {
               <select
                 id="ticket-category"
                 value={ticketCategory}
-                onChange={(e) => setTicketCategory(e.target.value as (typeof TICKET_CATEGORIES)[number])}
+                  onChange={(e) => setTicketCategory(e.target.value as (typeof TICKET_CATEGORIES)[number]["value"])}
                 className="w-full border border-border bg-background text-sm p-2 text-foreground mt-1 cursor-pointer"
                 disabled={submitting}
               >
                 {TICKET_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
                   </option>
                 ))}
               </select>
@@ -392,15 +397,15 @@ export default function ReportPage() {
                   <select
                     id="profile-reason"
                     value={profileReason}
-                    onChange={(e) => setProfileReason(e.target.value as (typeof PROFILE_REASONS)[number])}
+                    onChange={(e) => setProfileReason(e.target.value as (typeof PROFILE_REASONS)[number]["value"])}
                     className="w-full border border-border bg-background text-sm p-2 text-foreground mt-1 cursor-pointer"
                     disabled={submitting}
                   >
-                    {PROFILE_REASONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
+                   {PROFILE_REASONS.map((r) => (
+                     <option key={r.value} value={r.value}>
+                       {r.label}
+                     </option>
+                   ))}
                   </select>
                 </div>
                 {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
