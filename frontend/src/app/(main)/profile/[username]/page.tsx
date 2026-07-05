@@ -58,7 +58,7 @@ export default function ProfilePage() {
           {profile.username}
           {profile.is_admin && (
             <span className="text-accent" title="Admin">
-              <Star className="w-5 h-5 fill-current animate-[spin_3s_ease-in-out_infinite]" />
+              <Star className="w-5 h-5 fill-current admin-star" />
             </span>
           )}
         </h1>
