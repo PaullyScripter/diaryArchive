@@ -114,8 +114,8 @@ $minioOk = $false
 for ($i = 0; $i -lt 30; $i++) {
   $ErrorActionPreference = "Continue"
   try {
-    $result = Invoke-RestMethod -Uri "http://localhost:9000/minio/health/live" -Method Get -TimeoutSec 2 -ErrorAction Stop
-    if ($result -eq "OK") {
+    $minioResponse = Invoke-WebRequest -Uri "http://localhost:9000/minio/health/live" -Method Get -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+    if ($minioResponse.StatusCode -eq 200) {
       Write-OK "MinIO is healthy on port 9000"
       $minioOk = $true
       break
