@@ -9,6 +9,7 @@ import { useUserDiaries, useUserProfile } from "@/hooks/use-user";
 import { useFollowers, useFollowing } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
+import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ export default function ProfilePage() {
               <Star className="w-5 h-5 fill-current admin-star" />
             </span>
           )}
+          <BadgeDisplay badge={profile.badge} size="md" />
         </h1>
 
         {profile.about && (

@@ -18,11 +18,13 @@ MAX_DEPTH = 4
 
 
 def _build_author(user: dict) -> dict:
+    badge = user.get("displayed_badge")
     return {
         "id": str(user["_id"]),
         "username": user["username"],
         "avatar_path": user.get("avatar_path"),
         "is_admin": bool(user.get("is_admin")),
+        "badge": badge if badge else None,
     }
 
 
