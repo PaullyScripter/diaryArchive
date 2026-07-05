@@ -145,27 +145,33 @@ async def list_reports(
     for r in reports:
         rid = str(r["reporter_id"])
         reporter_user = reporters_map.get(rid, {})
+        target_type_val = r.get("target_type", "")
+        target_id_val = str(r["target_id"]) if r.get("target_id") else ""
         target_preview = _build_target_preview(
-            r["target_type"], str(r["target_id"]),
+            target_type_val, target_id_val,
             diaries_map, comments_map, users_map, author_map,
         )
-        result.append({
+        report_item = {
             "id": str(r["_id"]),
             "reporter": {
                 "id": rid,
                 "username": reporter_user.get("username", "unknown"),
             },
-            "target_type": r["target_type"],
-            "target_id": str(r["target_id"]),
+            "target_type": target_type_val,
+            "target_id": target_id_val or None,
             "target_preview": target_preview,
-            "reason": r["reason"],
+            "reason": r.get("reason", ""),
             "description": r.get("description"),
             "status": r.get("status", "pending"),
             "resolution_note": r.get("resolution_note"),
             "resolved_by": r.get("resolved_by"),
             "resolved_at": r.get("resolved_at"),
             "created_at": r["created_at"],
-        })
+        }
+        if target_type_val == "bug":
+            report_item["url"] = r.get("url")
+            report_item["user_agent"] = r.get("user_agent")
+        result.append(report_item)
 
     has_next = skip + per_page < total
     has_prev = page > 1
