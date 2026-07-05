@@ -9,10 +9,11 @@ interface BugReport {
   id: string;
   reporter: { id: string; username: string };
   target_type: string;
-  target_id: string;
+  target_id: string | null;
   reason: string;
   description: string | null;
-  metadata: { url?: string; user_agent?: string } | null;
+  url?: string;
+  user_agent?: string;
   status: string;
   resolution_note: string | null;
   resolved_by: string | null;
@@ -43,7 +44,7 @@ export default function AdminBugsPage() {
     queryKey: ["admin", "bugs", page],
     queryFn: async () => {
       const response = await apiClient.get("/admin/reports", {
-        params: { target_type: "bug", page, per_page: 20 },
+        params: { target_type: "bug", status: "all", page, per_page: 20 },
       });
       return response.data;
     },
@@ -133,14 +134,14 @@ export default function AdminBugsPage() {
                       {bug.description}
                     </div>
                   )}
-                  {bug.metadata?.url && (
+                  {bug.url && (
                     <div className="text-xs text-subtle truncate mb-1">
-                      URL: {bug.metadata.url}
+                      URL: {bug.url}
                     </div>
                   )}
-                  {bug.metadata?.user_agent && (
+                  {bug.user_agent && (
                     <div className="text-xs text-subtle truncate">
-                      UA: {bug.metadata.user_agent}
+                      UA: {bug.user_agent}
                     </div>
                   )}
                   {bug.resolution_note && (

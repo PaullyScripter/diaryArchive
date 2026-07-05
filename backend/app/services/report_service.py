@@ -49,11 +49,20 @@ async def submit_report(
 
     report_repo = ReportRepository()
     if target_type == "bug":
-        duplicate = await report_repo.find_duplicate(reporter_id, target_type)
-    else:
+        # Bug reports don't check duplicates - each bug is unique
+        pass
+    elif target_type == "diary" or target_type == "comment" or target_type == "user":
+        if not target_id:
+            raise ValidationException("target_id is required for non-bug reports")
         duplicate = await report_repo.find_duplicate(reporter_id, target_type, target_id)
-    if duplicate:
-        raise ConflictException("You have already submitted a pending report for this target")
+        if duplicate:
+            raise ConflictException("You have already submitted a pending report for this target")
+    else:
+        if not target_id:
+            raise ValidationException("target_id is required")
+        duplicate = await report_repo.find_duplicate(reporter_id, target_type, target_id)
+        if duplicate:
+            raise ConflictException("You have already submitted a pending report for this target")
 
     report_doc: dict = {
         "reporter_id": ObjectId(reporter_id),
