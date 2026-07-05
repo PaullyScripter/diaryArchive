@@ -27,6 +27,7 @@ ACHIEVEMENTS = {
     "age_180":   {"type": "age", "tier": "silver",  "threshold": 180,   "color": "#A8A8A8", "label": "6 Months",       "icon": "clock"},
     "age_365":   {"type": "age", "tier": "gold",    "threshold": 365,   "color": "#DAA520", "label": "1 Year",         "icon": "clock"},
     "age_1095":  {"type": "age", "tier": "diamond", "threshold": 1095,  "color": "#B9F2FF", "label": "3 Years",        "icon": "clock", "shine": True},
+    "age_2190":  {"type": "age", "tier": "gradient", "threshold": 2190, "color": "linear-gradient(135deg, #87CEEB, #9B59B6)", "label": "6+ Years", "icon": "clock", "shine": True},
     "streak_3":   {"type": "streak", "tier": "bronze",   "threshold": 3,    "color": "#8B6914", "label": "3-Day Streak",   "icon": "flame"},
     "streak_7":   {"type": "streak", "tier": "silver",   "threshold": 7,    "color": "#A8A8A8", "label": "7-Day Streak",   "icon": "flame"},
     "streak_14":  {"type": "streak", "tier": "gold",     "threshold": 14,   "color": "#DAA520", "label": "14-Day Streak",  "icon": "flame"},
