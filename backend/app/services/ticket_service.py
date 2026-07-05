@@ -194,12 +194,15 @@ async def get_user_appeals(user_id: str) -> list[dict]:
 def _build_ticket_response(ticket: dict | None) -> dict:
     if ticket is None:
         return {}
+    ticket_user_id = str(ticket.get("user_id", "")) if ticket.get("user_id") else ""
     messages = []
     for m in ticket.get("messages", []) or []:
+        sender_id = str(m.get("sender_id", "")) if m.get("sender_id") else ""
         messages.append({
-            "sender_id": str(m["sender_id"]) if m.get("sender_id") else "",
+            "sender_id": sender_id,
             "sender_username": m.get("sender_username", ""),
             "message": m.get("message", ""),
+            "is_admin": sender_id != ticket_user_id,
             "created_at": m.get("created_at"),
         })
     return {
