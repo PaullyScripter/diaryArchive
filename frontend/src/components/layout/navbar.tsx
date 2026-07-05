@@ -29,9 +29,9 @@ function NavLinks({ vertical = false, onClick }: { vertical?: boolean; onClick?:
   const links = [
     { href: "/", label: "Home" },
     { href: "/explore", label: "Explore" },
-    { href: "/report", label: "Report" },
     { href: "/diary/new", label: "Write" },
     { href: "/diary/random", label: "Random" },
+    { href: "/report", label: "Report" },
   ];
 
   return (

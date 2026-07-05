@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ function useCurrentUrl() {
 }
 
 export default function ReportPage() {
+  const router = useRouter();
   const currentUrl = useCurrentUrl();
   const [reportType, setReportType] = useState<ReportType>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -183,6 +184,13 @@ export default function ReportPage() {
   return (
     <ProtectedRoute>
       <div className="max-w-lg mx-auto py-8 px-4">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="text-xs text-muted hover:text-foreground cursor-pointer bg-transparent border-0 mb-3"
+        >
+          &larr; Back
+        </button>
         <h1 className="font-serif text-xl mb-2">Report</h1>
         <p className="text-sm text-muted mb-6">Let us know what&apos;s on your mind.</p>
 
