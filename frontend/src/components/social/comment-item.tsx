@@ -132,7 +132,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
             )}
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1.5">
                 <span className="text-xs font-medium text-foreground">
                   {comment.author.username}
                 </span>
