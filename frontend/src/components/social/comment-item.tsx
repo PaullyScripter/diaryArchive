@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
+import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown, Star } from "lucide-react";
 import {
   useReplies,
   useCreateComment,
@@ -131,8 +131,15 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
             )}
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-foreground">
-                {comment.author.username}
+              <span className="inline-flex items-center gap-1">
+                <span className="text-xs font-medium text-foreground">
+                  {comment.author.username}
+                </span>
+                {comment.author.is_admin && (
+                  <span className="text-accent" title="Admin">
+                    <Star className="w-3 h-3 fill-current animate-[spin_3s_ease-in-out_infinite]" />
+                  </span>
+                )}
               </span>
               <span className="text-xs text-subtle">
                 {new Date(comment.created_at).toLocaleDateString()}

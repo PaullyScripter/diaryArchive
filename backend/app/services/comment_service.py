@@ -22,6 +22,7 @@ def _build_author(user: dict) -> dict:
         "id": str(user["_id"]),
         "username": user["username"],
         "avatar_path": user.get("avatar_path"),
+        "is_admin": bool(user.get("is_admin")),
     }
 
 
