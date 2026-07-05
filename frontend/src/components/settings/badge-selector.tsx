@@ -63,7 +63,8 @@ export function BadgeSelector() {
     },
   });
 
-  const selectedTypes = new Set((displayed || []).map((d) => d.type));
+  const selectedTiers: Record<string, string> = {};
+  (displayed || []).forEach((d) => { selectedTiers[d.type] = d.tier; });
 
   const setBadge = useMutation({
     mutationFn: async (id: string) => {
@@ -104,19 +105,20 @@ export function BadgeSelector() {
         if (typeItems.length === 0) return null;
 
         const icon = iconPaths[typeItems[0].icon] || iconPaths.book;
-        const hasSelection = selectedTypes.has(type);
+        const selectedTier = selectedTiers[type];
 
         return (
           <div key={type} className="flex items-center gap-3">
-            <span className={`text-xs font-medium w-16 shrink-0 ${hasSelection ? "text-foreground" : "text-muted"}`}>
+            <span className={`text-xs font-medium w-16 shrink-0 ${selectedTier ? "text-foreground" : "text-muted"}`}>
               {label}
-              {hasSelection && <span className="ml-1 text-accent">&#x2713;</span>}
+              {selectedTier && <span className="ml-1 text-accent">&#x2713;</span>}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {typeItems.map((ach) => {
                 const isGradient = ach.color.startsWith("linear-gradient");
                 const fillColor = isGradient ? FALLBACK_COLORS[ach.tier] || "#9B59B6" : ach.color;
                 const animClass = ach.tier === "diamond" ? "badge-diamond" : ach.tier === "gradient" ? "badge-gradient" : "";
+                const isSelected = selectedTiers[type] === ach.tier;
 
                 return (
                   <button
@@ -124,8 +126,8 @@ export function BadgeSelector() {
                     type="button"
                     onClick={() => setBadge.mutate(ach.id)}
                     className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors ${
-                      hasSelection
-                        ? "border-accent/50 bg-accent/5 text-foreground"
+                      isSelected
+                        ? "border-accent bg-accent/10 text-foreground font-medium"
                         : "border-border text-foreground hover:border-accent"
                     }`}
                     title={ach.label}
