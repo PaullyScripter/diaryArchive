@@ -137,7 +137,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
                 </span>
                 {comment.author.is_admin && (
                   <span className="text-accent" title="Admin">
-                    <Star className="w-3 h-3 fill-current animate-[spin_3s_ease-in-out_infinite]" />
+                    <Star className="w-3 h-3 fill-current admin-star" />
                   </span>
                 )}
               </span>

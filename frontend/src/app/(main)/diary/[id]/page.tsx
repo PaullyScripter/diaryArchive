@@ -367,7 +367,7 @@ export default function DiaryReaderPage() {
             </Link>
             {diary.author.is_admin && (
               <span className="text-accent" title="Admin">
-                <Star className="w-3.5 h-3.5 fill-current animate-[spin_3s_ease-in-out_infinite]" />
+                <Star className="w-3.5 h-3.5 fill-current admin-star" />
               </span>
             )}
           </span>
