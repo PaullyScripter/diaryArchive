@@ -21,18 +21,19 @@ function BadgeIcon({ badge }: { badge: BadgeData }) {
     badge.tier === "gradient" ? "badge-gradient" :
     badge.tier === "diamond" ? "badge-diamond" : "";
   const icon = iconPaths[badge.icon] || iconPaths.book;
+  const gradId = "g-" + badge.label.replace(/[^a-zA-Z0-9]/g, "");
 
   return (
     <svg
       className={`w-3.5 h-3.5 ${animClass}`}
       viewBox="0 0 24 24"
-      fill={isGradient ? "url(#bg-" + badge.label.replace(/\s/g, "") + ")" : badge.color}
+      fill={isGradient ? `url(#${gradId})` : badge.color}
       stroke={isGradient ? "none" : badge.color}
       strokeWidth={1}
     >
       {isGradient && (
         <defs>
-          <linearGradient id={"bg-" + badge.label.replace(/\s/g, "")} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#87CEEB" />
             <stop offset="100%" stopColor="#9B59B6" />
           </linearGradient>
