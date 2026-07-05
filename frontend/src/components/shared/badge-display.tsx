@@ -23,10 +23,14 @@ export function BadgeDisplay({ badge, size = "sm" }: { badge: BadgeData | null |
 
   const icon = iconPaths[badge.icon] || iconPaths.book;
 
+  const animClass =
+    badge.tier === "gradient" ? "badge-gradient" :
+    badge.tier === "diamond" ? "badge-diamond" : "";
+
   return (
     <span className="inline-flex items-center" title={badge.label}>
       <svg
-        className={`${sizeClass} ${badge.shine ? "animate-[admin-star-spin_3s_ease-in-out_infinite]" : ""}`}
+        className={`${sizeClass} ${animClass}`}
         viewBox="0 0 24 24"
         fill={isGradient ? "url(#badge-grad)" : badge.color}
         stroke={isGradient ? "none" : badge.color}
