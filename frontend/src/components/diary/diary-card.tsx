@@ -57,7 +57,7 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
         </Link>
 
         <div className="mt-0.5 text-xs text-subtle">
-          <span className="inline-flex items-center gap-0.5">
+          <span className="inline-flex items-center gap-1.5">
             <Link
               href={`/profile/${diary.author.username}`}
               className="text-muted hover:text-foreground no-underline hover:underline"
@@ -66,7 +66,7 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
             </Link>
             {diary.author.is_admin && (
               <span className="text-accent" title="Admin">
-                <Star className="w-3 h-3 fill-current admin-star" />
+                <Star className="w-3.5 h-3.5 fill-current admin-star" />
               </span>
             )}
             <BadgeDisplay badges={diary.author.badges} />
