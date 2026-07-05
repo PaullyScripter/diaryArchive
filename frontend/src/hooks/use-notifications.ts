@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 
 export interface NotificationItem {
   id: string;
-  type: "like" | "comment" | "follow" | "bookmark" | "diary_hidden" | "diary_deleted" | "comment_deleted";
+  type: "like" | "comment" | "follow" | "bookmark" | "diary_hidden" | "diary_deleted" | "comment_deleted" | "bio_warning" | "username_warning";
   actor_username: string;
   actor_avatar_path: string | null;
   message: string;

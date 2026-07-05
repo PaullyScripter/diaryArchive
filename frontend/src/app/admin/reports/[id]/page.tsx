@@ -143,7 +143,7 @@ export default function AdminReportDetailPage() {
         >
           &larr; Reports
         </button>
-        <h1 className="text-sm font-medium">Report Detail</h1>
+        <h1 className="text-sm font-medium">Content Report Detail</h1>
       </div>
 
       <div className="border border-border p-4 space-y-3">

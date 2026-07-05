@@ -36,6 +36,8 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isBanned: boolean;
+  banReason: string;
 
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email?: string) => Promise<void>;
@@ -44,6 +46,7 @@ interface AuthState {
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;
   setLoading: (loading: boolean) => void;
+  clearBan: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -51,40 +54,64 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   isAuthenticated: false,
   isLoading: true,
+  isBanned: false,
+  banReason: "",
 
   login: async (username: string, password: string) => {
-    const response = await apiClient.post("/auth/login", { username, password });
-    const data = response.data.data || response.data;
-    set({
-      accessToken: data.access_token,
-      user: {
-        id: data.id,
-        username: data.username,
-        avatar_path: null,
-        about: null,
-        favorite_quote: null,
-        currently_feeling: null,
-        stats: { diary_count: 0, follower_count: 0, following_count: 0 },
-        is_admin: data.is_admin || false,
-        has_email: false,
-        email_verified: false,
-        has_master_key: false,
-        preferences: {
-          theme: "system",
-          comments_disabled: false,
-          email_notifications: false,
-          notify_on_like: true,
-          notify_on_comment: true,
-          notify_on_follow: true,
-          notify_on_bookmark: false,
+    try {
+      const response = await apiClient.post("/auth/login", { username, password });
+      const data = response.data.data || response.data;
+      set({
+        accessToken: data.access_token,
+        user: {
+          id: data.id,
+          username: data.username,
+          avatar_path: null,
+          about: null,
+          favorite_quote: null,
+          currently_feeling: null,
+          stats: { diary_count: 0, follower_count: 0, following_count: 0 },
+          is_admin: data.is_admin || false,
+          has_email: false,
+          email_verified: false,
+          has_master_key: false,
+          preferences: {
+            theme: "system",
+            comments_disabled: false,
+            email_notifications: false,
+            notify_on_like: true,
+            notify_on_comment: true,
+            notify_on_follow: true,
+            notify_on_bookmark: false,
+          },
+          created_at: "",
+          last_login_at: null,
         },
-        created_at: "",
-        last_login_at: null,
-      },
-      isAuthenticated: true,
-      isLoading: false,
-    });
-    get().refreshAuth();
+        isAuthenticated: true,
+        isLoading: false,
+        isBanned: false,
+        banReason: "",
+      });
+      get().refreshAuth();
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        (err as { response: { status: number; data?: { error?: { code?: string; message?: string } } } }).response.status === 403
+      ) {
+        const errorData = (err as { response: { data?: { error?: { code?: string; message?: string } } } }).response.data?.error;
+        if (errorData?.code === "account_banned") {
+          set({
+            isBanned: true,
+            banReason: errorData.message || "Your account has been suspended.",
+            isLoading: false,
+          });
+          return;
+        }
+      }
+      throw err;
+    }
   },
 
   register: async (username: string, password: string, email?: string) => {
@@ -158,4 +185,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setAccessToken: (token: string) => set({ accessToken: token }),
 
   setLoading: (loading: boolean) => set({ isLoading: loading }),
+
+  clearBan: () => set({ isBanned: false, banReason: "" }),
 }));

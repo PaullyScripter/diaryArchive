@@ -10,6 +10,7 @@ from app.schemas.notification import notification_indexes
 from app.schemas.password_reset_token import password_reset_token_indexes
 from app.schemas.refresh_token import refresh_token_indexes
 from app.schemas.report import report_indexes
+from app.schemas.ticket import ticket_indexes
 from app.schemas.user import user_indexes
 
 ALL_INDEXES: dict[str, list[tuple[dict, dict]]] = {
@@ -23,6 +24,7 @@ ALL_INDEXES: dict[str, list[tuple[dict, dict]]] = {
     "follows": follow_indexes,
     "notifications": notification_indexes,
     "reports": report_indexes,
+    "tickets": ticket_indexes,
     "audit_logs": audit_log_indexes,
     "media": media_indexes,
     "refresh_tokens": refresh_token_indexes,

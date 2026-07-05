@@ -12,7 +12,10 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const login = useAuthStore((s) => s.login);
+  const clearBan = useAuthStore((s) => s.clearBan);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isBanned = useAuthStore((s) => s.isBanned);
+  const banReason = useAuthStore((s) => s.banReason);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +34,7 @@ function LoginForm() {
 
       setLoading(true);
       try {
+        clearBan();
         await login(username.trim(), password);
         const redirect = searchParams.get("redirect") || "/";
         router.push(redirect);
@@ -45,7 +49,7 @@ function LoginForm() {
         setLoading(false);
       }
     },
-    [username, password, login, searchParams, router],
+    [username, password, login, clearBan, searchParams, router],
   );
 
   useEffect(() => {
@@ -56,6 +60,24 @@ function LoginForm() {
 
   if (isAuthenticated) {
     return null;
+  }
+
+  if (isBanned) {
+    return (
+      <div className="mx-auto max-w-sm pt-16">
+        <h1 className="font-serif text-xl mb-6">Account Suspended</h1>
+        <div className="border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+          <p className="text-sm text-destructive font-medium">Your account has been banned.</p>
+          <p className="text-sm text-foreground">{banReason}</p>
+          <a
+            href={`/appeal?username=${encodeURIComponent(username)}`}
+            className="inline-block text-sm px-3 py-1.5 bg-foreground text-background hover:opacity-80 no-underline"
+          >
+            Appeal
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (
