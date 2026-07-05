@@ -21,7 +21,7 @@ interface TicketItem {
   category: string;
   subject: string;
   status: string;
-  messages: TicketMessage[];
+  messages?: TicketMessage[];
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +67,17 @@ function TicketCard({ ticket }: { ticket: TicketItem }) {
   const [expanded, setExpanded] = useState(false);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+
+  const detailQuery = useQuery<TicketItem>({
+    queryKey: ["my-ticket", ticket.id],
+    queryFn: async () => {
+      const response = await apiClient.get(`/tickets/${ticket.id}`);
+      return response.data.data || response.data;
+    },
+    enabled: expanded,
+  });
+
+  const detail = detailQuery.data || ticket;
 
   const statusBadge = STATUS_BADGE[ticket.status] || {
     text: ticket.status,
@@ -123,8 +134,15 @@ function TicketCard({ ticket }: { ticket: TicketItem }) {
       </button>
       {expanded && (
         <div className="border-t border-border px-3 pb-3">
+          {detailQuery.isLoading ? (
+            <div className="py-4 space-y-2">
+              <div className="h-8 bg-muted animate-pulse" />
+              <div className="h-8 bg-muted animate-pulse" />
+            </div>
+          ) : (
+            <>
           <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
-            {ticket.messages.map((msg) => (
+            {(detail.messages || []).map((msg) => (
               <div
                 key={msg.id}
                 className={`p-2 text-xs ${msg.is_admin ? "bg-overlay border border-border" : ""}`}
@@ -144,7 +162,7 @@ function TicketCard({ ticket }: { ticket: TicketItem }) {
               </div>
             ))}
           </div>
-          {ticket.status === "open" && (
+          {detail.status === "open" && (
             <form onSubmit={handleReply} className="mt-2 flex gap-2">
               <input
                 value={reply}
@@ -161,6 +179,8 @@ function TicketCard({ ticket }: { ticket: TicketItem }) {
                 {sending ? "..." : "Send"}
               </button>
             </form>
+          )}
+            </>
           )}
         </div>
       )}
