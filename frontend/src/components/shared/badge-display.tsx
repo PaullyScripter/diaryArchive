@@ -23,7 +23,7 @@ const FALLBACKS: Record<string, string> = {
   bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
 };
 
-function BadgeIcon({ badge }: { badge: BadgeData }) {
+function BadgeIcon({ badge, size = "sm" }: { badge: BadgeData; size?: "sm" | "md" }) {
   const gid = useId();
   const isGradient = badge.color.startsWith("linear-gradient");
   const animClass =
@@ -31,10 +31,11 @@ function BadgeIcon({ badge }: { badge: BadgeData }) {
     badge.tier === "diamond" ? "badge-diamond" : "";
   const icon = iconPaths[badge.icon] || iconPaths.book;
   const color = badge.color || FALLBACKS[badge.tier] || "#8B6914";
+  const sizeClass = size === "md" ? "w-5 h-5" : "w-3.5 h-3.5";
 
   return (
     <svg
-      className={`w-3.5 h-3.5 shrink-0 ${animClass}`}
+      className={`${sizeClass} shrink-0 ${animClass}`}
       viewBox="0 0 24 24"
       fill={isGradient ? `url(#${gid})` : color}
       stroke={isGradient ? "none" : color}
@@ -53,14 +54,14 @@ function BadgeIcon({ badge }: { badge: BadgeData }) {
   );
 }
 
-export function BadgeDisplay({ badges }: { badges: BadgeData[] | null | undefined }) {
+export function BadgeDisplay({ badges, size = "sm" }: { badges: BadgeData[] | null | undefined; size?: "sm" | "md" }) {
   if (!badges || !Array.isArray(badges) || badges.length === 0) return null;
 
   return (
     <span className="inline-flex items-center gap-1">
       {badges.map((b, i) => (
         <span key={i} title={b.label} className="inline-flex items-center">
-          <BadgeIcon badge={b} />
+          <BadgeIcon badge={b} size={size} />
         </span>
       ))}
     </span>
