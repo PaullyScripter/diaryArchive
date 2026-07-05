@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import get_current_user
 from app.services.achievement_service import (
-    get_displayed_badge,
+    clear_displayed_badge,
     get_user_achievements,
     set_displayed_badge,
 )
@@ -20,3 +20,8 @@ async def list_achievements(current_user: dict = Depends(get_current_user)):
 async def set_badge(achievement_id: str, current_user: dict = Depends(get_current_user)):
     badge = await set_displayed_badge(str(current_user["_id"]), achievement_id)
     return {"data": badge or {}}
+
+
+@router.delete("/display", status_code=204)
+async def clear_badge(current_user: dict = Depends(get_current_user)):
+    await clear_displayed_badge(str(current_user["_id"]))
