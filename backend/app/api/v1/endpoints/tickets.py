@@ -80,6 +80,7 @@ async def reply_to_ticket(
         sender_username=current_user["username"],
         message=body.message,
         is_admin=False,
+        media_id=body.media_id,
     )
 
 
@@ -128,6 +129,7 @@ async def admin_reply_to_ticket(
         sender_username=current_admin["username"],
         message=body.message,
         is_admin=True,
+        media_id=body.media_id,
     )
 
 
