@@ -61,14 +61,27 @@ def _cascade_delete_media_async(diary_id: str) -> None:
     asyncio.create_task(_do())
 
 
+def _check_achievements_async(user_id: str) -> None:
+    async def _do():
+        try:
+            from app.services.achievement_service import check_and_award_diary_achievements
+            await check_and_award_diary_achievements(user_id)
+        except Exception:
+            pass
+    asyncio.create_task(_do())
+
+
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
 
 
 def _build_author(user: dict) -> dict:
+    badges_dict = user.get("displayed_badges") or {}
     return {
         "id": str(user["_id"]),
         "username": user["username"],
         "avatar_path": user.get("avatar_path"),
+        "is_admin": bool(user.get("is_admin")),
+        "badges": list(badges_dict.values()) if badges_dict else [],
     }
 
 
@@ -253,6 +266,7 @@ async def create_diary(user: dict, data: dict) -> dict:
     if privacy == "public":
         diary_doc["_id"] = diary_id
         _index_diary_async(diary_doc)
+        _check_achievements_async(str(user["_id"]))
 
     return {
         "id": str(diary_id),
@@ -276,6 +290,9 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
     author = await user_repo.get_by_id(str(diary["user_id"]))
     if author is None:
         raise NotFoundException("Author not found")
+
+    if author.get("is_banned") and not is_owner:
+        raise NotFoundException("Diary not found")
 
     is_liked = False
     is_bookmarked = False

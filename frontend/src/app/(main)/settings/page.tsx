@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { BadgeSelector } from "@/components/settings/badge-selector";
 
 function SettingsContent() {
   const user = useAuthStore((s) => s.user);
@@ -175,6 +176,7 @@ function SettingsContent() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="badges">Badges</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -473,6 +475,14 @@ function SettingsContent() {
                   Save Preferences
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="badges">
+          <Card>
+            <CardContent className="pt-6">
+              <BadgeSelector />
             </CardContent>
           </Card>
         </TabsContent>

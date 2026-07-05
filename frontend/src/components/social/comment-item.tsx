@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown } from "lucide-react";
+import { Heart, MessageCircle, Trash2, ChevronRight, ChevronDown, Star } from "lucide-react";
 import {
   useReplies,
   useCreateComment,
@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
+import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Button } from "@/components/ui/button";
 import { ReportButton } from "@/components/social/report-button";
 import Link from "next/link";
@@ -131,8 +132,16 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
             )}
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-foreground">
-                {comment.author.username}
+              <span className="inline-flex items-center gap-1">
+                <span className="text-xs font-medium text-foreground">
+                  {comment.author.username}
+                </span>
+                {comment.author.is_admin && (
+                  <span className="text-accent" title="Admin">
+                    <Star className="w-3 h-3 fill-current admin-star" />
+                  </span>
+                )}
+                <BadgeDisplay badges={comment.author.badges} />
               </span>
               <span className="text-xs text-subtle">
                 {new Date(comment.created_at).toLocaleDateString()}

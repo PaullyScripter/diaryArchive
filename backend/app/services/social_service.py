@@ -87,6 +87,8 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
             target_id=diary_id,
             metadata={"diary_title": diary.get("title")},
         )
+        _check_likes_achievement_async(str(diary["user_id"]))
+        _check_likes_achievement_async(str(diary["user_id"]))
     return {
         "is_liked": True,
         "like_count": diary["stats"]["like_count"] if diary else 0,
@@ -207,6 +209,7 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
         target_id=following_id,
         target_type="user",
     )
+    _check_followers_achievement_async(following_id)
     return {
         "is_following": True,
         "follower_count": target["stats"]["follower_count"] if target else 0,
@@ -241,6 +244,8 @@ async def list_followers(
     for f in follows:
         fid = str(f["follower_id"])
         u = followers_map.get(fid, {"_id": fid, "username": "unknown"})
+        if u.get("is_banned"):
+            continue
         data.append({
             "id": str(u.get("_id", fid)),
             "username": u.get("username", "unknown"),
@@ -286,6 +291,8 @@ async def list_following(
     for f in follows:
         fid = str(f["following_id"])
         u = following_map.get(fid, {"_id": fid, "username": "unknown"})
+        if u.get("is_banned"):
+            continue
         data.append({
             "id": str(u.get("_id", fid)),
             "username": u.get("username", "unknown"),
@@ -319,7 +326,11 @@ async def list_my_likes(
     banned_ids = await user_repo.get_banned_user_ids()
 
     diaries = await diary_repo.find_by_ids(diary_ids)
-    diaries = [d for d in diaries if d.get("privacy") == "public"]
+    if banned_ids:
+        diaries = [d for d in diaries
+                   if d.get("privacy") == "public" and d["user_id"] not in banned_ids]
+    else:
+        diaries = [d for d in diaries if d.get("privacy") == "public"]
 
     from bson import ObjectId
     all_likes = await like_repo._collection.find(
@@ -400,7 +411,11 @@ async def list_my_bookmarks(
     total = await diary_repo._collection.count_documents(count_query)
 
     diaries = await diary_repo.find_by_ids(diary_ids)
-    diaries = [d for d in diaries if d.get("privacy") == "public"]
+    if banned_ids:
+        diaries = [d for d in diaries
+                   if d.get("privacy") == "public" and d["user_id"] not in banned_ids]
+    else:
+        diaries = [d for d in diaries if d.get("privacy") == "public"]
 
     if not diaries:
         return {
@@ -445,10 +460,13 @@ async def list_following_feed(
         return {"data": [], "meta": {"total": 0, "limit": limit}}
 
     diary_repo = DiaryRepository()
+    user_repo = UserRepository()
+    banned_ids = await user_repo.get_banned_user_ids()
     diaries = await diary_repo.find_public_by_user_ids(
         following_ids,
         sort=[("published_at", -1)],
         limit=limit,
+        exclude_user_ids=banned_ids if banned_ids else None,
     )
 
     if not diaries:
@@ -471,3 +489,29 @@ async def list_following_feed(
         data.append(_build_diary_list_item(diary, author, current_user))
 
     return {"data": data, "meta": {"total": len(data), "limit": limit}}
+
+
+def _check_likes_achievement_async(user_id: str) -> None:
+    import asyncio
+
+    async def _do():
+        try:
+            from app.services.achievement_service import check_and_award_likes_achievements
+            await check_and_award_likes_achievements(user_id)
+        except Exception:
+            pass
+
+    asyncio.create_task(_do())
+
+
+def _check_followers_achievement_async(user_id: str) -> None:
+    import asyncio
+
+    async def _do():
+        try:
+            from app.services.achievement_service import check_and_award_followers_achievements
+            await check_and_award_followers_achievements(user_id)
+        except Exception:
+            pass
+
+    asyncio.create_task(_do())

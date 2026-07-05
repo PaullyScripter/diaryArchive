@@ -10,6 +10,8 @@ export interface CommentData {
     id: string;
     username: string;
     avatar_path: string | null;
+    is_admin?: boolean;
+    badges?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean }[];
   };
   is_deleted: boolean;
   is_owner: boolean;
