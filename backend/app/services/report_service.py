@@ -86,6 +86,7 @@ async def submit_report(
 
 async def list_reports(
     status: str | None = None,
+    target_type: str | None = None,
     page: int = 1,
     per_page: int = 20,
 ) -> dict:
@@ -93,10 +94,11 @@ async def list_reports(
     report_repo = ReportRepository()
     reports = await report_repo.find_reports(
         status=status,
+        target_type=target_type,
         skip=skip,
         limit=per_page,
     )
-    total = await report_repo.count_reports(status=status)
+    total = await report_repo.count_reports(status=status, target_type=target_type)
 
     user_repo = UserRepository()
     reporter_ids = list({str(r["reporter_id"]) for r in reports})

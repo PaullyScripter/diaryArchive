@@ -29,6 +29,7 @@ class ReportRepository(BaseRepository):
     async def find_reports(
         self,
         status: str | None = None,
+        target_type: str | None = None,
         sort: list[tuple] | None = None,
         skip: int = 0,
         limit: int = 20,
@@ -36,6 +37,8 @@ class ReportRepository(BaseRepository):
         filter_dict: dict = {}
         if status and status != "all":
             filter_dict["status"] = status
+        if target_type:
+            filter_dict["target_type"] = target_type
         return await self.find(
             filter=filter_dict,
             sort=sort or [("created_at", -1)],
@@ -43,10 +46,12 @@ class ReportRepository(BaseRepository):
             limit=limit,
         )
 
-    async def count_reports(self, status: str | None = None) -> int:
+    async def count_reports(self, status: str | None = None, target_type: str | None = None) -> int:
         filter_dict: dict = {}
         if status and status != "all":
             filter_dict["status"] = status
+        if target_type:
+            filter_dict["target_type"] = target_type
         return await self.count(filter_dict)
 
     async def find_by_user(
