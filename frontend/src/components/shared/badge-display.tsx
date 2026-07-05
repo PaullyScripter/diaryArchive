@@ -1,3 +1,7 @@
+"use client";
+
+import { useId } from "react";
+
 interface BadgeData {
   type: string;
   tier: string;
@@ -15,25 +19,30 @@ const iconPaths: Record<string, string> = {
   flame: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z",
 };
 
+const FALLBACKS: Record<string, string> = {
+  bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
+};
+
 function BadgeIcon({ badge }: { badge: BadgeData }) {
+  const gid = useId();
   const isGradient = badge.color.startsWith("linear-gradient");
   const animClass =
     badge.tier === "gradient" ? "badge-gradient" :
     badge.tier === "diamond" ? "badge-diamond" : "";
   const icon = iconPaths[badge.icon] || iconPaths.book;
-  const gradId = "g-" + badge.label.replace(/[^a-zA-Z0-9]/g, "");
+  const color = badge.color || FALLBACKS[badge.tier] || "#8B6914";
 
   return (
     <svg
-      className={`w-3.5 h-3.5 ${animClass}`}
+      className={`w-3.5 h-3.5 shrink-0 ${animClass}`}
       viewBox="0 0 24 24"
-      fill={isGradient ? `url(#${gradId})` : badge.color}
-      stroke={isGradient ? "none" : badge.color}
+      fill={isGradient ? `url(#${gid})` : color}
+      stroke={isGradient ? "none" : color}
       strokeWidth={1}
     >
       {isGradient && (
         <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#87CEEB" />
             <stop offset="100%" stopColor="#9B59B6" />
           </linearGradient>
@@ -44,13 +53,13 @@ function BadgeIcon({ badge }: { badge: BadgeData }) {
   );
 }
 
-export function BadgeDisplay({ badges, size = "sm" }: { badges: BadgeData[] | null | undefined; size?: "sm" | "md" }) {
-  if (!badges || badges.length === 0) return null;
+export function BadgeDisplay({ badges }: { badges: BadgeData[] | null | undefined }) {
+  if (!badges || !Array.isArray(badges) || badges.length === 0) return null;
 
   return (
     <span className="inline-flex items-center gap-0.5">
       {badges.map((b, i) => (
-        <span key={i} className="inline-flex items-center" title={b.label}>
+        <span key={i} title={b.label}>
           <BadgeIcon badge={b} />
         </span>
       ))}
