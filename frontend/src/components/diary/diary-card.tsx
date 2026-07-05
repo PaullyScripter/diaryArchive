@@ -66,7 +66,7 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
             </Link>
             {diary.author.is_admin && (
               <span className="text-accent" title="Admin">
-                <Star className="w-3 h-3 fill-current admin-star" />
+                <Star className="w-3.5 h-3.5 fill-current admin-star" />
               </span>
             )}
             <BadgeDisplay badges={diary.author.badges} />
