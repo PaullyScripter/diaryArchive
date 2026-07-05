@@ -3,7 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Share2, Pencil, Trash2, Lock, Shield } from "lucide-react";
+import { BadgeDisplay } from "@/components/shared/badge-display";
+import { Share2, Pencil, Trash2, Lock, Shield, Star } from "lucide-react";
 
 import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
@@ -358,12 +359,20 @@ export default function DiaryReaderPage() {
           />
         </Link>
         <div>
-          <Link
-            href={`/profile/${diary.author.username}`}
-            className="text-sm font-medium text-foreground no-underline hover:underline"
-          >
-            {diary.author.username}
-          </Link>
+          <span className="inline-flex items-center gap-1">
+            <Link
+              href={`/profile/${diary.author.username}`}
+              className="text-sm font-medium text-foreground no-underline hover:underline"
+            >
+              {diary.author.username}
+            </Link>
+            {diary.author.is_admin && (
+              <span className="text-accent" title="Admin">
+                <Star className="w-3.5 h-3.5 fill-current admin-star" />
+              </span>
+            )}
+            <BadgeDisplay badges={diary.author.badges} />
+          </span>
           <div className="flex items-center gap-1 text-xs text-subtle">
             <time dateTime={diary.created_at}>
               {new Date(diary.created_at).toLocaleDateString("en-US", {

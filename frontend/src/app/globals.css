@@ -192,3 +192,55 @@ style { display: none; }
 .resizable-image-wrapper.ProseMirror-selectednode .resize-handle {
   opacity: 1 !important;
 }
+
+@keyframes admin-star-spin {
+  0%   { transform: rotate(0deg);   filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35)); }
+  30%  { transform: rotate(360deg); filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35)); }
+  42%  { transform: rotate(360deg); filter: drop-shadow(0 0 6px rgba(180,120,0,0.7)); }
+  50%  { transform: rotate(360deg); filter: drop-shadow(0 0 8px rgba(180,120,0,0.8)); }
+  58%  { transform: rotate(360deg); filter: drop-shadow(0 0 6px rgba(180,120,0,0.7)); }
+  70%  { transform: rotate(360deg); filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35)); }
+  100% { transform: rotate(720deg); filter: drop-shadow(0 1px 1px rgba(0,0,0,0.35)); }
+}
+
+@keyframes admin-star-spin-dark {
+  0%   { transform: rotate(0deg);   filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(1); }
+  30%  { transform: rotate(360deg); filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(1); }
+  42%  { transform: rotate(360deg); filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(2.2); }
+  50%  { transform: rotate(360deg); filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(2.2); }
+  58%  { transform: rotate(360deg); filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(1); }
+  70%  { transform: rotate(360deg); filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(1); }
+  100% { transform: rotate(720deg); filter: drop-shadow(0 1px 2px rgba(200,160,40,0.5)) brightness(1); }
+}
+
+.admin-star {
+  animation: admin-star-spin 3s ease-in-out infinite;
+  color: #b8860b;
+}
+
+.dark .admin-star {
+  color: #f0c040;
+  animation: admin-star-spin-dark 3s ease-in-out infinite;
+}
+
+@keyframes badge-shine {
+  0%, 70%  { filter: drop-shadow(0 0 0 transparent); }
+  80%      { filter: drop-shadow(0 0 4px currentColor); }
+  90%      { filter: drop-shadow(0 0 0 transparent); }
+  100%     { filter: drop-shadow(0 0 0 transparent); }
+}
+
+@keyframes badge-pop-shine {
+  0%, 60%  { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  70%      { transform: scale(1.35); filter: drop-shadow(0 0 6px currentColor); }
+  80%      { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  100%     { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+}
+
+.badge-diamond {
+  animation: badge-shine 3s ease-in-out infinite;
+}
+
+.badge-gradient {
+  animation: badge-pop-shine 3s ease-in-out infinite;
+}

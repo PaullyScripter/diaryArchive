@@ -13,6 +13,8 @@ export interface DiaryData {
     id: string;
     username: string;
     avatar_path: string | null;
+    is_admin?: boolean;
+    badges?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean }[];
   };
   tags: string[];
   emotion: string | null;

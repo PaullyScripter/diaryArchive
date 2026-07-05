@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Heart, MessageCircle } from "lucide-react";
+import { Heart, MessageCircle, Star } from "lucide-react";
 import { TagBadge } from "@/components/shared/tag-badge";
 import { PrivacyBadge } from "@/components/shared/privacy-badge";
+import { BadgeDisplay } from "@/components/shared/badge-display";
 import { relativeTime } from "@/lib/utils";
 
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -14,6 +15,8 @@ export interface DiaryCardData {
     id: string;
     username: string;
     avatar_path: string | null;
+    is_admin?: boolean;
+    badges?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean }[];
   };
   tags: string[];
   emotion: string | null;
@@ -54,12 +57,20 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
         </Link>
 
         <div className="mt-0.5 text-xs text-subtle">
-          <Link
-            href={`/profile/${diary.author.username}`}
-            className="text-muted hover:text-foreground no-underline hover:underline"
-          >
-            {diary.author.username}
-          </Link>
+          <span className="inline-flex items-center gap-0.5">
+            <Link
+              href={`/profile/${diary.author.username}`}
+              className="text-muted hover:text-foreground no-underline hover:underline"
+            >
+              {diary.author.username}
+            </Link>
+            {diary.author.is_admin && (
+              <span className="text-accent" title="Admin">
+                <Star className="w-3 h-3 fill-current admin-star" />
+              </span>
+            )}
+            <BadgeDisplay badges={diary.author.badges} />
+          </span>
           <span className="mx-1">·</span>
           <span>{relativeTime(diary.created_at)}</span>
           {diary.emotion && (

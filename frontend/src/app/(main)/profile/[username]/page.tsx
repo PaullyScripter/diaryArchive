@@ -3,12 +3,13 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
-import { BookOpen, Users, UserPlus } from "lucide-react";
+import { BookOpen, Users, UserPlus, Star } from "lucide-react";
 
 import { useUserDiaries, useUserProfile } from "@/hooks/use-user";
 import { useFollowers, useFollowing } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
+import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -54,8 +55,14 @@ export default function ProfilePage() {
           size="xl"
           className="mb-4"
         />
-        <h1 className="font-serif text-2xl font-semibold text-foreground">
+        <h1 className="font-serif text-2xl font-semibold text-foreground inline-flex items-center gap-1.5">
           {profile.username}
+          {profile.is_admin && (
+            <span className="text-accent" title="Admin">
+              <Star className="w-5 h-5 fill-current admin-star" />
+            </span>
+          )}
+          <BadgeDisplay badges={profile.badges} size="md" />
         </h1>
 
         {profile.about && (

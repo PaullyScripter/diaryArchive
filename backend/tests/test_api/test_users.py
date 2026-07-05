@@ -60,10 +60,10 @@ class TestGetProfile:
         assert data["stats"]["following_count"] == 0
         assert "created_at" in data
         assert data["is_following"] is False
+        assert data["is_admin"] is False
         assert "email_encrypted" not in data
         assert "email_hash" not in data
         assert "password_hash" not in data
-        assert "is_admin" not in data
         assert "preferences" not in data
 
     async def test_get_profile_not_found(self, client: AsyncClient):

@@ -1,3 +1,4 @@
+from app.schemas.achievement import achievement_indexes
 from app.schemas.audit_log import audit_log_indexes
 from app.schemas.bookmark import bookmark_indexes
 from app.schemas.comment import comment_indexes, comment_like_indexes
@@ -12,6 +13,7 @@ from app.schemas.report import report_indexes
 from app.schemas.user import user_indexes
 
 ALL_INDEXES: dict[str, list[tuple[dict, dict]]] = {
+    "achievements": achievement_indexes,
     "users": user_indexes,
     "diaries": diary_indexes,
     "comments": comment_indexes,
