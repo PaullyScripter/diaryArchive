@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,17 @@ export default function ReportPage() {
   const [success, setSuccess] = useState(false);
 
   const [bugDescription, setBugDescription] = useState("");
+  const [bugPath, setBugPath] = useState("");
+  const baseUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return window.location.origin + "/";
+  }, []);
+
+  useEffect(() => {
+    if (reportType === "bug" && !bugPath && currentUrl && baseUrl) {
+      setBugPath(currentUrl.replace(baseUrl, ""));
+    }
+  }, [reportType, currentUrl, baseUrl, bugPath]);
 
   const [ticketCategory, setTicketCategory] = useState<(typeof TICKET_CATEGORIES)[number]["value"]>("general_inquiry");
   const [ticketSubject, setTicketSubject] = useState("");
@@ -67,7 +78,7 @@ export default function ReportPage() {
         await apiClient.post("/reports", {
           reason: "bug",
           description: bugDescription.trim(),
-          url: currentUrl,
+          url: baseUrl + bugPath,
           user_agent: typeof window !== "undefined" ? window.navigator.userAgent : "",
         });
         setSuccess(true);
@@ -161,6 +172,7 @@ export default function ReportPage() {
     setError("");
     setSuccess(false);
     setBugDescription("");
+    setBugPath("");
     setTicketCategory("general_inquiry");
     setTicketSubject("");
     setTicketDescription("");
@@ -231,9 +243,18 @@ export default function ReportPage() {
               <h2 className="text-sm font-medium">Report a Bug</h2>
             </div>
             <div>
-              <label className="text-xs text-muted">Current URL</label>
-              <div className="text-xs text-subtle border border-border bg-overlay p-2 mt-1 break-all">
-                {currentUrl || "N/A"}
+              <label className="text-xs text-muted">Page URL</label>
+              <div className="flex items-center border border-border mt-1">
+                <span className="text-xs text-subtle bg-overlay px-2 py-2 border-r border-border shrink-0">
+                  {baseUrl}
+                </span>
+                <input
+                  value={bugPath}
+                  onChange={(e) => setBugPath(e.target.value)}
+                  placeholder="report"
+                  className="flex-1 bg-transparent px-2 py-2 text-xs text-foreground border-0 focus:outline-none"
+                  disabled={submitting}
+                />
               </div>
             </div>
             <div>
