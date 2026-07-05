@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -46,16 +46,21 @@ export default function ReportPage() {
 
   const [bugDescription, setBugDescription] = useState("");
   const [bugPath, setBugPath] = useState("");
+  const didInitPath = useRef(false);
   const baseUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
     return window.location.origin + "/";
   }, []);
 
   useEffect(() => {
-    if (reportType === "bug" && !bugPath && currentUrl && baseUrl) {
+    if (reportType === "bug" && !didInitPath.current && currentUrl && baseUrl) {
       setBugPath(currentUrl.replace(baseUrl, ""));
+      didInitPath.current = true;
     }
-  }, [reportType, currentUrl, baseUrl, bugPath]);
+    if (reportType !== "bug") {
+      didInitPath.current = false;
+    }
+  }, [reportType, currentUrl, baseUrl]);
 
   const [ticketCategory, setTicketCategory] = useState<(typeof TICKET_CATEGORIES)[number]["value"]>("general_inquiry");
   const [ticketSubject, setTicketSubject] = useState("");
@@ -173,6 +178,7 @@ export default function ReportPage() {
     setSuccess(false);
     setBugDescription("");
     setBugPath("");
+    didInitPath.current = false;
     setTicketCategory("general_inquiry");
     setTicketSubject("");
     setTicketDescription("");
