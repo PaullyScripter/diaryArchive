@@ -208,6 +208,7 @@ async def login(
         raise PermissionDeniedException("Your account has been banned")
 
     await user_repo.update(str(user["_id"]), {"last_login_at": datetime.now(UTC)})
+    _check_age_achievement(str(user["_id"]))
 
     access_token = create_access_token(
         str(user["_id"]), user["username"], user.get("is_admin", False)
@@ -412,3 +413,16 @@ async def reset_password(
     return {
         "data": {"message": "Password reset successfully. Please log in with your new password."}
     }
+
+
+def _check_age_achievement(user_id: str) -> None:
+    import asyncio
+
+    async def _do():
+        try:
+            from app.services.achievement_service import check_and_award_age_achievements
+            await check_and_award_age_achievements(user_id)
+        except Exception:
+            pass
+
+    asyncio.create_task(_do())
