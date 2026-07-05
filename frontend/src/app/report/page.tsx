@@ -65,8 +65,6 @@ export default function ReportPage() {
       setSubmitting(true);
       try {
         await apiClient.post("/reports", {
-          target_type: "bug",
-          target_id: "",
           reason: "bug",
           description: bugDescription.trim(),
           url: currentUrl,
