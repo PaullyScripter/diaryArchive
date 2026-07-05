@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Paperclip, X } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
 import { useAuthStore } from "@/store/auth-store";
@@ -13,6 +14,8 @@ interface TicketMessage {
   sender_username: string;
   is_admin: boolean;
   message: string;
+  media_url?: string;
+  media_type?: string;
   created_at: string;
 }
 
@@ -49,6 +52,9 @@ export default function AdminTicketDetailPage() {
 
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<{ id: string; url: string; mime_type: string } | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: ticket, isLoading, isError, refetch } = useQuery<TicketDetail>({
     queryKey: ["admin", "ticket", ticketId],
@@ -56,6 +62,7 @@ export default function AdminTicketDetailPage() {
       const response = await apiClient.get(`/admin/tickets/${ticketId}`);
       return response.data.data || response.data;
     },
+    refetchInterval: 5000,
   });
 
   const invalidate = () => {
@@ -95,16 +102,44 @@ export default function AdminTicketDetailPage() {
     },
   });
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [ticket?.messages?.length]);
+
+  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiClient.post("/media/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const media = res.data.data || res.data;
+      setPendingMedia({ id: media.id, url: media.url, mime_type: media.mime_type });
+      showToast("Media attached");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || "Upload failed";
+      showToast(msg);
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
   const handleReply = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!reply.trim()) return;
+      if (!reply.trim() && !pendingMedia) return;
       setSending(true);
       try {
         await apiClient.post(`/admin/tickets/${ticketId}/reply`, {
           message: reply.trim(),
+          media_id: pendingMedia?.id || undefined,
         });
         setReply("");
+        setPendingMedia(null);
         showToast("Reply sent");
         invalidate();
       } catch (err: unknown) {
@@ -229,9 +264,18 @@ export default function AdminTicketDetailPage() {
               </span>
               <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
             </div>
-            <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-              {msg.message}
+          <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+            {msg.message}
+          </div>
+          {msg.media_url && (
+            <div className="mt-2">
+              {msg.media_type?.startsWith("image/") ? (
+                <img src={msg.media_url} alt="attachment" className="max-w-full max-h-80 rounded border border-border object-contain" />
+              ) : (
+                <a href={msg.media_url} target="_blank" rel="noreferrer" className="text-xs text-link hover:underline">View attachment</a>
+              )}
             </div>
+          )}
           </div>
         ))}
 
@@ -250,14 +294,43 @@ export default function AdminTicketDetailPage() {
               placeholder="Type your reply..."
               disabled={sending}
             />
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={sending || !reply.trim()}
-                className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80 disabled:opacity-50"
-              >
-                {sending ? "Sending..." : "Send Reply"}
-              </button>
+
+            {pendingMedia && (
+              <div className="flex items-center gap-2 text-xs bg-overlay p-2">
+                <span className="text-muted truncate flex-1">Attachment: {pendingMedia.url.split("/").pop()}</span>
+                <button
+                  type="button"
+                  onClick={() => setPendingMedia(null)}
+                  className="text-muted hover:text-destructive cursor-pointer bg-transparent border-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <label className="cursor-pointer text-muted hover:text-foreground">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleUpload}
+                  disabled={uploading || sending}
+                />
+                <span className="inline-flex items-center gap-1 text-xs">
+                  <Paperclip className="w-4 h-4" />
+                  {uploading ? "Uploading..." : "Attach image"}
+                </span>
+              </label>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={sending || (!reply.trim() && !pendingMedia)}
+                  className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80 disabled:opacity-50"
+                >
+                  {sending ? "Sending..." : "Send Reply"}
+                </button>
+              </div>
             </div>
           </form>
         )}

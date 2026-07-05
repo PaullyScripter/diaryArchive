@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from bson import ObjectId
 
@@ -136,6 +137,7 @@ async def add_message(
     sender_username: str,
     message: str,
     is_admin: bool = False,
+    media_id: str | None = None,
 ) -> dict:
     ticket_repo = TicketRepository()
     ticket = await ticket_repo.get_by_id(ticket_id)
@@ -153,11 +155,31 @@ async def add_message(
         if assigned_admin_id and str(assigned_admin_id) != sender_id:
             raise PermissionDeniedException("Only the assigned admin can reply to this ticket")
 
-    success = await ticket_repo.add_message(ticket_id, {
+    msg_doc: dict = {
         "sender_id": sender_id,
         "sender_username": sender_username,
         "message": message,
-    })
+    }
+    if media_id:
+        from app.repositories.media_repo import MediaRepository
+        media_repo = MediaRepository()
+        media = await media_repo.get_by_id(media_id)
+        if media and str(media["user_id"]) == sender_id:
+            from app.core.minio_client import get_minio_client
+            from app.core.config import settings
+            import asyncio
+            stored_path = media["stored_path"]
+            msg_doc["media_id"] = media_id
+            msg_doc["media_type"] = media.get("mime_type", "")
+            if media.get("is_private"):
+                client = get_minio_client()
+                msg_doc["media_url"] = await asyncio.to_thread(
+                    lambda: client.presigned_get_object(settings.minio_bucket, stored_path, expires=timedelta(hours=24))
+                )
+            else:
+                msg_doc["media_url"] = f"{settings.minio_endpoint}/{settings.minio_bucket}/{stored_path}"
+
+    success = await ticket_repo.add_message(ticket_id, msg_doc)
     if not success:
         raise NotFoundException("Ticket not found")
 
@@ -199,10 +221,13 @@ def _build_ticket_response(ticket: dict | None) -> dict:
     for m in ticket.get("messages", []) or []:
         sender_id = str(m.get("sender_id", "")) if m.get("sender_id") else ""
         messages.append({
+            "id": str(m.get("_id", "")),
             "sender_id": sender_id,
             "sender_username": m.get("sender_username", ""),
             "message": m.get("message", ""),
             "is_admin": sender_id != ticket_user_id,
+            "media_url": m.get("media_url"),
+            "media_type": m.get("media_type"),
             "created_at": m.get("created_at"),
         })
     return {
