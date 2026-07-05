@@ -249,7 +249,7 @@ export default function ReportPage() {
               <h2 className="text-sm font-medium">Report a Bug</h2>
             </div>
             <div>
-              <label className="text-xs text-muted">Page URL</label>
+              <label className="text-xs text-muted">Page with the bug</label>
               <div className="flex items-center border border-border mt-1">
                 <span className="text-xs text-subtle bg-overlay px-2 py-2 border-r border-border shrink-0">
                   {baseUrl}
@@ -257,7 +257,7 @@ export default function ReportPage() {
                 <input
                   value={bugPath}
                   onChange={(e) => setBugPath(e.target.value)}
-                  placeholder="report"
+                  placeholder=""
                   className="flex-1 bg-transparent px-2 py-2 text-xs text-foreground border-0 focus:outline-none"
                   disabled={submitting}
                 />
