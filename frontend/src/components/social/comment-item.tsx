@@ -14,6 +14,7 @@ import { Avatar } from "@/components/shared/avatar";
 import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Button } from "@/components/ui/button";
 import { ReportButton } from "@/components/social/report-button";
+import { AdminWarnButton } from "@/components/admin/admin-warn-button";
 import Link from "next/link";
 
 interface CommentItemProps {
@@ -142,6 +143,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
                   </span>
                 )}
                 <BadgeDisplay badges={comment.author.badges} />
+                <AdminWarnButton userId={comment.author.id} username={comment.author.username} />
               </span>
               <span className="text-xs text-subtle">
                 {new Date(comment.created_at).toLocaleDateString()}
