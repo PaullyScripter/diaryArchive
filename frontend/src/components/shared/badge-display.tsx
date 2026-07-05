@@ -56,7 +56,7 @@ export function BadgeDisplay({ badges, size = "sm" }: { badges: BadgeData[] | nu
   if (!badges || !Array.isArray(badges) || badges.length === 0) return null;
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-1.5">
       {badges.map((b, i) => (
         <span key={i} title={b.label} className="inline-flex items-center">
           <BadgeIcon badge={b} size={size} />

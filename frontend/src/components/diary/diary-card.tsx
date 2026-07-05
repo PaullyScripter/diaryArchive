@@ -57,7 +57,7 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
         </Link>
 
         <div className="mt-0.5 text-xs text-subtle">
-          <span className="inline-flex items-center gap-0.5">
+          <span className="inline-flex items-center gap-1.5">
             <Link
               href={`/profile/${diary.author.username}`}
               className="text-muted hover:text-foreground no-underline hover:underline"
