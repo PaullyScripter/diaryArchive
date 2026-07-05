@@ -151,8 +151,8 @@ function Get-ServiceStatus {
     if ($LASTEXITCODE -eq 0 -and "$redisResult" -match "PONG") { $status.Redis.Tag = "[OK]"; $status.Redis.Color = "Green" }
   } catch {}
   try {
-    $minioResult = Invoke-RestMethod -Uri "http://localhost:9000/minio/health/live" -Method Get -TimeoutSec 2 -ErrorAction Stop
-    if ($minioResult -eq "OK") { $status.Minio.Tag = "[OK]"; $status.Minio.Color = "Green" }
+    $minioResponse = Invoke-WebRequest -Uri "http://localhost:9000/minio/health/live" -Method Get -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+    if ($minioResponse.StatusCode -eq 200) { $status.Minio.Tag = "[OK]"; $status.Minio.Color = "Green" }
   } catch {}
   try {
     $meiliResult = Invoke-RestMethod -Uri "http://localhost:7700/health" -Method Get -TimeoutSec 2 -ErrorAction Stop
