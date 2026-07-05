@@ -62,7 +62,7 @@ export default function ProfilePage() {
               <Star className="w-5 h-5 fill-current admin-star" />
             </span>
           )}
-          <BadgeDisplay badges={profile.badges} size="md" />
+          <BadgeDisplay badges={profile.badges} />
         </h1>
 
         {profile.about && (
