@@ -341,6 +341,11 @@ export default function AdminReportDetailPage() {
                       className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
                       placeholder={warningType === "bio" ? "Why the bio is inappropriate..." : "Why the username is inappropriate..."}
                     />
+                    <p className="text-xs text-muted mt-1">
+                      {warningType === "bio"
+                        ? "User will receive step-by-step instructions to edit their bio via Settings > Profile."
+                        : "User will receive step-by-step instructions to open a username change ticket."}
+                    </p>
                   </div>
                 )}
               </div>

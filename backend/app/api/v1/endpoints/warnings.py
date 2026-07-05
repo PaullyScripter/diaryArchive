@@ -79,9 +79,15 @@ async def issue_bio_warning(
             "body": (
                 f"Hello {user['username']},\n\n"
                 f"Your bio has been flagged by our moderation team for the following reason:\n"
-                f"{reason}\n\n"
-                f"Please update your bio within 5 days to comply with our Community Guidelines."
-                f" Failure to do so may result in your bio being blanked" +
+                f"\"{reason}\"\n\n"
+                f"How to change your bio:\n"
+                f"1. Click the notification to view details\n"
+                f"2. Go to Settings > Profile\n"
+                f"3. Edit the 'About' field with an appropriate bio\n"
+                f"4. Click 'Save' to update your profile\n"
+                f"5. Return to this notification and click 'I changed my bio'\n\n"
+                f"Please update your bio within 5 days. Failure to comply may result in"
+                f" your bio being blanked" +
                 (" and your bio editing privileges being suspended." if new_count >= 3 else ".") +
                 f"\n\nRepeated violations may result in account suspension or banning.\n\n"
                 f"Regards,\nDiaryArchive Moderation"
@@ -150,9 +156,15 @@ async def issue_username_warning(
             "body": (
                 f"Hello {user['username']},\n\n"
                 f"Your username has been flagged by our moderation team for the following reason:\n"
-                f"{reason}\n\n"
-                f"Please change your username within 15 days to comply with our Community Guidelines."
-                f" Failure to do so may result in your account being banned.\n\n"
+                f"\"{reason}\"\n\n"
+                f"How to change your username:\n"
+                f"1. Go to Report > Open a Ticket\n"
+                f"2. Select the 'Username Change' category\n"
+                f"3. Set the subject to 'Username Change Request'\n"
+                f"4. In the description, explain the situation and provide an appropriate new username\n"
+                f"5. An admin will review your request and assist you\n\n"
+                f"Please submit your username change request within 15 days. Failure to comply"
+                f" may result in your account being banned.\n\n"
                 f"Regards,\nDiaryArchive Moderation"
             ),
         },
