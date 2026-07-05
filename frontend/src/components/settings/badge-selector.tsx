@@ -132,7 +132,7 @@ export function BadgeSelector() {
                     }`}
                     title={ach.label}
                   >
-                    <svg className={`w-3.5 h-3.5 ${animClass}`} viewBox="0 0 24 24" fill={fillColor} stroke={fillColor} strokeWidth={1}>
+                    <svg className={`w-3.5 h-3.5 ${animClass}`} viewBox="0 0 24 24" fill={fillColor}>
                       <path d={icon} />
                     </svg>
                     {ach.label}

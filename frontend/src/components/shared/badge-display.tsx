@@ -38,8 +38,6 @@ function BadgeIcon({ badge, size = "sm" }: { badge: BadgeData; size?: "sm" | "md
       className={`${sizeClass} shrink-0 ${animClass}`}
       viewBox="0 0 24 24"
       fill={isGradient ? `url(#${gid})` : color}
-      stroke={isGradient ? "none" : color}
-      strokeWidth={1}
     >
       {isGradient && (
         <defs>
