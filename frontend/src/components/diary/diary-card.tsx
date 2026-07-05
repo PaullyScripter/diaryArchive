@@ -16,14 +16,7 @@ export interface DiaryCardData {
     username: string;
     avatar_path: string | null;
     is_admin?: boolean;
-    badge?: {
-      type: string;
-      tier: string;
-      label: string;
-      color: string;
-      icon: string;
-      shine?: boolean;
-    } | null;
+    badges?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean }[];
   };
   tags: string[];
   emotion: string | null;
@@ -76,7 +69,7 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
                 <Star className="w-3 h-3 fill-current admin-star" />
               </span>
             )}
-            <BadgeDisplay badge={diary.author.badge} />
+            <BadgeDisplay badges={diary.author.badges} />
           </span>
           <span className="mx-1">·</span>
           <span>{relativeTime(diary.created_at)}</span>

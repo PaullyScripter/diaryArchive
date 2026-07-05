@@ -18,7 +18,7 @@ export interface UserProfile {
   created_at: string;
   is_following: boolean;
   is_admin?: boolean;
-  badge?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean } | null;
+  badges?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean }[];
 }
 
 export interface DiaryEntry {

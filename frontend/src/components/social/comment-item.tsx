@@ -141,7 +141,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
                     <Star className="w-3 h-3 fill-current admin-star" />
                   </span>
                 )}
-                <BadgeDisplay badge={comment.author.badge} />
+                <BadgeDisplay badges={comment.author.badges} />
               </span>
               <span className="text-xs text-subtle">
                 {new Date(comment.created_at).toLocaleDateString()}

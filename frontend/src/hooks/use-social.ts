@@ -11,7 +11,7 @@ export interface CommentData {
     username: string;
     avatar_path: string | null;
     is_admin?: boolean;
-    badge?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean } | null;
+    badges?: { type: string; tier: string; label: string; color: string; icon: string; shine?: boolean }[];
   };
   is_deleted: boolean;
   is_owner: boolean;

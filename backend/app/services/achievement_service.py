@@ -158,26 +158,54 @@ async def get_displayed_badge(user_id: str) -> dict | None:
     }
 
 
+async def get_displayed_badges(user_id: str) -> list[dict]:
+    user_repo = UserRepository()
+    user = await user_repo.get_by_id(user_id)
+    if not user or not user.get("displayed_badges"):
+        return []
+    return [
+        {
+            "type": b.get("type", ""),
+            "tier": b.get("tier", "bronze"),
+            "label": b.get("label", ""),
+            "color": b.get("color", "#8B6914"),
+            "icon": b.get("icon", "book"),
+            "shine": b.get("shine", False),
+        }
+        for b in user["displayed_badges"].values()
+    ]
+
+
 async def set_displayed_badge(user_id: str, achievement_id: str) -> dict | None:
     from app.core.database import DatabaseManager
     db = DatabaseManager.get_db()
     ach = await db.achievements.find_one({"_id": ObjectId(achievement_id), "user_id": ObjectId(user_id)})
     if not ach:
         return None
-    badge = {
-        "displayed_badge": {
-            "type": ach["type"],
-            "tier": ach["tier"],
-            "threshold": ach["threshold"],
-            "label": ach["label"],
-            "color": ach["color"],
-            "icon": ach.get("icon", "book"),
-            "shine": ach.get("shine", False),
-        }
+    badge_data = {
+        "type": ach["type"],
+        "tier": ach["tier"],
+        "threshold": ach["threshold"],
+        "label": ach["label"],
+        "color": ach["color"],
+        "icon": ach.get("icon", "book"),
+        "shine": ach.get("shine", False),
     }
-    await UserRepository().update(user_id, badge)
-    return badge["displayed_badge"]
+    user_repo = UserRepository()
+    user = await user_repo.get_by_id(user_id)
+    badges = (user.get("displayed_badges") or {}).copy() if user else {}
+    badges[ach["type"]] = badge_data
+    await user_repo.update(user_id, {"displayed_badges": badges})
+    return badge_data
 
 
-async def clear_displayed_badge(user_id: str) -> None:
-    await UserRepository().update(user_id, {"displayed_badge": None})
+async def clear_displayed_badge(user_id: str, badge_type: str | None = None) -> None:
+    user_repo = UserRepository()
+    if badge_type:
+        user = await user_repo.get_by_id(user_id)
+        if user and user.get("displayed_badges"):
+            badges = user["displayed_badges"].copy()
+            badges.pop(badge_type, None)
+            await user_repo.update(user_id, {"displayed_badges": badges})
+    else:
+        await user_repo.update(user_id, {"displayed_badges": {}})
