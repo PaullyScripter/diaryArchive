@@ -222,3 +222,25 @@ style { display: none; }
   color: #f0c040;
   animation: admin-star-spin-dark 3s ease-in-out infinite;
 }
+
+@keyframes badge-shine {
+  0%, 70%  { filter: drop-shadow(0 0 0 transparent); }
+  80%      { filter: drop-shadow(0 0 4px currentColor); }
+  90%      { filter: drop-shadow(0 0 0 transparent); }
+  100%     { filter: drop-shadow(0 0 0 transparent); }
+}
+
+@keyframes badge-pop-shine {
+  0%, 60%  { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  70%      { transform: scale(1.35); filter: drop-shadow(0 0 6px currentColor); }
+  80%      { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+  100%     { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
+}
+
+.badge-diamond {
+  animation: badge-shine 3s ease-in-out infinite;
+}
+
+.badge-gradient {
+  animation: badge-pop-shine 3s ease-in-out infinite;
+}
