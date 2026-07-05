@@ -15,6 +15,15 @@ interface Achievement {
   shine?: boolean;
 }
 
+interface DisplayedBadge {
+  type: string;
+  tier: string;
+  label: string;
+  color: string;
+  icon: string;
+  shine?: boolean;
+}
+
 const iconPaths: Record<string, string> = {
   heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
   book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H6.5A2.5 2.5 0 0 0 4 5.5v14z",
@@ -31,8 +40,13 @@ const TIER_ORDER: Record<string, number> = {
   bronze: 0, silver: 1, gold: 2, diamond: 3, gradient: 4,
 };
 
+const FALLBACK_COLORS: Record<string, string> = {
+  bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
+};
+
 export function BadgeSelector() {
   const qc = useQueryClient();
+
   const { data: achievements, isLoading } = useQuery({
     queryKey: ["achievements"],
     queryFn: async () => {
@@ -40,6 +54,16 @@ export function BadgeSelector() {
       return (r.data.data || r.data) as Achievement[];
     },
   });
+
+  const { data: displayed } = useQuery({
+    queryKey: ["achievements", "display"],
+    queryFn: async () => {
+      const r = await apiClient.get("/achievements/display");
+      return (r.data.data || r.data) as DisplayedBadge[];
+    },
+  });
+
+  const selectedTypes = new Set((displayed || []).map((d) => d.type));
 
   const setBadge = useMutation({
     mutationFn: async (id: string) => {
@@ -80,25 +104,39 @@ export function BadgeSelector() {
         if (typeItems.length === 0) return null;
 
         const icon = iconPaths[typeItems[0].icon] || iconPaths.book;
+        const hasSelection = selectedTypes.has(type);
 
         return (
           <div key={type} className="flex items-center gap-3">
-            <span className="text-xs font-medium text-muted w-16 shrink-0">{label}</span>
+            <span className={`text-xs font-medium w-16 shrink-0 ${hasSelection ? "text-foreground" : "text-muted"}`}>
+              {label}
+              {hasSelection && <span className="ml-1 text-accent">&#x2713;</span>}
+            </span>
             <div className="flex flex-wrap gap-1.5">
-              {typeItems.map((ach) => (
-                <button
-                  key={ach.id}
-                  type="button"
-                  onClick={() => setBadge.mutate(ach.id)}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border hover:border-accent text-xs text-foreground transition-colors"
-                  title={ach.label}
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={ach.color} stroke={ach.color} strokeWidth={1}>
-                    <path d={icon} />
-                  </svg>
-                  {ach.label}
-                </button>
-              ))}
+              {typeItems.map((ach) => {
+                const isGradient = ach.color.startsWith("linear-gradient");
+                const fillColor = isGradient ? FALLBACK_COLORS[ach.tier] || "#9B59B6" : ach.color;
+                const animClass = ach.tier === "diamond" ? "badge-diamond" : ach.tier === "gradient" ? "badge-gradient" : "";
+
+                return (
+                  <button
+                    key={ach.id}
+                    type="button"
+                    onClick={() => setBadge.mutate(ach.id)}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors ${
+                      hasSelection
+                        ? "border-accent/50 bg-accent/5 text-foreground"
+                        : "border-border text-foreground hover:border-accent"
+                    }`}
+                    title={ach.label}
+                  >
+                    <svg className={`w-3.5 h-3.5 ${animClass}`} viewBox="0 0 24 24" fill={fillColor} stroke={fillColor} strokeWidth={1}>
+                      <path d={icon} />
+                    </svg>
+                    {ach.label}
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={() => clearBadge.mutate(type)}
