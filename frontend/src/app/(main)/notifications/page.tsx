@@ -1,15 +1,84 @@
 ﻿"use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback, useState } from "react";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotificationList } from "@/components/notifications/notification-list";
-import { useNotifications } from "@/hooks/use-notifications";
+import { useNotifications, type NotificationItem } from "@/hooks/use-notifications";
+import { apiClient } from "@/lib/api/client";
+import { showToast } from "@/components/shared/toast";
+
+function NotificationDetail({ notification }: { notification: NotificationItem }) {
+  const [confirming, setConfirming] = useState(false);
+
+  const handleConfirmBioChange = useCallback(async () => {
+    setConfirming(true);
+    try {
+      await apiClient.put("/users/me/confirm-bio-change");
+      showToast("Bio change confirmed");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+        "Failed to confirm";
+      showToast(msg);
+    } finally {
+      setConfirming(false);
+    }
+  }, []);
+
+  const handleConfirmUsernameChange = useCallback(async () => {
+    setConfirming(true);
+    try {
+      await apiClient.put("/users/me/confirm-username-change");
+      showToast("Username change confirmed");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+        "Failed to confirm";
+      showToast(msg);
+    } finally {
+      setConfirming(false);
+    }
+  }, []);
+
+  return (
+    <div className="border border-border p-4 bg-overlay">
+      <h3 className="text-xs font-medium text-foreground mb-2">Notification Details</h3>
+      <p className="text-sm text-foreground mb-1">{notification.message}</p>
+      {notification.metadata?.body && (
+        <pre className="text-xs text-subtle whitespace-pre-wrap font-sans leading-relaxed mb-3">
+          {notification.metadata.body}
+        </pre>
+      )}
+      {notification.type === "bio_warning" && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleConfirmBioChange}
+          disabled={confirming}
+        >
+          {confirming ? "Confirming..." : "I changed my bio"}
+        </Button>
+      )}
+      {notification.type === "username_warning" && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={handleConfirmUsernameChange}
+          disabled={confirming}
+        >
+          {confirming ? "Confirming..." : "I changed my username"}
+        </Button>
+      )}
+    </div>
+  );
+}
 
 export default function NotificationsPage() {
   const { list, unreadCount, markRead, markAllRead } = useNotifications();
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
 
   const notifications = useMemo(
     () => list.data?.pages.flatMap((p) => p.data ?? []) ?? [],
@@ -18,6 +87,25 @@ export default function NotificationsPage() {
 
   const total = list.data?.pages[0]?.meta?.total ?? 0;
   const unread = unreadCount.data?.data?.unread_count ?? 0;
+
+  const handleMarkRead = useCallback(
+    (id: string) => {
+      markRead.mutate(id);
+    },
+    [markRead],
+  );
+
+  const handleNotificationClick = useCallback(
+    (notification: NotificationItem) => {
+      if (notification.type === "bio_warning" || notification.type === "username_warning") {
+        setSelectedNotification(notification);
+      }
+      if (!notification.read) {
+        markRead.mutate(notification.id);
+      }
+    },
+    [markRead],
+  );
 
   return (
     <ProtectedRoute>
@@ -47,6 +135,18 @@ export default function NotificationsPage() {
             </div>
           )}
         </div>
+
+        {selectedNotification && (
+          <div className="mb-4">
+            <button
+              onClick={() => setSelectedNotification(null)}
+              className="text-xs text-muted hover:text-foreground cursor-pointer bg-transparent border-0 mb-2"
+            >
+              &larr; Back to notifications
+            </button>
+            <NotificationDetail notification={selectedNotification} />
+          </div>
+        )}
 
         {list.isLoading ? (
           <div className="space-y-4">
@@ -105,10 +205,20 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <>
-            <NotificationList
-              notifications={notifications}
-              onMarkRead={(id) => markRead.mutate(id)}
-            />
+            <div onClick={(e) => {
+              const target = e.target as HTMLElement;
+              const item = target.closest("[data-notification-id]") as HTMLElement | null;
+              if (item) {
+                const nId = item.dataset.notificationId;
+                const n = notifications.find((x) => x.id === nId);
+                if (n) handleNotificationClick(n);
+              }
+            }}>
+              <NotificationList
+                notifications={notifications}
+                onMarkRead={handleMarkRead}
+              />
+            </div>
             {list.hasNextPage && (
               <div className="mt-6 text-center">
                 <Button

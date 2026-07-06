@@ -54,6 +54,7 @@ async def create_notification(
 
     is_admin_action = notification_type in (
         "diary_hidden", "diary_deleted", "comment_deleted",
+        "bio_warning", "username_warning",
     )
     if recipient_id == actor_id and not is_admin_action:
         logger.info("Notification skipped: self-notification type=%s", notification_type)
@@ -82,6 +83,8 @@ async def create_notification(
         "diary_hidden": f"Your diary was hidden",
         "diary_deleted": f"Your diary was removed",
         "comment_deleted": f"Your comment was removed",
+        "bio_warning": f"You received a bio warning",
+        "username_warning": f"You received a username warning",
     }
     message = messages.get(notification_type, f"{actor_username} interacted with your content")
 

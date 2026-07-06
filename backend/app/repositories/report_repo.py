@@ -15,18 +15,21 @@ class ReportRepository(BaseRepository):
         return str(result)
 
     async def find_duplicate(
-        self, reporter_id: str, target_type: str, target_id: str
+        self, reporter_id: str, target_type: str, target_id: str | None = None
     ) -> dict | None:
-        return await self.find_one({
+        filter_dict: dict = {
             "reporter_id": ObjectId(reporter_id),
             "target_type": target_type,
-            "target_id": ObjectId(target_id),
             "status": "pending",
-        })
+        }
+        if target_type != "bug" and target_id:
+            filter_dict["target_id"] = ObjectId(target_id)
+        return await self.find_one(filter_dict)
 
     async def find_reports(
         self,
         status: str | None = None,
+        target_type: str | None = None,
         sort: list[tuple] | None = None,
         skip: int = 0,
         limit: int = 20,
@@ -34,6 +37,8 @@ class ReportRepository(BaseRepository):
         filter_dict: dict = {}
         if status and status != "all":
             filter_dict["status"] = status
+        if target_type:
+            filter_dict["target_type"] = target_type
         return await self.find(
             filter=filter_dict,
             sort=sort or [("created_at", -1)],
@@ -41,11 +46,26 @@ class ReportRepository(BaseRepository):
             limit=limit,
         )
 
-    async def count_reports(self, status: str | None = None) -> int:
+    async def count_reports(self, status: str | None = None, target_type: str | None = None) -> int:
         filter_dict: dict = {}
         if status and status != "all":
             filter_dict["status"] = status
+        if target_type:
+            filter_dict["target_type"] = target_type
         return await self.count(filter_dict)
+
+    async def find_by_user(
+        self, user_id: str, skip: int = 0, limit: int = 20
+    ) -> list[dict]:
+        return await self.find(
+            filter={"reporter_id": ObjectId(user_id)},
+            sort=[("created_at", -1)],
+            skip=skip,
+            limit=limit,
+        )
+
+    async def count_by_user(self, user_id: str) -> int:
+        return await self.count({"reporter_id": ObjectId(user_id)})
 
     async def resolve_report(
         self, report_id: str, admin_id: str, status: str, resolution_note: str | None = None

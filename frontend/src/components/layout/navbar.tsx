@@ -31,6 +31,7 @@ function NavLinks({ vertical = false, onClick }: { vertical?: boolean; onClick?:
     { href: "/explore", label: "Explore" },
     { href: "/diary/new", label: "Write" },
     { href: "/diary/random", label: "Random" },
+    { href: "/report", label: "Report" },
   ];
 
   return (
@@ -167,6 +168,14 @@ export function NavBar() {
                         {count > 99 ? "99+" : count}
                       </span>
                     )}
+                  </Link>
+                  <Link
+                    href="/me/reports-tickets"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+                    role="menuitem"
+                  >
+                    My Reports & Tickets
                   </Link>
                   <Link
                     href="/me/bookmarks"

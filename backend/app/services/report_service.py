@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 async def validate_target_exists(target_type: str, target_id: str) -> None:
+    if target_type == "bug":
+        return
     if not ObjectId.is_valid(target_id):
         raise NotFoundException(f"{target_type.capitalize()} not found")
 
@@ -37,21 +39,43 @@ async def submit_report(
     target_id: str,
     reason: str,
     description: str | None = None,
+    url: str | None = None,
+    user_agent: str | None = None,
 ) -> dict:
-    await validate_target_exists(target_type, target_id)
+    if target_type != "bug":
+        if not target_id:
+            raise ValidationException("target_id is required for non-bug reports")
+        await validate_target_exists(target_type, target_id)
 
     report_repo = ReportRepository()
-    duplicate = await report_repo.find_duplicate(reporter_id, target_type, target_id)
-    if duplicate:
-        raise ConflictException("You have already submitted a pending report for this target")
+    if target_type == "bug":
+        # Bug reports don't check duplicates - each bug is unique
+        pass
+    elif target_type == "diary" or target_type == "comment" or target_type == "user":
+        if not target_id:
+            raise ValidationException("target_id is required for non-bug reports")
+        duplicate = await report_repo.find_duplicate(reporter_id, target_type, target_id)
+        if duplicate:
+            raise ConflictException("You have already submitted a pending report for this target")
+    else:
+        if not target_id:
+            raise ValidationException("target_id is required")
+        duplicate = await report_repo.find_duplicate(reporter_id, target_type, target_id)
+        if duplicate:
+            raise ConflictException("You have already submitted a pending report for this target")
 
-    report_doc = {
+    report_doc: dict = {
         "reporter_id": ObjectId(reporter_id),
         "target_type": target_type,
-        "target_id": ObjectId(target_id),
         "reason": reason,
         "description": description,
     }
+    if target_type != "bug":
+        report_doc["target_id"] = ObjectId(target_id)
+    if url:
+        report_doc["url"] = url
+    if user_agent:
+        report_doc["user_agent"] = user_agent
     report_id = await report_repo.create_report(report_doc)
 
     user_repo = UserRepository()
@@ -62,7 +86,7 @@ async def submit_report(
         "id": report_id,
         "reporter": {"id": reporter_id, "username": reporter_username},
         "target_type": target_type,
-        "target_id": target_id,
+        "target_id": target_id if target_type != "bug" else None,
         "reason": reason,
         "description": description,
         "status": "pending",
@@ -71,6 +95,7 @@ async def submit_report(
 
 async def list_reports(
     status: str | None = None,
+    target_type: str | None = None,
     page: int = 1,
     per_page: int = 20,
 ) -> dict:
@@ -78,10 +103,11 @@ async def list_reports(
     report_repo = ReportRepository()
     reports = await report_repo.find_reports(
         status=status,
+        target_type=target_type,
         skip=skip,
         limit=per_page,
     )
-    total = await report_repo.count_reports(status=status)
+    total = await report_repo.count_reports(status=status, target_type=target_type)
 
     user_repo = UserRepository()
     reporter_ids = list({str(r["reporter_id"]) for r in reports})
@@ -128,27 +154,33 @@ async def list_reports(
     for r in reports:
         rid = str(r["reporter_id"])
         reporter_user = reporters_map.get(rid, {})
+        target_type_val = r.get("target_type", "")
+        target_id_val = str(r["target_id"]) if r.get("target_id") else ""
         target_preview = _build_target_preview(
-            r["target_type"], str(r["target_id"]),
+            target_type_val, target_id_val,
             diaries_map, comments_map, users_map, author_map,
         )
-        result.append({
+        report_item = {
             "id": str(r["_id"]),
             "reporter": {
                 "id": rid,
                 "username": reporter_user.get("username", "unknown"),
             },
-            "target_type": r["target_type"],
-            "target_id": str(r["target_id"]),
+            "target_type": target_type_val,
+            "target_id": target_id_val or None,
             "target_preview": target_preview,
-            "reason": r["reason"],
+            "reason": r.get("reason", ""),
             "description": r.get("description"),
             "status": r.get("status", "pending"),
             "resolution_note": r.get("resolution_note"),
             "resolved_by": r.get("resolved_by"),
             "resolved_at": r.get("resolved_at"),
             "created_at": r["created_at"],
-        })
+        }
+        if target_type_val == "bug":
+            report_item["url"] = r.get("url")
+            report_item["user_agent"] = r.get("user_agent")
+        result.append(report_item)
 
     has_next = skip + per_page < total
     has_prev = page > 1
@@ -212,6 +244,9 @@ def _build_target_preview(
             }
         return {"username": "unknown", "about": None, "is_banned": False}
 
+    if target_type == "bug":
+        return {}
+
     return {}
 
 
@@ -250,4 +285,42 @@ async def update_report(
         "resolution_note": resolution_note,
         "resolved_by": admin_username,
         "resolved_at": updated.get("resolved_at") if updated else None,
+    }
+
+
+async def list_user_reports(
+    user_id: str,
+    page: int = 1,
+    per_page: int = 20,
+) -> dict:
+    skip = (page - 1) * per_page
+    report_repo = ReportRepository()
+    reports = await report_repo.find_by_user(user_id, skip=skip, limit=per_page)
+    total = await report_repo.count_by_user(user_id)
+
+    result = []
+    for r in reports:
+        result.append({
+            "id": str(r["_id"]),
+            "target_type": r.get("target_type"),
+            "target_id": str(r["target_id"]) if r.get("target_id") else None,
+            "reason": r.get("reason"),
+            "description": r.get("description"),
+            "status": r.get("status", "pending"),
+            "resolution_note": r.get("resolution_note"),
+            "created_at": r.get("created_at"),
+        })
+
+    has_next = skip + per_page < total
+    has_prev = page > 1
+
+    return {
+        "data": result,
+        "meta": {
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "has_next": has_next,
+            "has_prev": has_prev,
+        },
     }
