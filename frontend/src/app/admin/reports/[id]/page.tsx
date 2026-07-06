@@ -25,6 +25,9 @@ export default function AdminReportDetailPage() {
   const [selectedAction, setSelectedAction] = useState<"hide" | "delete" | null>(null);
   const [actionReason, setActionReason] = useState("");
   const [acting, setActing] = useState(false);
+  const [sendWarning, setSendWarning] = useState(false);
+  const [warningType, setWarningType] = useState<"bio" | "username">("bio");
+  const [warningReason, setWarningReason] = useState("");
   const { list, resolve, dismiss } = useAdminReports("all");
 
   const reports = list.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
@@ -76,6 +79,13 @@ export default function AdminReportDetailPage() {
             data: { admin_delete_reason: actionReason.trim() },
           });
         }
+      }
+      if (report.target_type === "user" && sendWarning && warningReason.trim().length >= 5) {
+        await apiClient.post(`/admin/warnings/${warningType}`, {
+          user_id: report.target_id,
+          reason: warningReason.trim(),
+        });
+        showToast(`${warningType === "bio" ? "Bio" : "Username"} warning sent to user`);
       }
       resolve.mutate(
         { id: report.id, note: note.trim() },
@@ -143,7 +153,7 @@ export default function AdminReportDetailPage() {
         >
           &larr; Reports
         </button>
-        <h1 className="text-sm font-medium">Report Detail</h1>
+        <h1 className="text-sm font-medium">Content Report Detail</h1>
       </div>
 
       <div className="border border-border p-4 space-y-3">
@@ -287,6 +297,59 @@ export default function AdminReportDetailPage() {
 
         {report.status === "pending" && (
           <div className="border-t border-border pt-3 space-y-3">
+            {report.target_type === "user" && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="send-warning"
+                    checked={sendWarning}
+                    onChange={(e) => setSendWarning(e.target.checked)}
+                    className="cursor-pointer"
+                  />
+                  <label htmlFor="send-warning" className="text-xs text-muted cursor-pointer">
+                    Also send warning to this user
+                  </label>
+                </div>
+                {sendWarning && (
+                  <div className="space-y-2 ml-6">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWarningType("bio")}
+                        className={`text-xs px-2 py-0.5 border-0 cursor-pointer ${
+                          warningType === "bio" ? "bg-foreground text-background" : "bg-overlay text-muted hover:text-foreground"
+                        }`}
+                      >
+                        Bio
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWarningType("username")}
+                        className={`text-xs px-2 py-0.5 border-0 cursor-pointer ${
+                          warningType === "username" ? "bg-foreground text-background" : "bg-overlay text-muted hover:text-foreground"
+                        }`}
+                      >
+                        Username
+                      </button>
+                    </div>
+                    <textarea
+                      value={warningReason}
+                      onChange={(e) => setWarningReason(e.target.value)}
+                      rows={2}
+                      maxLength={500}
+                      className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
+                      placeholder={warningType === "bio" ? "Why the bio is inappropriate..." : "Why the username is inappropriate..."}
+                    />
+                    <p className="text-xs text-muted mt-1">
+                      {warningType === "bio"
+                        ? "User will receive step-by-step instructions to edit their bio via Settings > Profile."
+                        : "User will receive step-by-step instructions to open a username change ticket."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             {needsContentAction && (
               <div>
                 <div className="text-xs text-muted mb-2 font-medium">Content Action</div>

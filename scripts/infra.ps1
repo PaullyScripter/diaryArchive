@@ -21,7 +21,7 @@ if ($Down) {
   $downCode = $LASTEXITCODE
   $ErrorActionPreference = "Stop"
   if ($downCode -eq 0) {
-    Write-OK "MongoDB, Redis, and Meilisearch stopped"
+    Write-OK "MongoDB, Redis, Meilisearch, and MinIO stopped"
   } else {
     Write-Fail "Failed to stop infrastructure"
   }
@@ -33,7 +33,7 @@ Write-Host "  DiaryArchive - Starting Infrastructure" -ForegroundColor Cyan
 Write-Host ""
 
 # === Start containers =============================================
-Write-Info "Starting MongoDB, Redis, and Meilisearch..."
+Write-Info "Starting MongoDB, Redis, Meilisearch, and MinIO..."
 $ErrorActionPreference = "Continue"
 docker compose -f $composeFile up -d 2>&1 | Out-Null
 $upCode = $LASTEXITCODE
@@ -105,6 +105,29 @@ for ($i = 0; $i -lt 30; $i++) {
 if (-not $meiliOk) {
   Write-Fail "Meilisearch failed to start within 30 seconds"
   Write-Info "Check logs: docker compose -f $composeFile logs meilisearch"
+  exit 1
+}
+
+# === Wait for MinIO health ======================================
+Write-Info "Waiting for MinIO..."
+$minioOk = $false
+for ($i = 0; $i -lt 30; $i++) {
+  $ErrorActionPreference = "Continue"
+  try {
+    $minioResponse = Invoke-WebRequest -Uri "http://localhost:9000/minio/health/live" -Method Get -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+    if ($minioResponse.StatusCode -eq 200) {
+      Write-OK "MinIO is healthy on port 9000"
+      $minioOk = $true
+      break
+    }
+  } catch { }
+  $ErrorActionPreference = "Stop"
+  if ($i -eq 0) { Write-Info "  Polling..." }
+  Start-Sleep -Seconds 1
+}
+if (-not $minioOk) {
+  Write-Fail "MinIO failed to start within 30 seconds"
+  Write-Info "Check logs: docker compose -f $composeFile logs minio"
   exit 1
 }
 

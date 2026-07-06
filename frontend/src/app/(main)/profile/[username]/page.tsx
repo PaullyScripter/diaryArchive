@@ -10,6 +10,7 @@ import { useFollowers, useFollowing } from "@/hooks/use-social";
 import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { BadgeDisplay } from "@/components/shared/badge-display";
+import { AdminWarnButton } from "@/components/admin/admin-warn-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -55,15 +56,18 @@ export default function ProfilePage() {
           size="xl"
           className="mb-4"
         />
-        <h1 className="font-serif text-2xl font-semibold text-foreground inline-flex items-center gap-1.5">
+        <h1 className="font-serif text-2xl font-semibold text-foreground">
           {profile.username}
+        </h1>
+
+        <div className="mt-1 flex items-center justify-center gap-1.5">
           {profile.is_admin && (
-            <span className="text-accent" title="Admin">
+            <span className="text-accent" title="Administrator">
               <Star className="w-5 h-5 fill-current admin-star" />
             </span>
           )}
           <BadgeDisplay badges={profile.badges} size="md" />
-        </h1>
+        </div>
 
         {profile.about && (
           <p className="text-sm text-muted mt-2 max-w-md">{profile.about}</p>
@@ -99,7 +103,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex items-center gap-2">
           {isOwnProfile ? (
             <Link href="/settings">
               <Button variant="secondary" size="sm">
@@ -112,6 +116,7 @@ export default function ProfilePage() {
               initialIsFollowing={profile.is_following}
             />
           )}
+          <AdminWarnButton userId={profile.id} username={profile.username} />
         </div>
       </div>
 

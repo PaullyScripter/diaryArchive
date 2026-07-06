@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     max_media_per_diary: int = 20
     max_daily_uploads: int = 50
 
+    warnings_check_interval_hours: int = 1
+
     @field_validator("secret_key")
     @classmethod
     def secret_key_required(cls, v: str) -> str:

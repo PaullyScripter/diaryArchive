@@ -2,6 +2,7 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, get_db
@@ -205,7 +206,21 @@ async def login(
         raise AuthenticationException("Invalid username or password")
 
     if user.get("is_banned"):
-        raise PermissionDeniedException("Your account has been banned")
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": {
+                    "code": "account_banned",
+                    "message": "Your account has been banned",
+                    "data": {
+                        "username": user["username"],
+                        "ban_reason": user.get("ban_reason"),
+                        "banned_at": fmt_dt(user.get("banned_at")),
+                        "can_appeal": True,
+                    },
+                }
+            },
+        )
 
     await user_repo.update(str(user["_id"]), {"last_login_at": datetime.now(UTC)})
     _check_age_achievement(str(user["_id"]))

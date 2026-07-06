@@ -136,6 +136,7 @@ function Get-ServiceStatus {
   $status = @{
     Mongo  = @{ Tag = "[DOWN]"; Color = "Red"   }
     Redis  = @{ Tag = "[DOWN]"; Color = "Red"   }
+    Minio  = @{ Tag = "[DOWN]"; Color = "Red"   }
     Meili  = @{ Tag = "[DOWN]"; Color = "Red" }
   }
 
@@ -148,6 +149,10 @@ function Get-ServiceStatus {
   try {
     $redisResult = docker compose -f "$composeFile" exec -T redis redis-cli ping 2>&1
     if ($LASTEXITCODE -eq 0 -and "$redisResult" -match "PONG") { $status.Redis.Tag = "[OK]"; $status.Redis.Color = "Green" }
+  } catch {}
+  try {
+    $minioResponse = Invoke-WebRequest -Uri "http://localhost:9000/minio/health/live" -Method Get -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+    if ($minioResponse.StatusCode -eq 200) { $status.Minio.Tag = "[OK]"; $status.Minio.Color = "Green" }
   } catch {}
   try {
     $meiliResult = Invoke-RestMethod -Uri "http://localhost:7700/health" -Method Get -TimeoutSec 2 -ErrorAction Stop
@@ -183,6 +188,7 @@ function Show-Dashboard {
   Write-Tag $svc.Mongo.Tag $svc.Mongo.Color "MongoDB      27017"
   Write-Tag $svc.Redis.Tag $svc.Redis.Color "Redis        6379"
   Write-Tag $svc.Meili.Tag $svc.Meili.Color "Meilisearch  7700"
+  Write-Tag $svc.Minio.Tag $svc.Minio.Color "MinIO        9000"
   Write-Host ""
 
   Write-Host "Processes" -ForegroundColor White

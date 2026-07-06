@@ -50,11 +50,12 @@ def _build_admin_user_item(user: dict) -> dict:
 @router.get("/reports")
 async def admin_list_reports(
     status: str = Query("pending", description="pending, resolved, dismissed, all"),
+    target_type: str = Query(None, description="bug, diary, comment, user"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):
-    return await list_reports(status=status, page=page, per_page=per_page)
+    return await list_reports(status=status, target_type=target_type, page=page, per_page=per_page)
 
 
 @router.put("/reports/{report_id}")

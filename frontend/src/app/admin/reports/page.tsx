@@ -21,7 +21,7 @@ export default function AdminReportsPage() {
 
   return (
     <div>
-      <h1 className="text-sm font-medium mb-4">Reports</h1>
+      <h1 className="text-sm font-medium mb-4">Content Reports</h1>
 
       <div className="flex gap-2 mb-4">
         {["pending", "resolved", "dismissed", "all"].map((s) => (
