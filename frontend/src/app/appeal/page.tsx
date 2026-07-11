@@ -27,11 +27,13 @@ interface ExistingAppeal {
   assigned_admin_username?: string;
 }
 
+const STORAGE_KEY = "appeal_creds";
+
 function AppealForm() {
   const searchParams = useSearchParams();
   const initialUsername = searchParams.get("username") || "";
 
-  const [username, setUsername] = useState(initialUsername);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -42,36 +44,81 @@ function AppealForm() {
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const checkStatus = useCallback(async () => {
-    if (!username.trim() || !password) return;
-    setChecking(true);
+  const saveCreds = useCallback((u: string, p: string) => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ u, p }));
+    } catch { /* ignore */ }
+  }, []);
+
+  const loadCreds = useCallback((): { u: string; p: string } | null => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return null;
+  }, []);
+
+  const checkStatus = useCallback(async (u: string, p: string, silent = false) => {
+    if (!u.trim() || !p) return;
+    if (!silent) setChecking(true);
     try {
       const res = await apiClient.post("/auth/appeal/status", {
-        username: username.trim(),
-        password,
+        username: u.trim(),
+        password: p,
       });
       const data = res.data?.data || res.data;
       if (data.has_appeal) {
         setExistingAppeal(data);
+      } else {
+        setExistingAppeal(null);
       }
     } catch {
-      // ignore — probably wrong credentials or not banned
+      if (!silent) {
+        setExistingAppeal(null);
+      }
     } finally {
-      setChecking(false);
+      if (!silent) setChecking(false);
     }
-  }, [username, password]);
+  }, []);
 
   useEffect(() => {
-    if (initialUsername) {
-      checkStatus();
+    const creds = loadCreds();
+    if (creds) {
+      setUsername(creds.u);
+      setPassword(creds.p);
+      checkStatus(creds.u, creds.p, true);
+    } else if (initialUsername) {
+      setUsername(initialUsername);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (existingAppeal?.has_appeal && existingAppeal.status === "open" && password) {
+      pollingRef.current = setInterval(() => {
+        checkStatus(username, password, true);
+      }, 10000);
+    }
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [existingAppeal?.has_appeal, existingAppeal?.status, username, password, checkStatus]);
+
+  useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [existingAppeal?.messages?.length]);
+
+  const handleCheck = useCallback(async () => {
+    if (username.trim() && password) {
+      saveCreds(username.trim(), password);
+      await checkStatus(username.trim(), password);
+    }
+  }, [username, password, saveCreds, checkStatus]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -93,12 +140,14 @@ function AppealForm() {
 
       setLoading(true);
       try {
+        saveCreds(username.trim(), password);
         await apiClient.post("/auth/appeal", {
           username: username.trim(),
           password,
           message: message.trim(),
         });
         setSuccess(true);
+        checkStatus(username.trim(), password, true);
       } catch (err: unknown) {
         const msg =
           (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
@@ -108,7 +157,7 @@ function AppealForm() {
         setLoading(false);
       }
     },
-    [username, password, message],
+    [username, password, message, saveCreds, checkStatus],
   );
 
   const handleReply = useCallback(
@@ -123,7 +172,7 @@ function AppealForm() {
           message: replyText.trim(),
         });
         setReplyText("");
-        await checkStatus();
+        await checkStatus(username.trim(), password, true);
       } catch (err: unknown) {
         const msg =
           (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
@@ -136,18 +185,32 @@ function AppealForm() {
     [username, password, replyText, checkStatus],
   );
 
+  const handleLogout = useCallback(() => {
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setExistingAppeal(null);
+    setPassword("");
+  }, []);
+
   const fmtDate = (d: string) => {
     return new Date(d).toLocaleDateString("en-US", {
       year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
     });
   };
 
-  if (existingAppeal) {
+  if (existingAppeal?.has_appeal) {
     const msgs = existingAppeal.messages || [];
     return (
       <AuthLayout>
         <div className="mx-auto max-w-lg">
-          <h1 className="font-serif text-xl mb-4">Your Appeal</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="font-serif text-xl">Your Appeal</h1>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-muted hover:text-foreground cursor-pointer bg-transparent border-0 underline"
+            >
+              Sign out
+            </button>
+          </div>
           <div className="border border-border p-4 space-y-3">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted">
@@ -169,7 +232,10 @@ function AppealForm() {
             )}
 
             <div className="border-t border-border pt-3 space-y-3">
-              <h3 className="text-xs font-medium text-muted uppercase tracking-wider">Conversation</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-medium text-muted uppercase tracking-wider">Conversation</h3>
+                <span className="text-[10px] text-subtle italic">Auto-refreshes</span>
+              </div>
               {msgs.map((msg) => (
                 <div
                   key={msg.id}
@@ -265,39 +331,43 @@ function AppealForm() {
                 autoComplete="current-password"
               />
             </div>
-            {username.trim() && password && !existingAppeal && (
+            {username.trim() && password && !existingAppeal && !success && (
               <button
                 type="button"
-                onClick={checkStatus}
+                onClick={handleCheck}
                 disabled={checking}
                 className="text-xs text-link hover:text-link-hover cursor-pointer bg-transparent border-0 underline"
               >
                 {checking ? "Checking..." : "Check existing appeal"}
               </button>
             )}
-            <div>
-              <label htmlFor="appeal-message" className="text-xs text-muted">
-                Your message
-              </label>
-              <textarea
-                id="appeal-message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={5}
-                maxLength={2000}
-                className="w-full border border-border bg-background text-sm p-2 text-foreground resize-none mt-1"
-                placeholder="Explain why you believe your account should be reinstated..."
-                disabled={loading}
-              />
-            </div>
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
+            {!existingAppeal && (
+              <>
+                <div>
+                  <label htmlFor="appeal-message" className="text-xs text-muted">
+                    Your message
+                  </label>
+                  <textarea
+                    id="appeal-message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    rows={5}
+                    maxLength={2000}
+                    className="w-full border border-border bg-background text-sm p-2 text-foreground resize-none mt-1"
+                    placeholder="Explain why you believe your account should be reinstated..."
+                    disabled={loading}
+                  />
+                </div>
+                {error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+                <Button type="submit" variant="primary" disabled={loading} className="w-full">
+                  {loading ? "Submitting..." : "Submit Appeal"}
+                </Button>
+              </>
             )}
-            <Button type="submit" variant="primary" disabled={loading} className="w-full">
-              {loading ? "Submitting..." : "Submit Appeal"}
-            </Button>
           </form>
         )}
       </div>
