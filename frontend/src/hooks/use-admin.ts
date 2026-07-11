@@ -2,6 +2,7 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
+import { useAuthStore } from "@/store/auth-store";
 
 interface AdminStats {
   users: { total: number; banned: number; admins: number };
@@ -184,23 +185,30 @@ async function fetchAuditLogs(params: {
 }
 
 export function useAdminStats() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return useQuery({
     queryKey: ["admin", "stats"],
     queryFn: fetchAdminStats,
     staleTime: 300_000,
+    enabled: isAuthenticated,
   });
 }
 
 export function useAdminHealth() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   return useQuery({
     queryKey: ["admin", "health"],
     queryFn: fetchAdminHealth,
     refetchInterval: 30_000,
+    enabled: isAuthenticated,
   });
 }
 
 export function useAdminReports(status: string = "pending") {
   const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const list = useInfiniteQuery({
     queryKey: ["admin", "reports", status],
@@ -209,6 +217,7 @@ export function useAdminReports(status: string = "pending") {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_next ? lastPage.meta.page + 1 : undefined,
+    enabled: isAuthenticated,
   });
 
   const invalidate = () => {
@@ -231,6 +240,7 @@ export function useAdminReports(status: string = "pending") {
 
 export function useAdminUsers(q: string = "", status: string = "all") {
   const queryClient = useQueryClient();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const list = useInfiniteQuery({
     queryKey: ["admin", "users", q, status],
@@ -239,6 +249,7 @@ export function useAdminUsers(q: string = "", status: string = "all") {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_next ? lastPage.meta.page + 1 : undefined,
+    enabled: isAuthenticated,
   });
 
   const invalidate = () => {
@@ -275,6 +286,8 @@ export function useAdminAuditLogs(filters: {
   from_date?: string;
   to_date?: string;
 } = {}) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
   const list = useInfiniteQuery({
     queryKey: ["admin", "audit-logs", filters],
     queryFn: ({ pageParam }) =>
@@ -285,6 +298,7 @@ export function useAdminAuditLogs(filters: {
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta.has_next ? lastPage.meta.page + 1 : undefined,
+    enabled: isAuthenticated,
   });
 
   return { list };
