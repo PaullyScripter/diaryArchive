@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_admin, get_current_user
-from app.core.exceptions import RateLimitException
+from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import check_rate_limit
 from app.models.ticket import TicketCreate, TicketReply
 from app.services.ticket_service import (
@@ -14,6 +14,7 @@ from app.services.ticket_service import (
     get_ticket,
     list_all_tickets,
     list_user_tickets,
+    resolve_ticket,
 )
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
@@ -147,3 +148,41 @@ async def admin_close_ticket(
     current_admin: dict = Depends(get_current_admin),
 ):
     return await close_ticket(ticket_id=ticket_id)
+
+
+@admin_router.put("/{ticket_id}/resolve")
+async def admin_resolve_ticket(
+    ticket_id: str,
+    body: dict,
+    request: Request,
+    current_admin: dict = Depends(get_current_admin),
+):
+    action = body.get("action", "").strip().lower()
+    response_message = body.get("response_message", "").strip()
+
+    if action not in ("accept", "deny"):
+        raise ValidationException("action must be 'accept' or 'deny'")
+    if not response_message or len(response_message) < 10:
+        raise ValidationException("response_message must be at least 10 characters")
+
+    from app.services.audit_service import log_audit
+
+    result = await resolve_ticket(
+        ticket_id=ticket_id,
+        admin_id=str(current_admin["_id"]),
+        admin_username=current_admin["username"],
+        action=action,
+        response_message=response_message,
+    )
+
+    await log_audit(
+        admin_id=str(current_admin["_id"]),
+        admin_username=current_admin["username"],
+        action="appeal_resolved",
+        target_type="ticket",
+        target_id=ticket_id,
+        details={"action": action, "response_message": response_message},
+        ip_address=request.client.host if request.client else None,
+    )
+
+    return result
