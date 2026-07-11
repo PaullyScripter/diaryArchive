@@ -291,6 +291,10 @@ async def resolve_ticket(
     if action == "accept":
         await ticket_repo.delete(ticket_id)
     else:
+        await ticket_repo._collection.update_one(
+            {"_id": ObjectId(ticket_id)},
+            {"$set": {"resolution": "denied", "resolution_message": response_message}},
+        )
         await ticket_repo.close_ticket(ticket_id)
 
     try:
