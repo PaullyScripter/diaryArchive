@@ -246,6 +246,8 @@ async def resolve_ticket(
              }},
         )
 
+        _clear_appeal_rate_limits(target_user.get("username", ""))
+
         try:
             from app.core.database import DatabaseManager
             db = DatabaseManager.get_db()
@@ -365,3 +367,21 @@ def _build_ticket_summary(ticket: dict) -> dict:
         "created_at": ticket.get("created_at"),
         "updated_at": ticket.get("updated_at"),
     }
+
+
+def _clear_appeal_rate_limits(username: str) -> None:
+    try:
+        from app.core.database import DatabaseManager
+        redis = DatabaseManager.get_redis()
+        import asyncio
+
+        async def _do():
+            await redis.delete(
+                f"rate_limit:appeal:{username}",
+                f"rate_limit:appeal_reply:{username}",
+            )
+            logger.info("Cleared appeal rate limits for %s", username)
+
+        asyncio.create_task(_do())
+    except Exception:
+        logger.warning("Failed to clear appeal rate limits", exc_info=True)

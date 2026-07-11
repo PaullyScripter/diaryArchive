@@ -79,7 +79,7 @@ async def reply_to_appeal(
         raise ValidationException("Message must be at least 5 characters")
 
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:appeal_reply:{request.client.host}", 5, 3600
+        f"rate_limit:appeal_reply:{username}", 5, 3600
     )
     if is_limited:
         raise RateLimitException("Too many replies. Please try again later.")
@@ -125,7 +125,7 @@ async def submit_appeal(
         raise ValidationException("Appeal message must be at least 10 characters")
 
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:appeal:{request.client.host}", 3, 3600
+        f"rate_limit:appeal:{username}", 3, 3600
     )
     if is_limited:
         raise RateLimitException("Too many appeal attempts. Please try again later.")
