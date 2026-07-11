@@ -1,8 +1,10 @@
+import asyncio
 import json
 import logging
 import time
 from datetime import UTC, datetime
 
+from bson import ObjectId
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_admin
@@ -265,6 +267,9 @@ async def admin_ban_user(
             "Admin %s banned user %s, revoked %d sessions",
             current_admin["username"], target_user["username"], revoked,
         )
+        _remove_banned_user_from_search(user_id)
+    else:
+        _reindex_user_diaries_async(user_id)
 
     await log_audit(
         admin_id=str(current_admin["_id"]),
@@ -475,6 +480,37 @@ async def admin_health(
             "timestamp": datetime.now(UTC).isoformat(),
         },
     }
+
+
+def _remove_banned_user_from_search(user_id: str) -> None:
+    try:
+        from app.search.indexer import DiaryIndexer
+        from app.core.database import DatabaseManager
+        db = DatabaseManager.get_db()
+        indexer = DiaryIndexer()
+        async def _do():
+            cursor = db.diaries.find({"user_id": ObjectId(user_id), "privacy": "public"}, {"_id": 1})
+            async for diary in cursor:
+                await indexer.remove_diary(str(diary["_id"]))
+            logger.info("Removed user %s diaries from search index", user_id)
+        asyncio.create_task(_do())
+    except Exception:
+        logger.warning("Failed to remove banned user from search index", exc_info=True)
+
+
+def _reindex_user_diaries_async(user_id: str) -> None:
+    try:
+        from app.core.database import DatabaseManager
+        db = DatabaseManager.get_db()
+        async def _do():
+            cursor = db.diaries.find({"user_id": ObjectId(user_id), "privacy": "public"})
+            async for diary in cursor:
+                from app.services.diary_service import _index_diary_async
+                _index_diary_async(diary)
+            logger.info("Re-indexed user %s diaries", user_id)
+        asyncio.create_task(_do())
+    except Exception:
+        logger.warning("Failed to re-index user diaries", exc_info=True)
 
 
 POLICY_REMINDER = (

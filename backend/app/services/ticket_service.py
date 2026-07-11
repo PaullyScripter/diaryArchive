@@ -246,6 +246,16 @@ async def resolve_ticket(
              }},
         )
 
+        try:
+            from app.core.database import DatabaseManager
+            db = DatabaseManager.get_db()
+            cursor = db.diaries.find({"user_id": target_user["_id"], "privacy": "public"})
+            async for diary in cursor:
+                from app.services.diary_service import _index_diary_async
+                _index_diary_async(diary)
+        except Exception:
+            logger.warning("Failed to re-index diaries after appeal accept", exc_info=True)
+
         notification_title = "Appeal Accepted - Account Unbanned"
         notification_body = (
             f"Hello {target_user['username']},\n\n"
@@ -275,7 +285,11 @@ async def resolve_ticket(
         "message": response_message,
     }
     await ticket_repo.add_message(ticket_id, admin_msg_doc)
-    await ticket_repo.close_ticket(ticket_id)
+
+    if action == "accept":
+        await ticket_repo.delete(ticket_id)
+    else:
+        await ticket_repo.close_ticket(ticket_id)
 
     try:
         await create_notif(

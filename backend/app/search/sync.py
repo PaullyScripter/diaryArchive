@@ -44,8 +44,13 @@ async def _do_reindex(max_retries: int) -> int:
     await indexer.clear_index()
 
     db = DatabaseManager.get_db()
+
+    from app.repositories.user_repo import UserRepository
+    user_repo = UserRepository()
+    banned_ids = await user_repo.get_banned_user_ids()
+
     cursor = db.diaries.find(
-        {"privacy": "public"},
+        {"privacy": "public", "user_id": {"$nin": banned_ids}} if banned_ids else {"privacy": "public"},
         projection={
             "_id": 1, "title": 1, "content_text": 1, "content_html": 1,
             "tags": 1, "emotion": 1, "year": 1, "month": 1,
