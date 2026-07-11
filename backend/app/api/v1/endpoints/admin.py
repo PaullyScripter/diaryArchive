@@ -256,7 +256,7 @@ async def admin_ban_user(
     if is_banned and len(reason) < 10:
         raise ValidationException("Ban reason must be at least 10 characters")
 
-    await user_repo.set_ban_status(user_id, is_banned)
+    await user_repo.set_ban_status(user_id, is_banned, ban_reason=reason or None)
 
     if is_banned:
         refresh_repo = RefreshTokenRepository()
