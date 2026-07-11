@@ -339,34 +339,37 @@ export default function AdminTicketDetailPage() {
 
       <div className="mt-4 space-y-3">
         <h2 className="text-xs font-medium text-muted uppercase tracking-wider">Thread</h2>
-        {ticket.messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`border p-3 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-foreground">
-                {msg.sender_username}
-                {msg.is_admin && (
-                  <span className="ml-1 text-xs text-accent">(admin)</span>
+        <div className="max-h-80 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+          {ticket.messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`border p-3 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-foreground">
+                  {msg.sender_username}
+                  {msg.is_admin && (
+                    <span className="ml-1 text-xs text-accent">(admin)</span>
+                  )}
+                </span>
+                <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+              </div>
+            <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+              {msg.message}
+            </div>
+            {msg.media_url && (
+              <div className="mt-2">
+                {msg.media_type?.startsWith("image/") ? (
+                  <img src={msg.media_url} alt="attachment" className="max-w-full max-h-80 rounded border border-border object-contain" />
+                ) : (
+                  <a href={msg.media_url} target="_blank" rel="noreferrer" className="text-xs text-link hover:underline">View attachment</a>
                 )}
-              </span>
-              <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+              </div>
+            )}
             </div>
-          <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-            {msg.message}
-          </div>
-          {msg.media_url && (
-            <div className="mt-2">
-              {msg.media_type?.startsWith("image/") ? (
-                <img src={msg.media_url} alt="attachment" className="max-w-full max-h-80 rounded border border-border object-contain" />
-              ) : (
-                <a href={msg.media_url} target="_blank" rel="noreferrer" className="text-xs text-link hover:underline">View attachment</a>
-              )}
-            </div>
-          )}
-          </div>
-        ))}
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
 
         {isOpen && (
           <form onSubmit={handleReply} className="border border-border p-3 space-y-2">

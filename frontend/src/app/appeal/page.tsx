@@ -236,24 +236,26 @@ function AppealForm() {
                 <h3 className="text-xs font-medium text-muted uppercase tracking-wider">Conversation</h3>
                 <span className="text-[10px] text-subtle italic">Auto-refreshes</span>
               </div>
-              {msgs.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`border p-2.5 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-foreground">
-                      {msg.sender_username}
-                      {msg.is_admin && (
-                        <span className="ml-1 text-xs text-accent">(moderator)</span>
-                      )}
-                    </span>
-                    <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+              <div className="max-h-80 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+                {msgs.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`border p-2.5 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-foreground">
+                        {msg.sender_username}
+                        {msg.is_admin && (
+                          <span className="ml-1 text-xs text-accent">(moderator)</span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+                    </div>
+                    <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{msg.message}</p>
                   </div>
-                  <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{msg.message}</p>
-                </div>
-              ))}
-              <div ref={threadEndRef} />
+                ))}
+                <div ref={threadEndRef} />
+              </div>
             </div>
 
             {existingAppeal.status === "open" && (
