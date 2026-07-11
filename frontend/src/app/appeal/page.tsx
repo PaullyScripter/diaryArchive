@@ -1,11 +1,19 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api/client";
 import { AuthLayout } from "@/components/layout/auth-layout";
+
+interface AppealMessage {
+  id: string;
+  sender_username: string;
+  message: string;
+  is_admin: boolean;
+  created_at: string;
+}
 
 interface ExistingAppeal {
   has_appeal: boolean;
@@ -13,7 +21,7 @@ interface ExistingAppeal {
   ticket_id?: string;
   status?: string;
   subject?: string;
-  last_message_preview?: string;
+  messages?: AppealMessage[];
   created_at?: string;
   updated_at?: string;
   assigned_admin_username?: string;
@@ -31,6 +39,9 @@ function AppealForm() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [existingAppeal, setExistingAppeal] = useState<ExistingAppeal | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const threadEndRef = useRef<HTMLDivElement>(null);
 
   const checkStatus = useCallback(async () => {
     if (!username.trim() || !password) return;
@@ -50,6 +61,17 @@ function AppealForm() {
       setChecking(false);
     }
   }, [username, password]);
+
+  useEffect(() => {
+    if (initialUsername) {
+      checkStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [existingAppeal?.messages?.length]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -89,41 +111,113 @@ function AppealForm() {
     [username, password, message],
   );
 
+  const handleReply = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!replyText.trim()) return;
+      setSendingReply(true);
+      try {
+        await apiClient.post("/auth/appeal/reply", {
+          username: username.trim(),
+          password,
+          message: replyText.trim(),
+        });
+        setReplyText("");
+        await checkStatus();
+      } catch (err: unknown) {
+        const msg =
+          (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+          "Failed to send reply";
+        setError(msg);
+      } finally {
+        setSendingReply(false);
+      }
+    },
+    [username, password, replyText, checkStatus],
+  );
+
+  const fmtDate = (d: string) => {
+    return new Date(d).toLocaleDateString("en-US", {
+      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    });
+  };
+
   if (existingAppeal) {
+    const msgs = existingAppeal.messages || [];
     return (
       <AuthLayout>
-        <div className="mx-auto max-w-sm">
+        <div className="mx-auto max-w-lg">
           <h1 className="font-serif text-xl mb-4">Your Appeal</h1>
           <div className="border border-border p-4 space-y-3">
-            <div className="text-xs text-muted">
-              <span className="font-medium text-foreground">Status: </span>
-              <span className={existingAppeal.status === "open" ? "text-link" : "text-muted"}>
-                {existingAppeal.status}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted">
+                Status:{" "}
+                <span className={existingAppeal.status === "open" ? "text-link font-medium" : "text-muted"}>
+                  {existingAppeal.status === "open" ? "Open" : existingAppeal.status}
+                </span>
               </span>
+              {existingAppeal.assigned_admin_username && (
+                <span className="text-muted">
+                  Reviewer: <span className="text-foreground">{existingAppeal.assigned_admin_username}</span>
+                </span>
+              )}
             </div>
-            {existingAppeal.assigned_admin_username && (
-              <div className="text-xs text-muted">
-                <span className="font-medium text-foreground">Reviewer: </span>
-                {existingAppeal.assigned_admin_username}
-              </div>
-            )}
             {existingAppeal.created_at && (
               <div className="text-xs text-muted">
-                <span className="font-medium text-foreground">Submitted: </span>
-                {new Date(existingAppeal.created_at).toLocaleDateString("en-US", {
-                  year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                })}
+                Submitted: {fmtDate(existingAppeal.created_at)}
               </div>
             )}
-            {existingAppeal.last_message_preview && (
-              <div className="border-t border-border pt-2 mt-2">
-                <p className="text-xs text-muted">Your message:</p>
-                <p className="text-xs text-foreground mt-1 whitespace-pre-wrap">{existingAppeal.last_message_preview}</p>
-              </div>
+
+            <div className="border-t border-border pt-3 space-y-3">
+              <h3 className="text-xs font-medium text-muted uppercase tracking-wider">Conversation</h3>
+              {msgs.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`border p-2.5 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-foreground">
+                      {msg.sender_username}
+                      {msg.is_admin && (
+                        <span className="ml-1 text-xs text-accent">(moderator)</span>
+                      )}
+                    </span>
+                    <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+                  </div>
+                  <p className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">{msg.message}</p>
+                </div>
+              ))}
+              <div ref={threadEndRef} />
+            </div>
+
+            {existingAppeal.status === "open" && (
+              <form onSubmit={handleReply} className="border-t border-border pt-3 space-y-2">
+                <label htmlFor="appeal-reply" className="text-xs text-muted">
+                  Send a message
+                </label>
+                <textarea
+                  id="appeal-reply"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={3}
+                  maxLength={2000}
+                  className="w-full border border-border bg-background text-sm p-2 text-foreground resize-none"
+                  placeholder="Add to your appeal..."
+                  disabled={sendingReply}
+                />
+                {error && (
+                  <p className="text-xs text-destructive">{error}</p>
+                )}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={sendingReply || !replyText.trim()}
+                  className="w-full"
+                >
+                  {sendingReply ? "Sending..." : "Send"}
+                </Button>
+              </form>
             )}
-            <p className="text-xs text-muted">
-              Your appeal is pending review. A moderator will respond soon. You cannot submit another appeal while this one is open.
-            </p>
           </div>
         </div>
       </AuthLayout>
