@@ -20,6 +20,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+async def _run_warning_checks():
+    from app.tasks.warnings import check_bio_warnings, check_username_warnings
+
+    logger.info("Running warning deadline checks...")
+    try:
+        bio_count = await check_bio_warnings()
+        logger.info("Bio warnings processed: %d", bio_count)
+    except Exception:
+        logger.warning("Bio warning check failed", exc_info=True)
+
+    try:
+        user_count = await check_username_warnings()
+        logger.info("Username warnings processed: %d", user_count)
+    except Exception:
+        logger.warning("Username warning check failed", exc_info=True)
+
+
+async def _warning_check_loop():
+    interval = settings.warnings_check_interval_hours * 3600
+    while True:
+        await asyncio.sleep(interval)
+        await _run_warning_checks()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
@@ -38,9 +62,13 @@ async def lifespan(app: FastAPI):
 
     asyncio.create_task(_initial_reindex())
 
+    asyncio.create_task(_run_warning_checks())
+    warning_task = asyncio.create_task(_warning_check_loop())
+
     logger.info("Startup complete")
     yield
     logger.info("Shutting down...")
+    warning_task.cancel()
     await DatabaseManager.close_mongo()
     await DatabaseManager.close_redis()
     logger.info("Shutdown complete")
