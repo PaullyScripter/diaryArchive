@@ -20,6 +20,8 @@ interface ExistingAppeal {
   reason?: string;
   ticket_id?: string;
   status?: string;
+  resolution?: string;
+  resolution_message?: string;
   subject?: string;
   messages?: AppealMessage[];
   created_at?: string;
@@ -212,11 +214,19 @@ function AppealForm() {
             </button>
           </div>
           <div className="border border-border p-4 space-y-3">
+            {existingAppeal.resolution === "denied" && (
+              <div className="border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-sm text-destructive font-medium">Appeal Denied</p>
+                {existingAppeal.resolution_message && (
+                  <p className="text-xs text-muted mt-1">{existingAppeal.resolution_message}</p>
+                )}
+              </div>
+            )}
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted">
                 Status:{" "}
-                <span className={existingAppeal.status === "open" ? "text-link font-medium" : "text-muted"}>
-                  {existingAppeal.status === "open" ? "Open" : existingAppeal.status}
+                <span className={existingAppeal.status === "open" ? "text-link font-medium" : existingAppeal.resolution === "denied" ? "text-destructive font-medium" : "text-muted"}>
+                  {existingAppeal.resolution === "denied" ? "Denied" : existingAppeal.status === "open" ? "Open" : existingAppeal.status}
                 </span>
               </span>
               {existingAppeal.assigned_admin_username && (

@@ -53,6 +53,8 @@ async def get_appeal_status(body: dict):
                 "has_appeal": True,
                 "ticket_id": str(existing["_id"]),
                 "status": existing.get("status", "open"),
+                "resolution": existing.get("resolution"),
+                "resolution_message": existing.get("resolution_message"),
                 "subject": existing.get("subject", ""),
                 "messages": _build_message_list(existing.get("messages", []) or [], str(user["_id"])),
                 "created_at": existing.get("created_at"),
