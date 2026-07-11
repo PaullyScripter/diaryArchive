@@ -16,7 +16,7 @@ const REPORT_REASONS = [
 ] as const;
 
 interface ReportButtonProps {
-  targetType: "diary" | "comment";
+  targetType: "diary" | "comment" | "user";
   targetId: string;
 }
 
@@ -74,7 +74,7 @@ export function ReportButton({ targetType, targetId }: ReportButtonProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-sm font-medium mb-3">
-              Report {targetType === "diary" ? "Diary" : "Comment"}
+              Report {targetType === "diary" ? "Diary" : targetType === "comment" ? "Comment" : "User"}
             </h3>
 
             <div className="space-y-1.5 mb-3">
@@ -101,13 +101,13 @@ export function ReportButton({ targetType, targetId }: ReportButtonProps) {
             </div>
 
             <label className="text-xs text-muted block mb-1">
-              Description (optional, max 1000 chars)
+              Description (optional, max 2000 chars)
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              maxLength={1000}
+              maxLength={2000}
               className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
               placeholder="Provide additional details..."
             />

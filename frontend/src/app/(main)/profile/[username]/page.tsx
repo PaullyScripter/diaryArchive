@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { BadgeDisplay } from "@/components/shared/badge-display";
 import { AdminWarnButton } from "@/components/admin/admin-warn-button";
+import { ReportButton } from "@/components/social/report-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,9 @@ export default function ProfilePage() {
             />
           )}
           <AdminWarnButton userId={profile.id} username={profile.username} />
+          {!isOwnProfile && (
+            <ReportButton targetType="user" targetId={profile.id} />
+          )}
         </div>
       </div>
 
