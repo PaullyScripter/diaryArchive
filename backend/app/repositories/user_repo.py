@@ -79,8 +79,17 @@ class UserRepository(BaseRepository):
     async def count_admins(self) -> int:
         return await self.count({"is_admin": True})
 
-    async def set_ban_status(self, user_id: str, is_banned: bool) -> bool:
-        return await self.update(user_id, {"is_banned": is_banned})
+    async def set_ban_status(self, user_id: str, is_banned: bool, ban_reason: str | None = None) -> bool:
+        from datetime import UTC, datetime
+        update_doc: dict = {"is_banned": is_banned}
+        if is_banned:
+            update_doc["banned_at"] = datetime.now(UTC)
+            if ban_reason:
+                update_doc["ban_reason"] = ban_reason
+        else:
+            update_doc["banned_at"] = None
+            update_doc["ban_reason"] = None
+        return await self.update(user_id, update_doc)
 
     async def set_admin_role(self, user_id: str, is_admin: bool) -> bool:
         return await self.update(user_id, {"is_admin": is_admin})

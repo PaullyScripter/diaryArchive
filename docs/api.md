@@ -1761,7 +1761,7 @@ Delete a media file.
 Submit a report against a diary, comment, or user.
 
 **Auth:** Bearer access token
-**Rate limit:** 10 per hour
+**Rate limit:** 5 per minute
 
 **Request body:**
 ```json
@@ -1779,7 +1779,7 @@ Submit a report against a diary, comment, or user.
 |-------|-------|
 | `target_type` | Required. Must be `diary`, `comment`, or `user`. |
 | `target_id` | Required. Valid ObjectId. |
-| `reason` | Required. Must be one of: `harassment`, `illegal_content`, `spam`, `impersonation`, `self_harm`, `other`. |
+| `reason` | Required. Must be one of: `spam`, `inappropriate_content`, `harassment`, `impersonation`, `copyright_violation`, `bug`, `other`. |
 | `description` | Optional. Max 2000 chars. |
 
 **Success (201):**
@@ -1872,7 +1872,7 @@ List reports for moderation.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `status` | string | `pending` | Filter by status: `pending`, `reviewed`, `dismissed`, `action_taken`, or `all` |
+| `status` | string | `pending` | Filter by status: `pending`, `resolved`, `dismissed`, or `all` |
 | `page` | int | 1 | Page number |
 | `per_page` | int | 20 | Items per page |
 
@@ -1922,8 +1922,8 @@ Review or resolve a report.
 **Request body:**
 ```json
 {
-  "status": "action_taken",
-  "resolution": "Diary deleted, user warned. Content violated Terms of Service."
+  "status": "resolved",
+  "resolution_note": "Diary deleted, user warned. Content violated Terms of Service."
 }
 ```
 
@@ -1931,17 +1931,17 @@ Review or resolve a report.
 
 | Field | Rules |
 |-------|-------|
-| `status` | Required. Must be `reviewed`, `dismissed`, or `action_taken`. |
-| `resolution` | Optional. Max 1000 chars. |
+| `status` | Required. Must be `resolved`, or `dismissed`. |
+| `resolution_note` | Required if `status` is `resolved`. Max 1000 chars. |
 
 **Success (200):**
 ```json
 {
   "data": {
     "id": "666a1b2c3d4e5f6a7b8c9d0e",
-    "status": "action_taken",
-    "reviewed_by": "665a1b2c3d4e5f6a7b8c9d0a",
-    "reviewed_at": "2026-06-25T16:00:00Z",
+    "status": "resolved",
+    "resolved_by": "665a1b2c3d4e5f6a7b8c9d0a",
+    "resolved_at": "2026-06-25T16:00:00Z",
     "updated_at": "2026-06-25T16:00:00Z"
   }
 }
