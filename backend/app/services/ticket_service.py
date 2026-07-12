@@ -207,6 +207,116 @@ async def close_ticket(ticket_id: str, user_id: str | None = None) -> dict:
     return {"data": _build_ticket_response(updated)}
 
 
+async def resolve_ticket(
+    ticket_id: str,
+    admin_id: str,
+    admin_username: str,
+    action: str,
+    response_message: str,
+) -> dict:
+    ticket_repo = TicketRepository()
+    ticket = await ticket_repo.get_by_id(ticket_id)
+    if ticket is None:
+        raise NotFoundException("Ticket not found")
+
+    if ticket.get("status") == "closed":
+        raise ValidationException("Ticket is already closed")
+
+    target_user_id = str(ticket["user_id"])
+
+    from app.repositories.user_repo import UserRepository
+    from app.repositories.refresh_token_repo import RefreshTokenRepository
+    from app.services.notification_service import create_notification as create_notif
+
+    user_repo = UserRepository()
+    target_user = await user_repo.get_by_id(target_user_id)
+
+    if action == "accept":
+        if not target_user:
+            raise NotFoundException("User not found")
+
+        await user_repo._collection.update_one(
+            {"_id": target_user["_id"]},
+            {"$set": {"is_banned": False, "bio_warning_count": 0},
+             "$unset": {
+                 "banned_at": "", "ban_reason": "",
+                 "bio_warning_deadline": "", "bio_warning_reason": "",
+                 "bio_warning_awaiting_review": "", "bio_edit_banned_until": "",
+                 "username_warning_deadline": "", "username_warning_reason": "",
+             }},
+        )
+
+        _clear_appeal_rate_limits(target_user.get("username", ""))
+
+        try:
+            from app.core.database import DatabaseManager
+            db = DatabaseManager.get_db()
+            cursor = db.diaries.find({"user_id": target_user["_id"], "privacy": "public"})
+            async for diary in cursor:
+                from app.services.diary_service import _index_diary_async
+                _index_diary_async(diary)
+        except Exception:
+            logger.warning("Failed to re-index diaries after appeal accept", exc_info=True)
+
+        notification_title = "Appeal Accepted - Account Unbanned"
+        notification_body = (
+            f"Hello {target_user['username']},\n\n"
+            f"Your ban appeal has been reviewed and accepted.\n\n"
+            f"{response_message}\n\n"
+            f"Your account has been unbanned. You may now log in again.\n\n"
+            f"Regards,\nDiaryArchive Moderation"
+        )
+
+    elif action == "deny":
+        notification_title = "Appeal Denied"
+        notification_body = (
+            f"Hello {target_user.get('username', 'User')},\n\n"
+            f"Your ban appeal has been reviewed and denied.\n\n"
+            f"{response_message}\n\n"
+            f"Your account remains banned. You may submit another appeal"
+            f" at a later date.\n\n"
+            f"Regards,\nDiaryArchive Moderation"
+        )
+
+    else:
+        raise ValidationException("action must be 'accept' or 'deny'")
+
+    admin_msg_doc = {
+        "sender_id": admin_id,
+        "sender_username": admin_username,
+        "message": response_message,
+    }
+    await ticket_repo.add_message(ticket_id, admin_msg_doc)
+
+    if action == "accept":
+        await ticket_repo.delete(ticket_id)
+    else:
+        await ticket_repo._collection.update_one(
+            {"_id": ObjectId(ticket_id)},
+            {"$set": {"resolution": "denied", "resolution_message": response_message}},
+        )
+        await ticket_repo.close_ticket(ticket_id)
+
+    try:
+        await create_notif(
+            recipient_id=target_user_id,
+            actor_id=admin_id,
+            notification_type="account_help",
+            target_type="ticket",
+            target_id=ticket_id,
+            metadata={
+                "title": notification_title,
+                "body": notification_body,
+                "action": action,
+            },
+        )
+    except Exception:
+        logger.warning("Failed to send appeal resolution notification", exc_info=True)
+
+    updated = await ticket_repo.get_by_id(ticket_id)
+    return {"data": _build_ticket_response(updated)}
+
+
 async def get_user_appeals(user_id: str) -> list[dict]:
     ticket_repo = TicketRepository()
     tickets = await ticket_repo.find_by_user(user_id)
@@ -261,3 +371,21 @@ def _build_ticket_summary(ticket: dict) -> dict:
         "created_at": ticket.get("created_at"),
         "updated_at": ticket.get("updated_at"),
     }
+
+
+def _clear_appeal_rate_limits(username: str) -> None:
+    try:
+        from app.core.database import DatabaseManager
+        redis = DatabaseManager.get_redis()
+        import asyncio
+
+        async def _do():
+            await redis.delete(
+                f"rate_limit:appeal:{username}",
+                f"rate_limit:appeal_reply:{username}",
+            )
+            logger.info("Cleared appeal rate limits for %s", username)
+
+        asyncio.create_task(_do())
+    except Exception:
+        logger.warning("Failed to clear appeal rate limits", exc_info=True)

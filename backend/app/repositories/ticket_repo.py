@@ -71,6 +71,7 @@ class TicketRepository(BaseRepository):
     async def add_message(self, ticket_id: str, message: dict) -> bool:
         if not ObjectId.is_valid(ticket_id):
             return False
+        message["_id"] = ObjectId()
         message["created_at"] = datetime.now(UTC)
         result = await self._collection.update_one(
             {"_id": ObjectId(ticket_id)},
@@ -94,3 +95,10 @@ class TicketRepository(BaseRepository):
             },
         )
         return result.modified_count > 0
+
+    async def find_pending_appeal(self, user_id: str) -> dict | None:
+        return await self.find_one({
+            "user_id": ObjectId(user_id),
+            "category": "account_help",
+            "status": "open",
+        })

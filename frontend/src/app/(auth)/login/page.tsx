@@ -36,6 +36,9 @@ function LoginForm() {
       try {
         clearBan();
         await login(username.trim(), password);
+        if (useAuthStore.getState().isBanned) {
+          return;
+        }
         const redirect = searchParams.get("redirect") || "/";
         router.push(redirect);
       } catch (err: unknown) {

@@ -22,8 +22,6 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
   const [warningType, setWarningType] = useState<"bio" | "username">("bio");
   const [reason, setReason] = useState("");
 
-  if (!currentUser?.is_admin) return null;
-
   const warnMutation = useMutation({
     mutationFn: async () => {
       const endpoint = warningType === "bio" ? "/admin/warnings/bio" : "/admin/warnings/username";
@@ -39,6 +37,8 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
       showToast(msg);
     },
   });
+
+  if (!currentUser?.is_admin) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

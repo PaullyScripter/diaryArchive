@@ -283,7 +283,7 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
 
     is_owner = current_user and str(diary["user_id"]) == str(current_user["_id"])
 
-    if diary.get("privacy") in ("private", "draft") and not is_owner:
+    if diary.get("privacy") in ("private", "draft", "hidden") and not is_owner:
         raise NotFoundException("Diary not found")
 
     user_repo = UserRepository()
