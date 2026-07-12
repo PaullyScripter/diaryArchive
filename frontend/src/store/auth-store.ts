@@ -97,17 +97,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (
         err &&
         typeof err === "object" &&
-        "response" in err &&
-        (err as { response: { status: number; data?: { error?: { code?: string; message?: string } } } }).response.status === 403
+        "response" in err
       ) {
-        const errorData = (err as { response: { data?: { error?: { code?: string; message?: string } } } }).response.data?.error;
-        if (errorData?.code === "account_banned") {
-          set({
-            isBanned: true,
-            banReason: errorData.message || "Your account has been suspended.",
-            isLoading: false,
-          });
-          return;
+        const response = (err as { response: { status: number; data?: { error?: { code?: string; message?: string; data?: { ban_reason?: string; banned_at?: string; can_appeal?: boolean } } } } }).response;
+        if (response.status === 403) {
+          const errorBody = response.data?.error;
+          if (errorBody?.code === "account_banned") {
+            set({
+              isBanned: true,
+              banReason: errorBody.data?.ban_reason || errorBody.message || "Your account has been suspended.",
+              isLoading: false,
+            });
+            return;
+          }
         }
       }
       throw err;

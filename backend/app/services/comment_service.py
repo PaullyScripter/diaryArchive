@@ -181,6 +181,10 @@ async def list_comments(
             raise NotFoundException("Diary not found")
 
     user_repo = UserRepository()
+    diary_author = await user_repo.get_by_id(str(diary["user_id"]))
+    if diary_author and diary_author.get("is_banned") and not (current_user and str(current_user["_id"]) == str(diary["user_id"])):
+        raise NotFoundException("Diary not found")
+
     banned_ids = await user_repo.get_banned_user_ids()
 
     comment_repo = CommentRepository()
@@ -219,6 +223,10 @@ async def list_replies(
             raise NotFoundException("Diary not found")
 
     user_repo = UserRepository()
+    diary_author = await user_repo.get_by_id(str(diary["user_id"]))
+    if diary_author and diary_author.get("is_banned") and not (current_user and str(current_user["_id"]) == str(diary["user_id"])):
+        raise NotFoundException("Diary not found")
+
     banned_ids = await user_repo.get_banned_user_ids()
 
     skip = (page - 1) * per_page

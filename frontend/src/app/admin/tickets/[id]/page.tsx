@@ -54,6 +54,8 @@ export default function AdminTicketDetailPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pendingMedia, setPendingMedia] = useState<{ id: string; url: string; mime_type: string } | null>(null);
+  const [resolveAction, setResolveAction] = useState<"accept" | "deny" | null>(null);
+  const [resolveMessage, setResolveMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: ticket, isLoading, isError, refetch } = useQuery<TicketDetail>({
@@ -98,6 +100,24 @@ export default function AdminTicketDetailPage() {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
         "Failed to close ticket";
+      showToast(msg);
+    },
+  });
+
+  const resolveMutation = useMutation({
+    mutationFn: async (args: { action: string; response_message: string }) => {
+      await apiClient.put(`/admin/tickets/${ticketId}/resolve`, args);
+    },
+    onSuccess: (_, variables) => {
+      showToast(`Appeal ${variables.action === "accept" ? "accepted" : "denied"}`);
+      setResolveAction(null);
+      setResolveMessage("");
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+        "Failed to resolve";
       showToast(msg);
     },
   });
@@ -248,36 +268,108 @@ export default function AdminTicketDetailPage() {
         </div>
       </div>
 
-      <div className="mt-4 space-y-3">
-        <h2 className="text-xs font-medium text-muted uppercase tracking-wider">Thread</h2>
-        {ticket.messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`border p-3 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-foreground">
-                {msg.sender_username}
-                {msg.is_admin && (
-                  <span className="ml-1 text-xs text-accent">(admin)</span>
-                )}
-              </span>
-              <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+      {isAssignedToMe && isOpen && ticket.category === "account_help" && (
+        <div className="mt-3 border border-border p-3 space-y-2">
+          <div className="text-xs font-medium text-foreground">Resolve Appeal</div>
+          {!resolveAction ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setResolveAction("accept")}
+                className="text-xs px-3 py-1 border-0 cursor-pointer bg-link text-white hover:opacity-80"
+              >
+                Accept (Unban)
+              </button>
+              <button
+                onClick={() => setResolveAction("deny")}
+                className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80"
+              >
+                Deny (Keep Banned)
+              </button>
             </div>
-          <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
-            {msg.message}
-          </div>
-          {msg.media_url && (
-            <div className="mt-2">
-              {msg.media_type?.startsWith("image/") ? (
-                <img src={msg.media_url} alt="attachment" className="max-w-full max-h-80 rounded border border-border object-contain" />
-              ) : (
-                <a href={msg.media_url} target="_blank" rel="noreferrer" className="text-xs text-link hover:underline">View attachment</a>
-              )}
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${resolveAction === "accept" ? "text-link" : "text-destructive"}`}>
+                  {resolveAction === "accept" ? "Accepting appeal" : "Denying appeal"}
+                </span>
+                <button
+                  onClick={() => { setResolveAction(null); setResolveMessage(""); }}
+                  className="text-xs text-muted hover:text-foreground cursor-pointer bg-transparent border-0 underline"
+                >
+                  Cancel
+                </button>
+              </div>
+              <label className="text-xs text-muted block">
+                Response message (min 10 chars) <span className="text-subtle">({resolveMessage.trim().length}/10)</span>
+              </label>
+              <textarea
+                value={resolveMessage}
+                onChange={(e) => setResolveMessage(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
+                placeholder={
+                  resolveAction === "accept"
+                    ? "Explain why the appeal is accepted..."
+                    : "Explain why the appeal is denied..."
+                }
+              />
+              <button
+                onClick={() =>
+                  resolveMutation.mutate({
+                    action: resolveAction,
+                    response_message: resolveMessage.trim(),
+                  })
+                }
+                disabled={resolveMutation.isPending || resolveMessage.trim().length < 10}
+                className={`text-xs px-3 py-1 border-0 cursor-pointer text-white hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  resolveAction === "accept" ? "bg-link" : "bg-destructive"
+                }`}
+              >
+                {resolveMutation.isPending
+                  ? "Resolving..."
+                  : resolveAction === "accept"
+                    ? "Accept & Unban"
+                    : "Deny & Keep Banned"}
+              </button>
             </div>
           )}
-          </div>
-        ))}
+        </div>
+      )}
+
+      <div className="mt-4 space-y-3">
+        <h2 className="text-xs font-medium text-muted uppercase tracking-wider">Thread</h2>
+        <div className="max-h-80 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+          {ticket.messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`border p-3 ${msg.is_admin ? "border-border bg-overlay" : "border-border"}`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-foreground">
+                  {msg.sender_username}
+                  {msg.is_admin && (
+                    <span className="ml-1 text-xs text-accent">(admin)</span>
+                  )}
+                </span>
+                <span className="text-xs text-muted">{fmtDate(msg.created_at)}</span>
+              </div>
+            <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed">
+              {msg.message}
+            </div>
+            {msg.media_url && (
+              <div className="mt-2">
+                {msg.media_type?.startsWith("image/") ? (
+                  <img src={msg.media_url} alt="attachment" className="max-w-full max-h-80 rounded border border-border object-contain" />
+                ) : (
+                  <a href={msg.media_url} target="_blank" rel="noreferrer" className="text-xs text-link hover:underline">View attachment</a>
+                )}
+              </div>
+            )}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
 
         {isOpen && (
           <form onSubmit={handleReply} className="border border-border p-3 space-y-2">
