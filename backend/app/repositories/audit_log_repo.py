@@ -1,7 +1,5 @@
 from datetime import UTC, datetime
 
-from bson import ObjectId
-
 from app.repositories.base import BaseRepository
 
 
@@ -27,8 +25,8 @@ class AuditLogRepository(BaseRepository):
         filter_dict: dict = {}
         if action:
             filter_dict["action"] = action
-        if admin_id and ObjectId.is_valid(admin_id):
-            filter_dict["admin_id"] = ObjectId(admin_id)
+        if admin_id:
+            filter_dict["admin_id"] = admin_id
         if target_type:
             filter_dict["target_type"] = target_type
         if from_date or to_date:
@@ -57,8 +55,8 @@ class AuditLogRepository(BaseRepository):
         filter_dict: dict = {}
         if action:
             filter_dict["action"] = action
-        if admin_id and ObjectId.is_valid(admin_id):
-            filter_dict["admin_id"] = ObjectId(admin_id)
+        if admin_id:
+            filter_dict["admin_id"] = admin_id
         if target_type:
             filter_dict["target_type"] = target_type
         if from_date or to_date:
