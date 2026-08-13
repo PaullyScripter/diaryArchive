@@ -317,20 +317,37 @@ export default function TermsPage() {
           violations, and we are not obligated to provide prior notice where doing
           so would be impractical or unlawful.
         </p>
+        <InfoCard>
+          <p className="text-sm leading-relaxed text-muted">
+            We will comply with lawful requests where required by applicable law,
+            including valid court orders, subpoenas, and government requests.
+            Where we remove or disclose content in response to such a request, we
+            will do so to the minimum extent necessary and, where permitted and
+            practicable, will notify the affected user of the action we took.
+          </p>
+        </InfoCard>
       </Section>
 
       <Section title="11. Third-Party Services">
         <p className="text-sm leading-relaxed text-muted mb-3">
-          DiaryArchive may integrate with or link to third-party services (for
-          example, for authentication or media handling). Your use of any
-          third-party service is subject to that service&apos;s own terms and
-          privacy practices.
+          DiaryArchive is built on a privacy-first model. We do
+          <strong className="text-foreground"> not send your personal data or
+          Content to any third-party service</strong>. All core infrastructure
+          (databases, search, storage, and caching) is self-hosted and operated by
+          us. There are no advertising networks, no behavioral analytics, and no
+          social media integrations.
+        </p>
+        <p className="text-sm leading-relaxed text-muted mb-3">
+          DiaryArchive may link to external websites or permit integration with
+          third-party services that you choose to connect or interact with
+          yourself. Your use of any such third-party service is subject to that
+          service&apos;s own terms and privacy practices.
         </p>
         <p className="text-sm leading-relaxed text-muted">
           We are not responsible for the content, policies, or practices of any
-          third-party service, and we do not control which data (if any) they
-          receive. We will always disclose any third-party data recipients in our
-          Privacy Policy.
+          third-party service, and we do not control what data (if any) you
+          voluntarily provide to them. If we ever introduce a third-party data
+          recipient, we will disclose it in our Privacy Policy before doing so.
         </p>
       </Section>
 
