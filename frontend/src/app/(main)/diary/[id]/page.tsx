@@ -18,6 +18,7 @@ import { WarningOverlay } from "@/components/diary/diary-warning-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LikeButton } from "@/components/social/like-button";
 import { BookmarkButton } from "@/components/social/bookmark-button";
 import { ReportButton } from "@/components/social/report-button";
@@ -275,11 +276,14 @@ export default function DiaryReaderPage() {
       )}
 
       {passwordPrompt && isPrivate && isOwner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="decrypt-dialog-title">
           <div className="w-full max-w-sm mx-4 bg-background border border-border rounded-lg shadow-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <Lock className="w-5 h-5 text-accent" />
-              <h2 className="text-base font-semibold text-foreground">
+              <h2 id="decrypt-dialog-title" className="text-base font-semibold text-foreground">
                 Enter Password to Decrypt
               </h2>
             </div>
@@ -287,7 +291,11 @@ export default function DiaryReaderPage() {
               This diary is end-to-end encrypted. Enter your account password to decrypt
               it in your browser.
             </p>
+            <label htmlFor="decrypt-password" className="sr-only">
+              Account password
+            </label>
             <Input
+              id="decrypt-password"
               type="password"
               value={decryptInput}
               onChange={(e) => {
@@ -480,30 +488,33 @@ export default function DiaryReaderPage() {
       {!isPrivate && <CommentSection diaryId={id} highlightCommentId={highlightId} />}
     </div>
 
-    {showAdminDeleteDialog && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAdminDeleteDialog(false)}>
-        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-sm font-medium mb-2">Admin Deletion</h3>
-          <p className="text-xs text-muted mb-3">
-            You are about to delete someone else&apos;s diary. This action will be audit logged.
-            Please provide a reason (min 10 characters).
-          </p>
+    <Dialog open={showAdminDeleteDialog} onOpenChange={(o) => { if (!o) { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); } }}>
+        <DialogContent className="w-80 max-w-[95vw]">
+          <DialogHeader>
+            <DialogTitle>Admin Deletion</DialogTitle>
+            <DialogDescription>
+              You are about to delete someone else&apos;s diary. This action will be audit logged.
+              Please provide a reason (min 10 characters).
+            </DialogDescription>
+          </DialogHeader>
+          <label htmlFor="admin-delete-reason" className="text-xs text-muted block">
+            Reason (min 10 characters)
+          </label>
           <textarea
+            id="admin-delete-reason"
             value={adminDeleteReason}
             onChange={(e) => setAdminDeleteReason(e.target.value)}
             rows={3}
             maxLength={500}
-            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
+            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
             placeholder="Reason for deletion..."
           />
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); }}
-              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
-            >
+          <DialogFooter>
+            <Button type="button" variant="secondary" size="sm" onClick={() => { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); }}>
               Cancel
-            </button>
+            </Button>
             <Button
+              type="button"
               variant="destructive"
               size="sm"
               onClick={handleAdminDeleteConfirm}
@@ -511,10 +522,9 @@ export default function DiaryReaderPage() {
             >
               {deleteDiary.isPending ? "Deleting..." : "Delete"}
             </Button>
-          </div>
-        </div>
-      </div>
-    )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

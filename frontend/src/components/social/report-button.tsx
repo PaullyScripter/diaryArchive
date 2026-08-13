@@ -5,6 +5,7 @@ import { Flag } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const REPORT_REASONS = [
   { value: "spam", label: "Spam" },
@@ -53,6 +54,9 @@ export function ReportButton({ targetType, targetId }: ReportButtonProps) {
     }
   };
 
+  const title =
+    targetType === "diary" ? "Report Diary" : targetType === "comment" ? "Report Comment" : "Report User";
+
   return (
     <>
       <button
@@ -64,77 +68,74 @@ export function ReportButton({ targetType, targetId }: ReportButtonProps) {
         Report
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-background border border-border p-4 w-80 max-w-[95vw] max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-sm font-medium mb-3">
-              Report {targetType === "diary" ? "Diary" : targetType === "comment" ? "Comment" : "User"}
-            </h3>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="w-80 max-w-[95vw] max-h-[90vh] overflow-y-auto p-4">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>Select a reason for reporting this content.</DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-1.5 mb-3">
-              {REPORT_REASONS.map((r) => (
-                <label
-                  key={r.value}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer border ${
-                    reason === r.value
-                      ? "border-foreground bg-overlay text-foreground"
-                      : "border-border text-muted hover:text-foreground"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="report-reason"
-                    value={r.value}
-                    checked={reason === r.value}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="sr-only"
-                  />
-                  {r.label}
-                </label>
-              ))}
-            </div>
-
-            <label className="text-xs text-muted block mb-1">
-              Description (optional, max 2000 chars)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
-              placeholder="Provide additional details..."
-            />
-
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => {
-                  setOpen(false);
-                  setReason("");
-                  setDescription("");
-                }}
-                className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
+          <fieldset className="space-y-1.5 my-2">
+            <legend className="sr-only">Reason</legend>
+            {REPORT_REASONS.map((r) => (
+              <label
+                key={r.value}
+                className={`flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer border ${
+                  reason === r.value
+                    ? "border-foreground bg-overlay text-foreground"
+                    : "border-border text-muted hover:text-foreground"
+                }`}
               >
-                Cancel
-              </button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSubmit}
-                disabled={!reason || submitting}
-              >
-                {submitting ? "Submitting..." : "Submit Report"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+                <input
+                  type="radio"
+                  name="report-reason"
+                  value={r.value}
+                  checked={reason === r.value}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="sr-only"
+                />
+                {r.label}
+              </label>
+            ))}
+          </fieldset>
+
+          <label htmlFor="report-description" className="text-xs text-muted block mb-1">
+            Description (optional, max 2000 chars)
+          </label>
+          <textarea
+            id="report-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
+            placeholder="Provide additional details..."
+          />
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setOpen(false);
+                setReason("");
+                setDescription("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSubmit}
+              disabled={!reason || submitting}
+            >
+              {submitting ? "Submitting..." : "Submit Report"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

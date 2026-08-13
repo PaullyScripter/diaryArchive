@@ -23,6 +23,15 @@ out/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.production.*
+!.env.production.example
+backend/.env.production
+frontend/.env.production
+
+# Backups
+/backups/
+docker/nginx/certs/
 
 # IDE
 .vscode/

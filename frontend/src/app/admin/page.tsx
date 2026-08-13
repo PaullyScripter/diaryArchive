@@ -56,7 +56,7 @@ export default function AdminOverviewPage() {
             className="border border-border p-3"
           >
             <div className="text-xs text-muted mb-1">{card.label}</div>
-            <div className="text-xl font-medium">{card.value.toLocaleString()}</div>
+            <div className="font-serif text-base leading-tight">{card.value.toLocaleString()}</div>
           </div>
         ))}
       </div>

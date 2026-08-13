@@ -65,9 +65,48 @@ export function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuItemsRef = useRef<(HTMLAnchorElement | HTMLButtonElement | null)[]>([]);
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
   const { unreadCount, list: notificationsList, markRead } = useNotifications();
+
+  const focusMenuItem = (index: number) => {
+    const item = menuItemsRef.current[index];
+    if (item) item.focus();
+  };
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent) => {
+    const count = menuItemsRef.current.length;
+    if (count === 0) return;
+    const current = menuItemsRef.current.findIndex((el) => el === document.activeElement);
+    const idx = current >= 0 ? current : 0;
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        focusMenuItem((idx + 1) % count);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        focusMenuItem((idx - 1 + count) % count);
+        break;
+      case "Home":
+        e.preventDefault();
+        focusMenuItem(0);
+        break;
+      case "End":
+        e.preventDefault();
+        focusMenuItem(count - 1);
+        break;
+      case "Escape":
+        e.preventDefault();
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+        break;
+      default:
+        break;
+    }
+  };
 
   const fromList = notificationsList.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
   const count = unreadCount.data?.data?.unread_count ?? 0;
@@ -94,6 +133,13 @@ export function NavBar() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
+
+  useEffect(() => {
+    if (menuOpen) {
+      const first = menuItemsRef.current[0];
+      if (first) first.focus();
+    }
+  }, [menuOpen]);
 
   return (
     <header className="border-b border-border">
@@ -129,6 +175,7 @@ export function NavBar() {
           {isAuthenticated ? (
             <div className="relative" ref={menuRef}>
               <button
+                ref={triggerRef}
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="text-sm text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                 type="button"
@@ -139,10 +186,12 @@ export function NavBar() {
                 <div
                   className="absolute right-0 top-full z-50 mt-1.5 min-w-36 border border-border bg-background shadow-sm"
                   role="menu"
+                  onKeyDown={handleMenuKeyDown}
                 >
                   <Link
                     href={`/profile/${user?.username}`}
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[0] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -151,6 +200,7 @@ export function NavBar() {
                   <Link
                     href="/me"
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[1] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -159,6 +209,7 @@ export function NavBar() {
                   <Link
                     href="/notifications"
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[2] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -172,6 +223,7 @@ export function NavBar() {
                   <Link
                     href="/me/reports-tickets"
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[3] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -180,6 +232,7 @@ export function NavBar() {
                   <Link
                     href="/me/bookmarks"
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[4] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -188,6 +241,7 @@ export function NavBar() {
                   <Link
                     href="/me/likes"
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[5] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -196,6 +250,7 @@ export function NavBar() {
                   <Link
                     href="/settings"
                     onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[6] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -205,6 +260,7 @@ export function NavBar() {
                     <Link
                       href="/admin"
                       onClick={() => setMenuOpen(false)}
+                      ref={(el) => { menuItemsRef.current[7] = el; }}
                       className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                       role="menuitem"
                     >
@@ -214,6 +270,7 @@ export function NavBar() {
                   <hr className="my-1 border-border" />
                   <button
                     onClick={handleLogout}
+                    ref={(el) => { menuItemsRef.current[8] = el; }}
                     className="block w-full px-3 py-1.5 text-left text-xs text-destructive hover:bg-overlay cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     type="button"
                     role="menuitem"

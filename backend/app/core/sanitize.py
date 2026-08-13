@@ -6,7 +6,7 @@ ALLOWED_TAGS = {
     "ul", "ol", "li", "blockquote", "pre", "code",
     "em", "strong", "a", "img", "table", "thead",
     "tbody", "tr", "th", "td", "hr", "br", "span",
-    "style", "div",
+    "div",
 }
 
 ALLOWED_ATTRIBUTES = {

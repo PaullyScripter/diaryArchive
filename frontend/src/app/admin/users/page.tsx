@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useAdminUsers } from "@/hooks/use-admin";
 import { showToast } from "@/components/shared/toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 function fmtDate(d: string) {
   if (!d) return "-";
@@ -18,6 +20,7 @@ export default function AdminUsersPage() {
   const [searchInput, setSearchInput] = useState("");
   const [status, setStatus] = useState("all");
   const [banReason, setBanReason] = useState("");
+  const [banError, setBanError] = useState("");
   const [banTarget, setBanTarget] = useState<string | null>(null);
   const [roleTarget, setRoleTarget] = useState<string | null>(null);
   const { list, ban, unban, changeRole } = useAdminUsers(q, status);
@@ -34,7 +37,11 @@ export default function AdminUsersPage() {
 
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="flex gap-1">
+          <label htmlFor="admin-user-search" className="sr-only">
+            Search username
+          </label>
           <input
+            id="admin-user-search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -182,116 +189,121 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {banTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setBanTarget(null)}>
-          <div
-            className="bg-background border border-border p-4 w-80 max-w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-sm font-medium mb-3">Ban User</h3>
-            <label className="text-xs text-muted block mb-1">Reason (min 10 characters)</label>
+      <Dialog open={!!banTarget} onOpenChange={(o) => { if (!o) { setBanTarget(null); setBanError(""); } }}>
+        <DialogContent className="w-80 max-w-full">
+          <DialogHeader>
+            <DialogTitle>Ban User</DialogTitle>
+            <DialogDescription>
+              This will suspend the user&apos;s account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="ban-reason" className="text-xs text-muted block">
+              Reason (min 10 characters)
+            </label>
             <textarea
+              id="ban-reason"
               value={banReason}
-              onChange={(e) => setBanReason(e.target.value)}
+              onChange={(e) => { setBanReason(e.target.value); setBanError(""); }}
               rows={3}
               maxLength={1000}
-              className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
+              className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
               placeholder="Explain the reason for this ban..."
             />
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => { setBanTarget(null); setBanReason(""); }}
-                className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  if (banReason.trim().length < 10) {
-                    showToast("Ban reason must be at least 10 characters");
-                    return;
-                  }
-                  ban.mutate(
-                    { id: banTarget, reason: banReason.trim() },
-                    {
-                      onSuccess: () => {
-                        showToast("User banned");
-                        setBanTarget(null);
-                        setBanReason("");
-                      },
-                      onError: (err: unknown) => {
-                        const msg =
-                          (err as { response?: { data?: { error?: { message?: string } } } })
-                            ?.response?.data?.error?.message || "Failed to ban";
-                        showToast(msg);
-                      },
-                    },
-                  );
-                }}
-                disabled={ban.isPending}
-                className="text-xs px-3 py-1 border-0 cursor-pointer bg-destructive text-white hover:opacity-80 disabled:opacity-50"
-              >
-                {ban.isPending ? "Banning..." : "Ban"}
-              </button>
-            </div>
+            {banError && (
+              <p className="text-xs text-destructive" role="alert">{banError}</p>
+            )}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button type="button" variant="secondary" size="sm" onClick={() => { setBanTarget(null); setBanError(""); }}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="bg-destructive text-white border-destructive hover:opacity-80"
+              onClick={() => {
+                if (banReason.trim().length < 10) {
+                  setBanError("Ban reason must be at least 10 characters");
+                  return;
+                }
+                ban.mutate(
+                  { id: banTarget!, reason: banReason.trim() },
+                  {
+                    onSuccess: () => {
+                      showToast("User banned");
+                      setBanTarget(null);
+                      setBanReason("");
+                      setBanError("");
+                    },
+                    onError: (err: unknown) => {
+                      const msg =
+                        (err as { response?: { data?: { error?: { message?: string } } } })
+                          ?.response?.data?.error?.message || "Failed to ban";
+                      showToast(msg);
+                    },
+                  },
+                );
+              }}
+              disabled={ban.isPending}
+            >
+              {ban.isPending ? "Banning..." : "Ban"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {roleTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setRoleTarget(null)}>
-          <div
-            className="bg-background border border-border p-4 w-72 max-w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-sm font-medium mb-3">
+      <Dialog open={!!roleTarget} onOpenChange={(o) => { if (!o) setRoleTarget(null); }}>
+        <DialogContent className="w-72 max-w-full">
+          <DialogHeader>
+            <DialogTitle>
               {users.find((u) => u.id === roleTarget)?.is_admin
                 ? "Demote from Admin"
                 : "Promote to Admin"}
-            </h3>
-            <p className="text-xs text-muted mb-4">
+            </DialogTitle>
+            <DialogDescription>
               {users.find((u) => u.id === roleTarget)?.is_admin
                 ? "This will remove admin privileges from this user."
                 : "This will grant full admin access to this user."}
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setRoleTarget(null)}
-                className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  const target = users.find((u) => u.id === roleTarget);
-                  changeRole.mutate(
-                    {
-                      id: roleTarget,
-                      isAdmin: target ? !target.is_admin : true,
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setRoleTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                const target = users.find((u) => u.id === roleTarget);
+                changeRole.mutate(
+                  {
+                    id: roleTarget!,
+                    isAdmin: target ? !target.is_admin : true,
+                  },
+                  {
+                    onSuccess: () => {
+                      showToast("Role updated");
+                      setRoleTarget(null);
                     },
-                    {
-                      onSuccess: () => {
-                        showToast("Role updated");
-                        setRoleTarget(null);
-                      },
-                      onError: (err: unknown) => {
-                        const msg =
-                          (err as { response?: { data?: { error?: { message?: string } } } })
-                            ?.response?.data?.error?.message || "Failed to change role";
-                        showToast(msg);
-                      },
+                    onError: (err: unknown) => {
+                      const msg =
+                        (err as { response?: { data?: { error?: { message?: string } } } })
+                          ?.response?.data?.error?.message || "Failed to change role";
+                      showToast(msg);
                     },
-                  );
-                }}
-                disabled={changeRole.isPending}
-                className="text-xs px-3 py-1 border-0 cursor-pointer bg-foreground text-background hover:opacity-80 disabled:opacity-50"
-              >
-                {changeRole.isPending ? "Updating..." : "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                  },
+                );
+              }}
+              disabled={changeRole.isPending}
+            >
+              {changeRole.isPending ? "Updating..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

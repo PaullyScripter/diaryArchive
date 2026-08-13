@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import UTC, datetime
 
@@ -7,6 +6,7 @@ from app.core.exceptions import (
     PermissionDeniedException,
     ValidationException,
 )
+from app.core.background import run_in_background
 from app.core.sanitize import sanitize_html
 from app.core.utils import fmt_dt
 from app.repositories.diary_repo import DiaryRepository
@@ -29,7 +29,7 @@ def _index_diary_async(diary: dict) -> None:
             await redis.delete("tags:popular:90:50", "tags:popular:365:100", "emotions:counts:90", "emotions:counts:v2:90")
         except Exception:
             pass
-    asyncio.create_task(_do_index())
+    run_in_background(_do_index())
 
 
 def _remove_from_index_async(diary_id: str) -> None:
@@ -46,7 +46,7 @@ def _remove_from_index_async(diary_id: str) -> None:
             await redis.delete("tags:popular:90:50", "tags:popular:365:100", "emotions:counts:90", "emotions:counts:v2:90")
         except Exception:
             pass
-    asyncio.create_task(_do_remove())
+    run_in_background(_do_remove())
 
 
 def _cascade_delete_media_async(diary_id: str) -> None:
@@ -58,7 +58,7 @@ def _cascade_delete_media_async(diary_id: str) -> None:
                 logger.info("Cascade deleted %d media records for diary %s", count, diary_id)
         except Exception:
             logger.warning("Media cascade delete failed for diary %s", diary_id, exc_info=True)
-    asyncio.create_task(_do())
+    run_in_background(_do())
 
 
 def _check_achievements_async(user_id: str) -> None:
@@ -68,7 +68,7 @@ def _check_achievements_async(user_id: str) -> None:
             await check_and_award_diary_achievements(user_id)
         except Exception:
             pass
-    asyncio.create_task(_do())
+    run_in_background(_do())
 
 
 VALID_WARNINGS = frozenset({"adult", "violence", "self-harm", "substance"})
@@ -505,16 +505,19 @@ async def list_public_diaries(
     from app.services.enrichment_service import enrich_diary_batch
     diaries = await enrich_diary_batch(diaries, current_user)
 
-    author_cache: dict[str, dict] = {}
+    author_ids = list({str(d["user_id"]) for d in diaries})
+    authors = await user_repo.find_by_ids(author_ids)
+    author_map = {str(u["_id"]): u for u in authors}
+
     data = []
     for diary in diaries:
         did = str(diary["_id"])
         diary["stats"]["comment_count"] = count_map.get(did, 0)
-        author_id = str(diary["user_id"])
-        if author_id not in author_cache:
-            author = await user_repo.get_by_id(author_id)
-            author_cache[author_id] = author if author else {"_id": author_id, "username": "unknown"}
-        data.append(_build_diary_list_item(diary, author_cache[author_id], current_user))
+        author = author_map.get(
+            str(diary["user_id"]),
+            {"_id": str(diary["user_id"]), "username": "unknown"},
+        )
+        data.append(_build_diary_list_item(diary, author, current_user))
 
     return {
         "data": data,
@@ -611,7 +614,7 @@ def _send_delete_notification(
     comment_text: str | None = None,
     reason: str | None = None,
 ) -> None:
-    import asyncio as _asyncio
+    from app.core.background import run_in_background
     from app.services.notification_service import create_notification
 
     type_labels = {
@@ -656,4 +659,4 @@ def _send_delete_notification(
         except Exception:
             logger.warning("Failed delete notification type=%s", notification_type, exc_info=True)
 
-    _asyncio.create_task(_do())
+    run_in_background(_do())

@@ -24,6 +24,7 @@ from app.core.media_validator import (
 from app.core.minio_client import get_minio_client
 from app.core.utils import fmt_dt
 from app.repositories.media_repo import MediaRepository
+from app.repositories.diary_repo import DiaryRepository
 from app.services.image_service import process_image, get_image_dimensions
 
 logger = logging.getLogger(__name__)
@@ -146,6 +147,11 @@ async def upload_media(
         )
 
     if diary_id:
+        diary_repo = DiaryRepository()
+        diary = await diary_repo.get_by_id(diary_id)
+        if diary is None or str(diary.get("user_id")) != str(user["_id"]):
+            raise PermissionDeniedException("You do not own this diary")
+
         diary_count = await repo.count_by_user(str(user["_id"]), diary_id=diary_id)
         if diary_count >= settings.max_media_per_diary:
             raise ValidationException(
@@ -184,7 +190,7 @@ async def upload_media(
 
     if category == "image":
         try:
-            w, h = get_image_dimensions(file_data)
+            w, h = await asyncio.to_thread(get_image_dimensions, file_data)
             width, height = w, h
         except Exception as e:
             raise ValidationException(f"Invalid or corrupted image: {e}") from e
@@ -203,7 +209,7 @@ async def upload_media(
     diary_oid = ObjectId(diary_id) if diary_id and ObjectId.is_valid(diary_id) else None
 
     if category == "image":
-        variants = process_image(file_data)
+        variants = await asyncio.to_thread(process_image, file_data)
         stored_path = f"{base_path}.webp"
         await _upload_object_async(stored_path, variants["original"], "image/webp")
 

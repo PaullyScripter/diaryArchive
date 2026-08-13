@@ -1,11 +1,16 @@
 import asyncio
 import logging
+import re
 
+from app.core.exceptions import ValidationException
+from app.models.diary import VALID_EMOTIONS
 from app.repositories.user_repo import UserRepository
 from app.search.config import PUBLIC_DIARIES_INDEX, get_client
 from app.search.enricher import enrich_search_results
 
 logger = logging.getLogger(__name__)
+
+_TAG_RE = re.compile(r"^[A-Za-z0-9_-]{1,50}$")
 
 
 def _run_search(index, q: str, search_params: dict) -> dict:
@@ -28,11 +33,17 @@ async def search_diaries(
 
     if tags:
         tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        for t in tag_list:
+            if not _TAG_RE.match(t):
+                raise ValidationException(f"Invalid tag: {t!r}")
         if tag_list:
             tag_filters = [f'tags = "{t}"' for t in tag_list]
             filters.append(f"({' OR '.join(tag_filters)})")
 
     if emotion:
+        emotion = emotion.strip().lower()
+        if emotion not in VALID_EMOTIONS:
+            raise ValidationException(f"Invalid emotion: {emotion!r}")
         filters.append(f'emotion = "{emotion}"')
 
     if year is not None:

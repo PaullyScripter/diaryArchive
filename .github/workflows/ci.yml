@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [skip-ci]
   pull_request:
-    branches: [main]
+    branches: ["**"]
 
 jobs:
   backend-lint:
@@ -86,6 +86,25 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
 
   docker-build:
     runs-on: ubuntu-latest

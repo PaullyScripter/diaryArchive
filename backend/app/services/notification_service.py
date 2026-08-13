@@ -1,9 +1,9 @@
-import asyncio
 import logging
 from datetime import UTC, datetime
 
 from bson import ObjectId
 
+from app.core.background import run_in_background
 from app.repositories.notification_repo import NotificationRepository
 from app.repositories.user_repo import UserRepository
 
@@ -36,7 +36,7 @@ def _send_notification_async(
                 notification_type, actor_id, recipient_id, exc_info=True,
             )
 
-    asyncio.create_task(_do_send())
+    run_in_background(_do_send())
 
 
 async def create_notification(

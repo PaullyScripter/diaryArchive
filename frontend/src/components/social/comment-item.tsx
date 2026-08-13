@@ -13,6 +13,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { Avatar } from "@/components/shared/avatar";
 import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ReportButton } from "@/components/social/report-button";
 import { AdminWarnButton } from "@/components/admin/admin-warn-button";
 import Link from "next/link";
@@ -241,32 +242,32 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
       )}
     </div>
 
-    {showAdminDeleteDialog && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAdminDeleteDialog(false)}>
-        <div className="bg-background border border-border p-4 w-80 max-w-[95vw]" onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-sm font-medium mb-2">Admin Comment Deletion</h3>
-          <p className="text-xs text-muted mb-1">
-            Deleting comment by <strong>@{comment.author.username}</strong>
-          </p>
-          <p className="text-xs text-muted mb-3">
-            This action will be audit logged. Please provide a reason (min 10 characters).
-          </p>
+    <Dialog open={showAdminDeleteDialog} onOpenChange={(o) => { if (!o) { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); } }}>
+        <DialogContent className="w-80 max-w-[95vw]">
+          <DialogHeader>
+            <DialogTitle>Admin Comment Deletion</DialogTitle>
+            <DialogDescription>
+              Deleting comment by <strong>@{comment.author.username}</strong>. This action will be audit logged.
+            </DialogDescription>
+          </DialogHeader>
+          <label htmlFor="admin-delete-reason" className="text-xs text-muted block">
+            Reason (min 10 characters)
+          </label>
           <textarea
+            id="admin-delete-reason"
             value={adminDeleteReason}
             onChange={(e) => setAdminDeleteReason(e.target.value)}
             rows={3}
             maxLength={500}
-            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none mb-3"
+            className="w-full border border-border bg-background text-xs p-2 text-foreground resize-none"
             placeholder="Reason for deletion..."
           />
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); }}
-              className="text-xs px-3 py-1 border border-border cursor-pointer bg-transparent text-muted hover:text-foreground"
-            >
+          <DialogFooter>
+            <Button type="button" variant="secondary" size="sm" onClick={() => { setShowAdminDeleteDialog(false); setAdminDeleteReason(""); }}>
               Cancel
-            </button>
+            </Button>
             <Button
+              type="button"
               variant="destructive"
               size="sm"
               onClick={handleAdminDeleteConfirm}
@@ -274,10 +275,9 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
             >
               {deleteComment.isPending ? "Deleting..." : "Delete"}
             </Button>
-          </div>
-        </div>
-      </div>
-    )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

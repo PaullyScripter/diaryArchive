@@ -1,9 +1,16 @@
+import logging
 import re
 
 from bson import ObjectId
 
+from app.core.database import DatabaseManager
 from app.core.exceptions import ConflictException
 from app.repositories.base import BaseRepository
+
+logger = logging.getLogger(__name__)
+
+BANNED_USER_IDS_KEY = "banned_user_ids"
+BANNED_USER_IDS_TTL = 300
 
 
 class UserRepository(BaseRepository):
@@ -95,9 +102,50 @@ class UserRepository(BaseRepository):
         return await self.update(user_id, {"is_admin": is_admin})
 
     async def get_banned_user_ids(self) -> list[ObjectId]:
+        try:
+            redis = DatabaseManager.get_redis()
+        except (RuntimeError, AttributeError):
+            redis = None
+        if redis is not None:
+            members = None
+            try:
+                members = await redis.smembers(BANNED_USER_IDS_KEY)
+            except Exception:
+                logger.warning("Failed to read banned user ids from Redis", exc_info=True)
+            if members:
+                return [ObjectId(m) for m in members if ObjectId.is_valid(m)]
+        ids = await self._query_banned_user_ids()
+        if redis is not None and ids:
+            await self._cache_banned_user_ids(ids)
+        return ids
+
+    async def _query_banned_user_ids(self) -> list[ObjectId]:
         cursor = self._collection.find({"is_banned": True}, {"_id": 1})
         docs = await cursor.to_list(length=10000)
         return [d["_id"] for d in docs]
+
+    async def _cache_banned_user_ids(self, ids: list[ObjectId]) -> None:
+        if not ids:
+            return
+        try:
+            redis = DatabaseManager.get_redis()
+            await redis.delete(BANNED_USER_IDS_KEY)
+            await redis.sadd(BANNED_USER_IDS_KEY, *(str(oid) for oid in ids))
+            await redis.expire(BANNED_USER_IDS_KEY, BANNED_USER_IDS_TTL)
+        except Exception:
+            logger.warning("Failed to cache banned user ids in Redis", exc_info=True)
+
+    async def refresh_banned_user_ids(self) -> list[ObjectId]:
+        ids = await self._query_banned_user_ids()
+        try:
+            redis = DatabaseManager.get_redis()
+            await redis.delete(BANNED_USER_IDS_KEY)
+            if ids:
+                await redis.sadd(BANNED_USER_IDS_KEY, *(str(oid) for oid in ids))
+                await redis.expire(BANNED_USER_IDS_KEY, BANNED_USER_IDS_TTL)
+        except Exception:
+            logger.warning("Failed to refresh banned user ids in Redis", exc_info=True)
+        return ids
 
     def _to_object_id(self, id: str):
         return ObjectId(id)

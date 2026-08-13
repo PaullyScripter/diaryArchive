@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -35,21 +35,73 @@ class Settings(BaseSettings):
 
     warnings_check_interval_hours: int = 1
 
-    @field_validator("secret_key")
-    @classmethod
-    def secret_key_required(cls, v: str) -> str:
-        if not v or v == "change-me-in-production":
-            raise ValueError("SECRET_KEY must be set to a secure random value")
-        return v
+    # Centralized rate limits: key -> (max_attempts, window_seconds). Endpoints
+    # read from here via get_rate_limit so policy is tunable in one place rather
+    # than being scattered inline across endpoint files.
+    rate_limits: dict[str, tuple[int, int]] = {
+        # auth
+        "register": (5, 60),
+        "login": (10, 60),
+        "login_user": (5, 300),
+        "refresh": (20, 60),
+        "password_reset_request": (3, 3600),
+        "password_reset_submit": (10, 3600),
+        # appeals
+        "appeal_status": (12, 300),
+        "appeal_submit": (3, 3600),
+        "appeal_reply": (5, 3600),
+        # admin
+        "admin_ticket_reply": (30, 60),
+        "admin_ticket_close": (30, 60),
+        "admin_ticket_resolve": (30, 60),
+    }
 
-    @field_validator("email_encryption_key")
-    @classmethod
-    def email_encryption_key_required(cls, v: str) -> str:
-        if not v or v == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef":
-            raise ValueError("EMAIL_ENCRYPTION_KEY must be set to a secure random 64-char hex value")
-        if len(v) != 64:
-            raise ValueError("EMAIL_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)")
-        return v
+    def get_rate_limit(self, name: str) -> tuple[int, int]:
+        return self.rate_limits.get(name, (30, 60))
+
+    # Known weak / committed development values that are acceptable only when
+    # debug mode is enabled. Outside debug mode (i.e. in any real deployment)
+    # startup fails closed if one of these leaks through.
+    _KNOWN_WEAK_SECRETS = {
+        "change-me-in-production",
+        "dev-secret-for-local-development-only-not-production",
+        "dev-secret-key-only-for-local-development",
+    }
+
+    _model_validator_mode = "after"
+
+    @model_validator(mode="after")
+    def enforce_secrets(self):
+        # In debug mode allow the documented development values (gitignored
+        # overrides normally replace them). Outside debug mode, fail closed.
+        if self.debug:
+            return self
+
+        if not self.secret_key or self.secret_key.lower() in self._KNOWN_WEAK_SECRETS:
+            raise ValueError(
+                "SECRET_KEY must be a secure random value (development placeholders are "
+                "not allowed outside debug mode)"
+            )
+        if len(self.secret_key) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters")
+
+        if not self.email_encryption_key or len(self.email_encryption_key) != 64:
+            raise ValueError(
+                "EMAIL_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)"
+            )
+        if self.email_encryption_key.lower() != self.email_encryption_key or any(
+            c not in "0123456789abcdef" for c in self.email_encryption_key.lower()
+        ):
+            raise ValueError("EMAIL_ENCRYPTION_KEY must be a valid hex string")
+        if int(self.email_encryption_key, 16) == 0:
+            raise ValueError("EMAIL_ENCRYPTION_KEY must not be all zeros")
+
+        if self.minio_access_key == "minioadmin":
+            raise ValueError("MINIO_ACCESS_KEY must not use the default 'minioadmin' value")
+        if self.meilisearch_api_key == "dev-master-key":
+            raise ValueError("MEILISEARCH_API_KEY must not use the 'dev-master-key' value")
+
+        return self
 
     model_config = {
         "env_file": (".env.development", ".env"),

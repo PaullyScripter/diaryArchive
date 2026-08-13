@@ -20,6 +20,7 @@ from app.core.security import (
     create_access_token,
     create_email_verification_token,
     generate_refresh_token,
+    get_client_ip,
     hash_password_async,
     hash_token,
     verify_password_async,
@@ -28,6 +29,7 @@ from app.models.token import AuthResponse, RegisterResponse, TokenResponse
 from app.models.user import UserCreate, UserLogin
 from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
+from app.repositories.audit_log_repo import AuditLogRepository
 from app.repositories.user_repo import UserRepository
 from app.services.encryption_service import encrypt_email, hash_email
 
@@ -86,6 +88,30 @@ def _clear_refresh_cookie(response: Response) -> None:
     )
 
 
+async def _write_auth_audit(
+    actor: str,
+    action: str,
+    target_type: str,
+    target_id: str | None,
+    ip_address: str | None,
+    details: dict | None = None,
+) -> None:
+    try:
+        repo = AuditLogRepository()
+        await repo.create_log({
+            "admin_id": actor,
+            "admin_username": actor,
+            "action": action,
+            "target_type": target_type,
+            "target_id": target_id,
+            "details": details or {},
+            "ip_address": ip_address,
+            "category": "auth",
+        })
+    except Exception:
+        logger.exception("Failed to write auth audit event: %s %s", action, target_id)
+
+
 def _validate_password(password: str) -> None:
     if len(password) < 8 or len(password) > 128:
         raise ValidationException("Password must be between 8 and 128 characters")
@@ -112,7 +138,8 @@ async def register(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:register:{request.client.host}", 5, 60
+        "rate_limit:register:" + get_client_ip(request),
+        *settings.get_rate_limit("register"),
     )
     if is_limited:
         raise RateLimitException("Too many registration attempts")
@@ -193,19 +220,53 @@ async def login(
     response: Response,
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
+    client_ip = get_client_ip(request)
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:login:{request.client.host}", 10, 60
+        "rate_limit:login:" + client_ip,
+        *settings.get_rate_limit("login"),
     )
     if is_limited:
         raise RateLimitException("Too many login attempts")
 
+    username_lower = body.username.lower()
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:login_user:{username_lower}:{client_ip}",
+        *settings.get_rate_limit("login_user"),
+    )
+    if is_limited:
+        await _write_auth_audit(
+            actor=username_lower,
+            action="login_failed",
+            target_type="user",
+            target_id=username_lower,
+            ip_address=client_ip,
+            details={"reason": "brute_force_throttled"},
+        )
+        raise RateLimitException("Too many login attempts")
+
     user_repo = UserRepository()
-    user = await user_repo.get_by_username(body.username.lower())
+    user = await user_repo.get_by_username(username_lower)
 
     if user is None or not await verify_password_async(body.password, user["password_hash"]):
+        await _write_auth_audit(
+            actor=username_lower,
+            action="login_failed",
+            target_type="user",
+            target_id=str(user["_id"]) if user else username_lower,
+            ip_address=client_ip,
+            details={"reason": "invalid_credentials"},
+        )
         raise AuthenticationException("Invalid username or password")
 
     if user.get("is_banned"):
+        await _write_auth_audit(
+            actor=username_lower,
+            action="login_refused",
+            target_type="user",
+            target_id=str(user["_id"]),
+            ip_address=client_ip,
+            details={"reason": "banned"},
+        )
         return JSONResponse(
             status_code=403,
             content={
@@ -231,6 +292,14 @@ async def login(
 
     await _generate_tokens(response, str(user["_id"]))
 
+    await _write_auth_audit(
+        actor=user["username"],
+        action="login_success",
+        target_type="user",
+        target_id=str(user["_id"]),
+        ip_address=client_ip,
+    )
+
     return {"data": AuthResponse(
         id=str(user["_id"]),
         username=user["username"],
@@ -246,7 +315,8 @@ async def refresh(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:refresh:{request.client.host}", 20, 60
+        "rate_limit:refresh:" + get_client_ip(request),
+        *settings.get_rate_limit("refresh"),
     )
     if is_limited:
         raise RateLimitException("Too many refresh attempts")
@@ -363,7 +433,8 @@ async def request_password_reset(
 
     if user and user.get("email_encrypted"):
         is_limited, _ = await check_rate_limit(
-            f"rate_limit:password_reset:{user['email_hash']}", 3, 3600
+            "rate_limit:password_reset_request:" + user["email_hash"],
+            *settings.get_rate_limit("password_reset_request"),
         )
         if is_limited:
             raise RateLimitException("Too many password reset requests")
@@ -395,6 +466,14 @@ async def reset_password(
     if not token or not new_password:
         raise ValidationException("Token and new_password are required")
 
+    client_ip = get_client_ip(request)
+    is_limited, _ = await check_rate_limit(
+        "rate_limit:password_reset_submit:" + client_ip,
+        *settings.get_rate_limit("password_reset_submit"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many password reset attempts")
+
     _validate_password(new_password)
 
     token_hash = hash_token(token)
@@ -424,6 +503,14 @@ async def reset_password(
 
     refresh_repo = RefreshTokenRepository()
     await refresh_repo.delete_all_for_user(str(user["_id"]))
+
+    await _write_auth_audit(
+        actor=user["username"],
+        action="password_reset",
+        target_type="user",
+        target_id=str(user["_id"]),
+        ip_address=client_ip,
+    )
 
     return {
         "data": {"message": "Password reset successfully. Please log in with your new password."}

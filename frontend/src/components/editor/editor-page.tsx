@@ -443,10 +443,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       </div>
 
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="preview-dialog-title">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg">
             <div className="sticky top-0 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
-              <h2 className="text-sm font-medium text-foreground">
+              <h2 id="preview-dialog-title" className="text-sm font-medium text-foreground">
                 Preview
               </h2>
               <div className="flex items-center gap-2">
@@ -512,13 +515,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       )}
 
       {showKeySetup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="End-to-end encryption setup">
           <div className="w-full max-w-md mx-4 bg-background border border-border rounded-lg shadow-lg p-6">
             {keySetupStep === "explain" ? (
               <>
                 <div className="flex items-center gap-3 mb-4">
                   <Shield className="w-6 h-6 text-accent" />
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 id="key-setup-title" className="text-lg font-semibold text-foreground">
                     Set Up End-to-End Encryption
                   </h2>
                 </div>

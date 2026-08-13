@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 
 interface Toast {
   id: number;
@@ -8,53 +8,57 @@ interface Toast {
 }
 
 let nextId = 0;
-const listeners = new Set<(toast: Toast | null) => void>();
+const queue: Toast[] = [];
+let active: Toast | null = null;
+let timer: ReturnType<typeof setTimeout> | null = null;
+const listeners = new Set<() => void>();
+
+function notifyUpdate() {
+  listeners.forEach((fn) => fn());
+}
+
+function advanceQueue() {
+  if (queue.length > 0) {
+    active = queue.shift()!;
+    timer = setTimeout(advanceQueue, 4000);
+  } else {
+    active = null;
+  }
+  notifyUpdate();
+}
 
 export function showToast(message: string) {
-  const toast = { id: ++nextId, message };
-  listeners.forEach((fn) => fn(toast));
+  queue.push({ id: ++nextId, message });
+  if (!active) advanceQueue();
 }
 
 export function ToastContainer() {
-  const [toast, setToast] = useState<Toast | null>(null);
-  const [leaving, setLeaving] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    listeners.add(setToast);
-    return () => { listeners.delete(setToast); };
-  }, []);
-
-  const dismiss = useCallback(() => {
-    setLeaving(true);
-    timerRef.current = setTimeout(() => {
-      setToast(null);
-      setLeaving(false);
-    }, 200);
-  }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    setLeaving(false);
-    timerRef.current = setTimeout(dismiss, 4000);
+    const listener = () => setTick((n) => n + 1);
+    listeners.add(listener);
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      listeners.delete(listener);
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
     };
-  }, [toast, dismiss]);
+  }, []);
 
-  if (!toast) return null;
+  if (!active) return null;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
       <div
+        key={active.id}
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        className={`pointer-events-auto px-4 py-2.5 rounded-md bg-foreground text-background text-sm shadow-lg transition-opacity duration-200 ${
-          leaving ? "opacity-0" : "opacity-100 animate-in fade-in slide-in-from-bottom-2"
-        }`}
+        className="pointer-events-auto px-4 py-2.5 rounded-md bg-foreground text-background text-sm shadow-lg animate-in fade-in slide-in-from-bottom-2"
       >
-        {toast.message}
+        {active.message}
       </div>
     </div>
   );

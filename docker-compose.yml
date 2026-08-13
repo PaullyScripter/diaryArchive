@@ -91,10 +91,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: runner
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
     ports:
       - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: /api/v1
     depends_on:
       - backend
 

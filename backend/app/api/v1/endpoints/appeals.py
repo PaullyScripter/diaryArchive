@@ -2,8 +2,13 @@ import logging
 
 from fastapi import APIRouter, Request
 
+from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
-from app.core.security import check_rate_limit, verify_password_async
+from app.core.security import (
+    check_rate_limit,
+    get_client_ip,
+    verify_password_async,
+)
 from app.repositories.ticket_repo import TicketRepository
 from app.repositories.user_repo import UserRepository
 from app.services.ticket_service import add_message, create_ticket
@@ -28,12 +33,19 @@ def _build_message_list(messages: list[dict], user_id: str) -> list[dict]:
 
 
 @router.post("/appeal/status")
-async def get_appeal_status(body: dict):
+async def get_appeal_status(body: dict, request: Request):
     username = body.get("username", "").lower().strip()
     password = body.get("password", "")
 
     if not username or not password:
         raise ValidationException("username and password are required")
+
+    is_limited, _ = await check_rate_limit(
+        "rate_limit:appeal_status:" + get_client_ip(request),
+        *settings.get_rate_limit("appeal_status"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many appeal status checks. Please try again later.")
 
     user_repo = UserRepository()
     user = await user_repo.get_by_username(username)
@@ -81,7 +93,8 @@ async def reply_to_appeal(
         raise ValidationException("Message must be at least 5 characters")
 
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:appeal_reply:{username}", 5, 3600
+        f"rate_limit:appeal_reply:{username}:{get_client_ip(request)}",
+        *settings.get_rate_limit("appeal_reply"),
     )
     if is_limited:
         raise RateLimitException("Too many replies. Please try again later.")
@@ -127,7 +140,8 @@ async def submit_appeal(
         raise ValidationException("Appeal message must be at least 10 characters")
 
     is_limited, _ = await check_rate_limit(
-        f"rate_limit:appeal:{username}", 3, 3600
+        f"rate_limit:appeal_submit:{username}:{get_client_ip(request)}",
+        *settings.get_rate_limit("appeal_submit"),
     )
     if is_limited:
         raise RateLimitException("Too many appeal attempts. Please try again later.")
