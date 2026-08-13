@@ -1,0 +1,106 @@
+Business Source License 1.1
+
+License text copyright (c) 2017 MariaDB Corporation Ab, All Rights Reserved.
+"Business Source License" is a trademark of MariaDB Corporation Ab.
+
+-----------------------------------------------------------------------------
+
+Parameters
+
+Licensor:             PaullyScripter
+
+Licensed Work:        DiaryArchive
+                      The Licensed Work is (c) 2026 PaullyScripter
+
+Additional Use Grant: The Licensed Work may be used, copied, modified, and
+                      distributed free of charge, provided that use is limited
+                      to: (a) non-production, non-commercial activities,
+                      including development, testing, evaluation, and personal
+                      or educational use; and (b) internal, non-commercial
+                      employee or contractor activities that do not involve
+                      exposing the Licensed Work to external users for
+                      commercial gain. Any production, commercial, or
+                      revenue-generating use, deployment, or distribution of
+                      the Licensed Work requires a separate commercial license
+                      agreement with the Licensor.
+
+Change Date:          6 years after the date of the Licensed Work's initial
+                      public release (2026-08-13), i.e. 2032-08-13.
+
+Change License:       MIT License (the "Change License")
+
+For information about alternative licensing arrangements for the Licensed
+Work, please contact the Licensor.
+
+-----------------------------------------------------------------------------
+
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited
+production use.
+
+Effective on the Change Date, the Licensor hereby grants you rights under
+the terms of the Change License, and the rights granted in the paragraph
+above terminate.
+
+If your use of the Licensed Work does not comply with the requirements
+currently in effect as described in this License, you must purchase a
+commercial license from the Licensor, its affiliated entities, or authorized
+resellers, or you must refrain from using the Licensed Work.
+
+All copies of the original and modified Licensed Work, and derivative works
+of the Licensed Work, are subject to this License. This License applies
+separately for each version of the Licensed Work, provided that any version
+of the Licensed Work that makes any use of this License must conform to this
+License.
+
+Any modification of the Licensed Work must be distributed in accordance with
+this License. You must retain this license and copyright notice in each copy
+of the Licensed Work or derivative works as they appear, in each case, in the
+source code and in any object code generated from the source code.
+
+Redistribution in any form without the written consent of the Licensor is
+prohibited. You may not use the Licensed Work or any derivative work to
+compete, directly or indirectly, with the Licensor's business activities
+without the written consent of the Licensor.
+
+This License does not grant you any right in any trademark or logo of
+Licensor or its affiliates (provided that you may use a trademark or logo of
+Licensor as expressly required by this License).
+
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS PROVIDED ON
+AN "AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL WARRANTIES AND CONDITIONS,
+EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION) WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, AND
+TITLE.
+
+Microsoft Windows NT is a trademark of Microsoft Corporation. Your use of
+that trademark is subject to Microsoft's trademark guidelines.
+
+-----------------------------------------------------------------------------
+
+Change License
+
+MIT License
+
+Copyright (c) 2032 PaullyScripter
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
