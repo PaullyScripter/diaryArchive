@@ -6,6 +6,25 @@ from app.search.config import PUBLIC_DIARIES_INDEX, get_client
 logger = logging.getLogger(__name__)
 
 
+async def _meili_call_retry(operation, *args, attempts: int = 3, **kwargs):
+    delay = 0.5
+    last_exc: Exception | None = None
+    op_name = getattr(operation, "__name__", "meilisearch_op")
+    for attempt in range(attempts):
+        try:
+            return await asyncio.to_thread(operation, *args, **kwargs)
+        except Exception as e:
+            last_exc = e
+            logger.warning(
+                "Meilisearch %s failed (attempt %d/%d): %s",
+                op_name, attempt + 1, attempts, e,
+            )
+            if attempt < attempts - 1:
+                await asyncio.sleep(delay)
+                delay *= 2
+    raise last_exc
+
+
 class DiaryIndexer:
     def __init__(self):
         self.index = get_client().index(PUBLIC_DIARIES_INDEX)
@@ -15,13 +34,13 @@ class DiaryIndexer:
             return
         try:
             doc = self._build_document(diary)
-            await asyncio.to_thread(lambda: self.index.add_documents([doc], primary_key="id"))
+            await _meili_call_retry(self.index.add_documents, [doc], primary_key="id")
         except Exception:
             logger.warning("Failed to index diary %s", diary.get("_id"), exc_info=True)
 
     async def remove_diary(self, diary_id: str) -> None:
         try:
-            await asyncio.to_thread(lambda: self.index.delete_document(diary_id))
+            await _meili_call_retry(self.index.delete_document, diary_id)
         except Exception:
             logger.warning("Failed to remove diary %s from index", diary_id, exc_info=True)
 
@@ -34,13 +53,13 @@ class DiaryIndexer:
         if not docs:
             return
         try:
-            await asyncio.to_thread(lambda: self.index.add_documents(docs, primary_key="id"))
+            await _meili_call_retry(self.index.add_documents, docs, primary_key="id")
         except Exception:
             logger.warning("Failed to bulk index %d diaries", len(docs), exc_info=True)
 
     async def clear_index(self) -> None:
         try:
-            await asyncio.to_thread(lambda: self.index.delete_all_documents())
+            await _meili_call_retry(self.index.delete_all_documents)
         except Exception:
             logger.warning("Failed to clear Meilisearch index", exc_info=True)
 

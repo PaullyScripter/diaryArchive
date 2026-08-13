@@ -21,10 +21,13 @@ export function WarningOverlay({ warnings, onAcknowledge }: WarningOverlayProps)
   const needsAgeGate = warnings.includes("adult");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="content-warning-title">
       <div className="max-w-sm mx-4 p-6 text-center">
         <AlertTriangle className="w-10 h-10 text-foreground mx-auto mb-4" />
-        <h2 className="font-serif text-lg font-semibold text-foreground mb-2">
+        <h2 id="content-warning-title" className="font-serif text-lg font-semibold text-foreground mb-2">
           Content Warning
         </h2>
         <p className="text-sm text-muted mb-4">

@@ -11,7 +11,11 @@ from app.core.database import DatabaseManager
 from app.core.error_handlers import diaryarchive_exception_handler, generic_exception_handler
 from app.core.exceptions import DiaryArchiveException
 from app.core.indexes import create_indexes
-from app.core.middleware import CSPSecurityMiddleware, RequestIDMiddleware
+from app.core.middleware import (
+    CSPSecurityMiddleware,
+    RequestIDMiddleware,
+    RequestLoggingMiddleware,
+)
 from app.core.minio_client import initialize_minio
 from app.search.config import initialize_search_indexes
 from app.search.sync import full_reindex
@@ -88,6 +92,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CSPSecurityMiddleware)
 
 app.add_exception_handler(DiaryArchiveException, diaryarchive_exception_handler)

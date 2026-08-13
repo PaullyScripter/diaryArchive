@@ -29,8 +29,6 @@ interface ExistingAppeal {
   assigned_admin_username?: string;
 }
 
-const STORAGE_KEY = "appeal_creds";
-
 function AppealForm() {
   const searchParams = useSearchParams();
   const initialUsername = searchParams.get("username") || "";
@@ -48,20 +46,6 @@ function AppealForm() {
   const threadEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const saveCreds = useCallback((u: string, p: string) => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ u, p }));
-    } catch { /* ignore */ }
-  }, []);
-
-  const loadCreds = useCallback((): { u: string; p: string } | null => {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch { /* ignore */ }
-    return null;
-  }, []);
-
   const checkStatus = useCallback(async (u: string, p: string, silent = false) => {
     if (!u.trim() || !p) return;
     if (!silent) setChecking(true);
@@ -76,8 +60,12 @@ function AppealForm() {
       } else {
         setExistingAppeal(null);
       }
-    } catch {
+    } catch (err: unknown) {
       if (!silent) {
+        const msg =
+          (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+          "Could not check your appeal status. Please try again.";
+        setError(msg);
         setExistingAppeal(null);
       }
     } finally {
@@ -86,12 +74,7 @@ function AppealForm() {
   }, []);
 
   useEffect(() => {
-    const creds = loadCreds();
-    if (creds) {
-      setUsername(creds.u);
-      setPassword(creds.p);
-      checkStatus(creds.u, creds.p, true);
-    } else if (initialUsername) {
+    if (initialUsername) {
       setUsername(initialUsername);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,10 +100,9 @@ function AppealForm() {
 
   const handleCheck = useCallback(async () => {
     if (username.trim() && password) {
-      saveCreds(username.trim(), password);
       await checkStatus(username.trim(), password);
     }
-  }, [username, password, saveCreds, checkStatus]);
+  }, [username, password, checkStatus]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -142,7 +124,6 @@ function AppealForm() {
 
       setLoading(true);
       try {
-        saveCreds(username.trim(), password);
         await apiClient.post("/auth/appeal", {
           username: username.trim(),
           password,
@@ -159,7 +140,7 @@ function AppealForm() {
         setLoading(false);
       }
     },
-    [username, password, message, saveCreds, checkStatus],
+    [username, password, message, checkStatus],
   );
 
   const handleReply = useCallback(
@@ -188,7 +169,6 @@ function AppealForm() {
   );
 
   const handleLogout = useCallback(() => {
-    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     setExistingAppeal(null);
     setPassword("");
   }, []);

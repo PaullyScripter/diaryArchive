@@ -21,6 +21,7 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
   const [open, setOpen] = useState(false);
   const [warningType, setWarningType] = useState<"bio" | "username">("bio");
   const [reason, setReason] = useState("");
+  const [validationError, setValidationError] = useState("");
 
   const warnMutation = useMutation({
     mutationFn: async () => {
@@ -42,14 +43,18 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (reason.trim().length < 5) return;
+    if (reason.trim().length < 5) {
+      setValidationError("Please provide a reason (min 5 characters) before sending.");
+      return;
+    }
+    setValidationError("");
     warnMutation.mutate();
   };
 
   return (
     <>
       <button
-        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(true); }}
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); setValidationError(""); setOpen(true); }}
         className={`text-muted hover:text-accent cursor-pointer bg-transparent border-0 ${className}`}
         title="Warn user"
         type="button"
@@ -86,7 +91,7 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
             </div>
             <textarea
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
+              onChange={(e) => { setReason(e.target.value); if (validationError) setValidationError(""); }}
               rows={3}
               maxLength={500}
               className="w-full border border-border bg-background text-sm p-2 text-foreground resize-none"
@@ -96,7 +101,14 @@ export function AdminWarnButton({ userId, username, className = "" }: AdminWarnB
                   : "Explain why the username is inappropriate..."
               }
               disabled={warnMutation.isPending}
+              aria-describedby={validationError ? "warn-reason-error" : undefined}
+              aria-invalid={!!validationError}
             />
+            {validationError && (
+              <p id="warn-reason-error" className="text-xs text-destructive" role="alert">
+                {validationError}
+              </p>
+            )}
             <p className="text-xs text-muted">
               {warningType === "bio"
                 ? "User will receive instructions to edit their bio in Settings > Profile."

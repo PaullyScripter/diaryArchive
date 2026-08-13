@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import time
@@ -259,6 +258,7 @@ async def admin_ban_user(
         raise ValidationException("Ban reason must be at least 10 characters")
 
     await user_repo.set_ban_status(user_id, is_banned, ban_reason=reason or None)
+    await user_repo.refresh_banned_user_ids()
 
     if is_banned:
         refresh_repo = RefreshTokenRepository()
@@ -486,6 +486,7 @@ def _remove_banned_user_from_search(user_id: str) -> None:
     try:
         from app.search.indexer import DiaryIndexer
         from app.core.database import DatabaseManager
+        from app.core.background import run_in_background
         db = DatabaseManager.get_db()
         indexer = DiaryIndexer()
         async def _do():
@@ -493,7 +494,7 @@ def _remove_banned_user_from_search(user_id: str) -> None:
             async for diary in cursor:
                 await indexer.remove_diary(str(diary["_id"]))
             logger.info("Removed user %s diaries from search index", user_id)
-        asyncio.create_task(_do())
+        run_in_background(_do())
     except Exception:
         logger.warning("Failed to remove banned user from search index", exc_info=True)
 
@@ -501,6 +502,7 @@ def _remove_banned_user_from_search(user_id: str) -> None:
 def _reindex_user_diaries_async(user_id: str) -> None:
     try:
         from app.core.database import DatabaseManager
+        from app.core.background import run_in_background
         db = DatabaseManager.get_db()
         async def _do():
             cursor = db.diaries.find({"user_id": ObjectId(user_id), "privacy": "public"})
@@ -508,7 +510,7 @@ def _reindex_user_diaries_async(user_id: str) -> None:
                 from app.services.diary_service import _index_diary_async
                 _index_diary_async(diary)
             logger.info("Re-indexed user %s diaries", user_id)
-        asyncio.create_task(_do())
+        run_in_background(_do())
     except Exception:
         logger.warning("Failed to re-index user diaries", exc_info=True)
 

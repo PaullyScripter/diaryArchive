@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdminReports } from "@/hooks/use-admin";
@@ -30,8 +30,19 @@ export default function AdminReportDetailPage() {
   const [warningReason, setWarningReason] = useState("");
   const { list, resolve, dismiss } = useAdminReports("all");
 
-  const reports = list.data?.pages?.flatMap((p) => p.data ?? []) ?? [];
+  const reports = useMemo(
+    () => list.data?.pages?.flatMap((p) => p.data ?? []) ?? [],
+    [list.data?.pages],
+  );
   const report = reports.find((r) => r.id === reportId);
+
+  useEffect(() => {
+    if (list.isLoading) return;
+    const found = reports.some((r) => r.id === reportId);
+    if (!found && list.hasNextPage && !list.isFetchingNextPage) {
+      list.fetchNextPage();
+    }
+  }, [reports, reportId, list]);
 
   if (list.isLoading) {
     return (
@@ -333,7 +344,11 @@ export default function AdminReportDetailPage() {
                         Username
                       </button>
                     </div>
+                    <label htmlFor="warning-reason" className="text-xs text-muted block mb-1">
+                        Warning reason (min 5 characters)
+                      </label>
                     <textarea
+                      id="warning-reason"
                       value={warningReason}
                       onChange={(e) => setWarningReason(e.target.value)}
                       rows={2}
@@ -387,10 +402,11 @@ export default function AdminReportDetailPage() {
                 </div>
                 {selectedAction && (
                   <div>
-                    <label className="text-xs text-muted block mb-1">
+                    <label htmlFor="action-reason" className="text-xs text-muted block mb-1">
                       Reason the author will see (min 10 chars)
                     </label>
                     <textarea
+                      id="action-reason"
                       value={actionReason}
                       onChange={(e) => setActionReason(e.target.value)}
                       rows={2}
@@ -408,11 +424,12 @@ export default function AdminReportDetailPage() {
             )}
             {(!needsContentAction || (selectedAction && reasonReady)) && (
               <div>
-                <label className="text-xs text-muted block mb-1">
+                <label htmlFor="resolution-note" className="text-xs text-muted block mb-1">
                   Resolution Note (required, min 10 chars)
                   <span className="ml-1">({note.trim().length}/10)</span>
                 </label>
                 <textarea
+                  id="resolution-note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}

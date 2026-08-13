@@ -3,8 +3,9 @@ import logging
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_admin, get_current_user
+from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
-from app.core.security import check_rate_limit
+from app.core.security import check_rate_limit, get_client_ip
 from app.models.ticket import TicketCreate, TicketReply
 from app.services.ticket_service import (
     add_message,
@@ -130,8 +131,16 @@ async def admin_assign_ticket(
 async def admin_reply_to_ticket(
     ticket_id: str,
     body: TicketReply,
+    request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:admin_ticket_reply:{current_admin['_id']}:{get_client_ip(request)}",
+        *settings.get_rate_limit("admin_ticket_reply"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many admin ticket replies. Please slow down.")
+
     return await add_message(
         ticket_id=ticket_id,
         sender_id=str(current_admin["_id"]),
@@ -145,8 +154,16 @@ async def admin_reply_to_ticket(
 @admin_router.put("/{ticket_id}/close")
 async def admin_close_ticket(
     ticket_id: str,
+    request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:admin_ticket_close:{current_admin['_id']}:{get_client_ip(request)}",
+        *settings.get_rate_limit("admin_ticket_close"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many admin ticket closes. Please slow down.")
+
     return await close_ticket(ticket_id=ticket_id)
 
 
@@ -165,6 +182,13 @@ async def admin_resolve_ticket(
     if not response_message or len(response_message) < 10:
         raise ValidationException("response_message must be at least 10 characters")
 
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:admin_ticket_resolve:{current_admin['_id']}:{get_client_ip(request)}",
+        *settings.get_rate_limit("admin_ticket_resolve"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many ticket resolutions. Please slow down.")
+
     from app.services.audit_service import log_audit
 
     result = await resolve_ticket(
@@ -182,7 +206,7 @@ async def admin_resolve_ticket(
         target_type="ticket",
         target_id=ticket_id,
         details={"action": action, "response_message": response_message},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     return result

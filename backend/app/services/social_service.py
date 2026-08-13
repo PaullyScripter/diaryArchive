@@ -492,7 +492,7 @@ async def list_following_feed(
 
 
 def _check_likes_achievement_async(user_id: str) -> None:
-    import asyncio
+    from app.core.background import run_in_background
 
     async def _do():
         try:
@@ -501,11 +501,11 @@ def _check_likes_achievement_async(user_id: str) -> None:
         except Exception:
             pass
 
-    asyncio.create_task(_do())
+    run_in_background(_do())
 
 
 def _check_followers_achievement_async(user_id: str) -> None:
-    import asyncio
+    from app.core.background import run_in_background
 
     async def _do():
         try:
@@ -514,4 +514,4 @@ def _check_followers_achievement_async(user_id: str) -> None:
         except Exception:
             pass
 
-    asyncio.create_task(_do())
+    run_in_background(_do())

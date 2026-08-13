@@ -1,7 +1,8 @@
 import asyncio
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
+from app.core.config import settings
 from app.core.database import DatabaseManager
 from app.core.minio_client import get_minio_client
 
@@ -9,7 +10,7 @@ router = APIRouter()
 
 
 @router.get("/health")
-async def health_check():
+async def health_check(response: Response):
     checks: dict[str, str] = {}
 
     try:
@@ -33,7 +34,21 @@ async def health_check():
     except Exception:
         checks["minio"] = "unreachable"
 
+    try:
+        import meilisearch
+
+        meili = meilisearch.Client(
+            settings.meilisearch_url, api_key=settings.meilisearch_api_key or None
+        )
+        meili.health()
+        checks["meilisearch"] = "ok"
+    except Exception:
+        checks["meilisearch"] = "unreachable"
+
     overall = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
+
+    if overall != "healthy":
+        response.status_code = 503
 
     return {
         "status": overall,

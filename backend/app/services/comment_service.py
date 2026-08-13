@@ -253,11 +253,8 @@ async def _enrich_and_format(
     comment_repo = CommentRepository()
     author_ids = list({str(c["user_id"]) for c in comments})
     user_repo = UserRepository()
-    author_map: dict[str, dict] = {}
-    for aid in author_ids:
-        user = await user_repo.get_by_id(aid)
-        if user:
-            author_map[str(user["_id"])] = user
+    authors = await user_repo.find_by_ids(author_ids) if author_ids else []
+    author_map = {str(u["_id"]): u for u in authors}
 
     liked_ids: set[str] = set()
     if current_user:
@@ -313,7 +310,7 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
             target_id=comment_id,
             details={"diary_id": diary_id, "reason": admin_delete_reason.strip()},
         )
-        import asyncio as _asyncio
+        from app.core.background import run_in_background
         from app.services.notification_service import create_notification
 
         comment_reason = admin_delete_reason.strip() if admin_delete_reason else "Content policy violation"
@@ -348,7 +345,7 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
             except Exception:
                 logger.warning("Failed comment delete notification", exc_info=True)
 
-        _asyncio.create_task(_do_comment_notify())
+        run_in_background(_do_comment_notify())
 
     parent_id = comment.get("parent_comment_id")
     await comment_repo.soft_delete(comment_id)

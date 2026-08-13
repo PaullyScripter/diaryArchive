@@ -376,8 +376,8 @@ def _build_ticket_summary(ticket: dict) -> dict:
 def _clear_appeal_rate_limits(username: str) -> None:
     try:
         from app.core.database import DatabaseManager
+        from app.core.background import run_in_background
         redis = DatabaseManager.get_redis()
-        import asyncio
 
         async def _do():
             await redis.delete(
@@ -386,6 +386,6 @@ def _clear_appeal_rate_limits(username: str) -> None:
             )
             logger.info("Cleared appeal rate limits for %s", username)
 
-        asyncio.create_task(_do())
+        run_in_background(_do())
     except Exception:
         logger.warning("Failed to clear appeal rate limits", exc_info=True)
