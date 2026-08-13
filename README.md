@@ -6,14 +6,14 @@ DiaryArchive is a privacy-first diary platform with **client-side end-to-end enc
 
 ## Highlights
 
-- **End-to-end encryption for private diaries** — content is encrypted in the browser (AES-256-GCM via the Web Crypto API) before it ever reaches the server; the server never sees private plaintext or stores keys. Password → PBKDF2-derived key → protects a user-controlled AES-256-GCM master key → HKDF per-diary keys.
-- **Public diaries** — content is sanitized (bleach/DOMPurify allow-lists) and indexable; searchable via Meilisearch.
-- **Rich text editor** — Tiptap (headings, task lists, links, underlines, custom resizable images, font-family/size, character count).
-- **Community** — comments (threaded), likes, bookmarks, follows, notifications, user profiles, achievements/badges.
-- **Moderation & admin suite** — reports, support tickets, ban appeals, user management, role management, warnings system, content hiding, audit logs, health, and dashboard stats.
-- **Media** — image/video/audio uploads with MIME sniffing and size/dimension validation, stored in MinIO; presigned URLs for private media.
-- **Full-text search** — Meilisearch with an enriched, resumable index (excludes banned users, retries with backoff).
-- **Hardenable production deploy** — Docker Compose + Nginx reverse proxy with TLS, rate limiting, caching, security headers, and fail-closed secret validation.
+- **End-to-end encryption for private diaries** - content is encrypted in the browser (AES-256-GCM via the Web Crypto API) before it ever reaches the server; the server never sees private plaintext or stores keys. Password → PBKDF2-derived key → protects a user-controlled AES-256-GCM master key → HKDF per-diary keys.
+- **Public diaries** - content is sanitized (bleach/DOMPurify allow-lists) and indexable; searchable via Meilisearch.
+- **Rich text editor** - Tiptap (headings, task lists, links, underlines, custom resizable images, font-family/size, character count).
+- **Community** - comments (threaded), likes, bookmarks, follows, notifications, user profiles, achievements/badges.
+- **Moderation & admin suite** - reports, support tickets, ban appeals, user management, role management, warnings system, content hiding, audit logs, health, and dashboard stats.
+- **Media** - image/video/audio uploads with MIME sniffing and size/dimension validation, stored in MinIO; presigned URLs for private media.
+- **Full-text search** - Meilisearch with an enriched, resumable index (excludes banned users, retries with backoff).
+- **Hardenable production deploy** - Docker Compose + Nginx reverse proxy with TLS, rate limiting, caching, security headers, and fail-closed secret validation.
 
 ## Tech Stack
 
@@ -114,12 +114,12 @@ docker compose -f docker-compose.yml up -d
 
 Development environment variables are pre-configured in:
 
-- `backend/.env.development` — backend settings (loaded automatically by Pydantic)
-- `frontend/.env.development` — frontend settings (loaded by Next.js)
+- `backend/.env.development` - backend settings (loaded automatically by Pydantic)
+- `frontend/.env.development` - frontend settings (loaded by Next.js)
 
 For local overrides, create `backend/.env` (gitignored). A template lives at `.env.example`.
 
-Production envs (fail-closed, gitignored) are documented in `.env.production.example` — copy it to `.env.production` and generate strong secrets (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`). Outside `DEBUG` mode the backend rejects weak/default secret values on startup.
+Production envs (fail-closed, gitignored) are documented in `.env.production.example` - copy it to `.env.production` and generate strong secrets (e.g. `python -c "import secrets; print(secrets.token_hex(32))"`). Outside `DEBUG` mode the backend rejects weak/default secret values on startup.
 
 ## Testing
 
@@ -156,8 +156,8 @@ cd frontend && npm run typecheck
 - **Rate limiting** on all hot/auth endpoints (Redis sliding window with an in-process fail-closed fallback), policy centralized in `backend/app/core/config.py`.
 - **Security headers + strict Content-Security-Policy** via middleware; reverse-proxy Nginx adds HSTS, rate-limit zones, and CORS controls.
 - **Content sanitization** (bleach / DOMPurify) with allow-lists of tags, attributes, and CSS.
-- **Media validation** — MIME magic-byte sniffing and size / dimension limits.
-- **Fail-closed secret validation** — the backend refuses to start in production with weak or committed default secrets.
+- **Media validation** - MIME magic-byte sniffing and size / dimension limits.
+- **Fail-closed secret validation** - the backend refuses to start in production with weak or committed default secrets.
 
 ## Deployment (Production)
 
@@ -171,7 +171,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 The production overlay adds:
 
 - **Nginx** reverse proxy on 80/443 (TLS), gzip, client-body limits, and rate limiting per zone.
-- **Fail-closed required secrets** — startup aborts if `MONGO_ROOT_USER/PASSWORD`, `REDIS_PASSWORD`, `MEILI_MASTER_KEY`, `MINIO_ACCESS/SECRET_KEY`, `SECRET_KEY`, or `EMAIL_ENCRYPTION_KEY` are unset.
+- **Fail-closed required secrets** - startup aborts if `MONGO_ROOT_USER/PASSWORD`, `REDIS_PASSWORD`, `MEILI_MASTER_KEY`, `MINIO_ACCESS/SECRET_KEY`, `SECRET_KEY`, or `EMAIL_ENCRYPTION_KEY` are unset.
 - **Image pins**, resource limits/reservations, `restart: always`, healthchecks, and **2 backend replicas**.
 - **Redis with AOF persistence** and a `requirepass`; **Meilisearch in production mode**; frontend **not exposed** on a public host port (traffic goes through Nginx only).
 
