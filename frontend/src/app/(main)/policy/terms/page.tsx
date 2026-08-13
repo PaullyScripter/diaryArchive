@@ -208,11 +208,9 @@ export default function TermsPage() {
             <h3 className="text-sm font-semibold text-foreground mb-2">Prohibited Content</h3>
             <ul className="space-y-2 text-sm leading-relaxed text-muted">
               {[
-                "Harass, threaten, or target any individual or group with abuse",
                 "Publish illegal content or content that violates applicable laws",
                 "Post spam, mass-produced, automated, or repetitive content",
                 "Impersonate another person, entity, or falsify attribution",
-                "Promote violence, self-harm, or hate speech",
                 "Share content you do not have the right to share",
                 "Distribute malware, trackers, or malicious scripts",
               ].map((item) => (
@@ -301,11 +299,9 @@ export default function TermsPage() {
         </p>
         <ul className="space-y-2 text-sm leading-relaxed text-muted mb-3">
           {[
-            "Harassment or targeted abuse of another user",
             "Illegal content",
             "Spam or automated posting",
             "Impersonation",
-            "Content that promotes self-harm",
           ].map((item) => (
             <li key={item} className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
