@@ -193,4 +193,6 @@ The full REST API v1 reference is in [`docs/api.md`](docs/api.md). Architecture,
 
 ## License
 
-Add your license here (e.g. MIT, Apache-2.0).
+Licensed under the **Business Source License 1.1** (BUSL-1.1). Source is openly available; non-production, non-commercial use is free, but production or commercial use requires a separate license from the licensor. See [`LICENSE`](LICENSE).
+
+On **2032** (the Change Date), the Licensed Work converts to the **MIT License** and becomes fully open source.
