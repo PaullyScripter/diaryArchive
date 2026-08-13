@@ -18,6 +18,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             <Link href="/policy" className="hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
+            <Link href="/policy/terms" className="hover:text-foreground transition-colors">
+              Terms of Service
+            </Link>
           </nav>
         </div>
       </footer>
