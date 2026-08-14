@@ -31,7 +31,7 @@ async def client():
 async def registered_user(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "testuser", "password": "ValidPass123"},
+        json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json()
@@ -47,7 +47,7 @@ class TestRegister:
     async def test_register_success(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "newuser", "password": "StrongPass1"},
+            json={"username": "newuser", "password": "StrongPass1", "accepted_terms": True},
         )
         assert response.status_code == 201
         body = response.json()
@@ -59,7 +59,7 @@ class TestRegister:
     async def test_register_duplicate_username(self, client: AsyncClient, registered_user: dict):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "testuser", "password": "OtherPass1"},
+            json={"username": "testuser", "password": "OtherPass1", "accepted_terms": True},
         )
         assert response.status_code == 409
         body = response.json()
@@ -69,25 +69,35 @@ class TestRegister:
     async def test_register_weak_password(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "weakuser", "password": "short"},
+            json={"username": "weakuser", "password": "short", "accepted_terms": True},
         )
         assert response.status_code == 422
 
     async def test_register_missing_letter(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "noletters", "password": "12345678"},
+            json={"username": "noletters", "password": "12345678", "accepted_terms": True},
         )
         assert response.status_code == 422
 
     async def test_register_duplicate_email(self, client: AsyncClient):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "user1", "password": "ValidPass1", "email": "same@test.com"},
+            json={
+                "username": "user1",
+                "password": "ValidPass1",
+                "email": "same@test.com",
+                "accepted_terms": True,
+            },
         )
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "user2", "password": "ValidPass1", "email": "same@test.com"},
+            json={
+                "username": "user2",
+                "password": "ValidPass1",
+                "email": "same@test.com",
+                "accepted_terms": True,
+            },
         )
         assert response.status_code == 409
 
@@ -98,12 +108,29 @@ class TestRegister:
         )
         assert response.status_code == 422
 
+    async def test_register_requires_accepted_terms(self, client: AsyncClient):
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"username": "notermsuser", "password": "ValidPass1", "accepted_terms": False},
+        )
+        assert response.status_code == 422
+        body = response.json()
+        error = body.get("error", body)
+        assert "agree" in error.get("message", "").lower()
+
+    async def test_register_rejects_missing_accepted_terms(self, client: AsyncClient):
+        response = await client.post(
+            "/api/v1/auth/register",
+            json={"username": "notermsuser2", "password": "ValidPass1"},
+        )
+        assert response.status_code == 422
+
 
 class TestLogin:
     async def test_login_success(self, client: AsyncClient, registered_user: dict):
         response = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123"},
+            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
         )
         assert response.status_code == 200
         body = response.json()
@@ -114,14 +141,14 @@ class TestLogin:
     async def test_login_wrong_password(self, client: AsyncClient, registered_user: dict):
         response = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "WrongPass123"},
+            json={"username": "testuser", "password": "WrongPass123", "accepted_terms": True},
         )
         assert response.status_code == 401
 
     async def test_login_nonexistent_user(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/login",
-            json={"username": "nobody", "password": "SomePass123"},
+            json={"username": "nobody", "password": "SomePass123", "accepted_terms": True},
         )
         assert response.status_code == 401
 
@@ -133,7 +160,7 @@ class TestLogin:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123"},
+            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
         )
         assert response.status_code == 403
 
@@ -142,7 +169,7 @@ class TestRefresh:
     async def test_refresh_token(self, client: AsyncClient, registered_user: dict):
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123"},
+            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
         )
         cookies = login_resp.cookies
         refresh_cookie = cookies.get("refresh_token")
@@ -163,7 +190,7 @@ class TestRefresh:
     async def test_refresh_rotated(self, client: AsyncClient, registered_user: dict):
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123"},
+            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
         )
         cookies = login_resp.cookies
         refresh_cookie = cookies.get("refresh_token")
@@ -184,7 +211,7 @@ class TestLogout:
     async def test_logout(self, client: AsyncClient, registered_user: dict):
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123"},
+            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
         )
         cookies = login_resp.cookies
         refresh_cookie = cookies.get("refresh_token")
@@ -243,7 +270,7 @@ class TestChangePassword:
 
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "NewValidPass1"},
+            json={"username": "testuser", "password": "NewValidPass1", "accepted_terms": True},
         )
         assert login_resp.status_code == 200
 
@@ -268,7 +295,7 @@ class TestPasswordReset:
     async def test_request_reset_nonexistent(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/request-password-reset",
-            json={"username": "nobody"},
+            json={"username": "nobody", "accepted_terms": True},
         )
         assert response.status_code == 200
         body = response.json()
@@ -296,6 +323,6 @@ class TestPasswordReset:
 
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ResetPass123"},
+            json={"username": "testuser", "password": "ResetPass123", "accepted_terms": True},
         )
         assert login_resp.status_code == 200

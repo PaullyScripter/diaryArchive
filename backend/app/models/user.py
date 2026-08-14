@@ -23,6 +23,10 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=20, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str = Field(..., min_length=8, max_length=128)
     email: str | None = Field(None, max_length=254)
+    accepted_terms: bool = Field(
+        default=False,
+        description="User confirms they have read and agree to the Terms of Service",
+    )
 
 
 class UserLogin(BaseModel):

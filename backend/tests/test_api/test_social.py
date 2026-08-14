@@ -29,7 +29,7 @@ async def client():
 async def auth_token(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "testuser", "password": "ValidPass123"},
+        json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
@@ -205,7 +205,7 @@ class TestFollows:
     async def test_toggle_follow_add(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser", "password": "ValidPass123"},
+            json={"username": "targetuser", "password": "ValidPass123", "accepted_terms": True},
         )
         response = await client.post(
             "/api/v1/users/targetuser/follow",
@@ -219,7 +219,7 @@ class TestFollows:
     async def test_toggle_follow_remove(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser2", "password": "ValidPass123"},
+            json={"username": "targetuser2", "password": "ValidPass123", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/targetuser2/follow",
@@ -242,7 +242,7 @@ class TestFollows:
     async def test_followers_list(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser3", "password": "ValidPass123"},
+            json={"username": "targetuser3", "password": "ValidPass123", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/targetuser3/follow",
@@ -257,7 +257,7 @@ class TestFollows:
     async def test_following_list(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser4", "password": "ValidPass123"},
+            json={"username": "targetuser4", "password": "ValidPass123", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/targetuser4/follow",
@@ -406,11 +406,11 @@ class TestFollowingFeed:
     async def test_following_feed_with_content(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "writer1", "password": "ValidPass123"},
+            json={"username": "writer1", "password": "ValidPass123", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "writer1", "password": "ValidPass123"},
+            json={"username": "writer1", "password": "ValidPass123", "accepted_terms": True},
         )
         writer_token = login_resp.json()["data"]["access_token"]
 
@@ -496,11 +496,11 @@ class TestDeleteCommentAuthorization:
 
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "otheruser", "password": "ValidPass123"},
+            json={"username": "otheruser", "password": "ValidPass123", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "otheruser", "password": "ValidPass123"},
+            json={"username": "otheruser", "password": "ValidPass123", "accepted_terms": True},
         )
         other_token = login_resp.json()["data"]["access_token"]
 
@@ -578,7 +578,7 @@ class TestIsFollowingInLists:
     async def test_is_following_in_followers_list(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "followed_user", "password": "ValidPass123"},
+            json={"username": "followed_user", "password": "ValidPass123", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/followed_user/follow",
@@ -587,7 +587,7 @@ class TestIsFollowingInLists:
 
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "followed_user", "password": "ValidPass123"},
+            json={"username": "followed_user", "password": "ValidPass123", "accepted_terms": True},
         )
         target_token = login_resp.json()["data"]["access_token"]
 

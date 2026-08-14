@@ -29,7 +29,7 @@ async def client():
 async def auth_token(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "searchuser", "password": "ValidPass123"},
+        json={"username": "searchuser", "password": "ValidPass123", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
