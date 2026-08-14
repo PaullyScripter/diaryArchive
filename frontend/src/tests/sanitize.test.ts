@@ -48,6 +48,31 @@ describe("sanitizeHtml", () => {
     expect(result).toContain('<div class="diary-entry">');
   });
 
+  it("neutralizes dangerous CSS inside style blocks", () => {
+    const input =
+      '<style>.a{background:url(javascript:alert(1));color:red}@import url("https://evil.example/x.css");.b{width:expression(1)}</style><p>x</p>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("<style>");
+    expect(result).toContain("DISABLED-url(");
+    expect(result).toContain("DISABLED-javascript:");
+    expect(result).toContain("DISABLED-@import");
+    expect(result).toContain("DISABLED-expression(");
+    expect(result).not.toContain("url(javascript");
+    expect(result).toContain("color:red");
+  });
+
+  it("keeps benign CSS inside style blocks", () => {
+    const input =
+      '<style>.hero{background:linear-gradient(rgba(66,49,40,0.65),rgba(66,49,40,0.65));font-size:clamp(42px,7vw,76px);font-family:Georgia,"Times New Roman",serif;border-radius:24px}@media (max-width:700px){.hero{padding:50px 25px}}</style><p class="hero">x</p>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("linear-gradient(rgba(66,49,40,0.65)");
+    expect(result).toContain("clamp(42px,7vw,76px)");
+    expect(result).toContain("Georgia,\"Times New Roman\"");
+    expect(result).toContain("border-radius:24px");
+    expect(result).toContain("@media");
+    expect(result).toContain("max-width:700px");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });

@@ -8,23 +8,49 @@ const ALLOWED_TAGS = [
   "div", "style",
 ];
 
+const ALLOWED_ATTR = [
+  "class", "style", "href", "target", "rel",
+  "src", "alt", "width", "height",
+];
+
+// Constructs that must never survive inside a CSS value or <style> block.
+// The DISABLED- prefix neuters the token while keeping surrounding CSS intact.
+const CSS_DANGEROUS_PATTERNS: RegExp[] = [
+  /url\s*\(/gi,
+  /expression\s*\(/gi,
+  /@import/gi,
+  /javascript\s*:/gi,
+  /vbscript\s*:/gi,
+  /data\s*:/gi,
+  /-moz-binding/gi,
+  /behavior\s*:/gi,
+  /progid\s*:/gi,
+  /document\s*\./gi,
+  /window\s*\./gi,
+];
+
+export function scrubCssText(css: string): string {
+  let out = css;
+  for (const pattern of CSS_DANGEROUS_PATTERNS) {
+    out = out.replace(pattern, (match) => `DISABLED-${match}`);
+  }
+  return out;
+}
+
+const STYLE_BLOCK_RE = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+
 export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
+  const cleaned = DOMPurify.sanitize(html, {
     ALLOWED_TAGS,
-    ALLOWED_ATTR: [
-      "class", "style", "href", "target", "rel",
-      "src", "alt", "width", "height",
-    ],
+    ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
     FORCE_BODY: true,
   });
+  return cleaned.replace(STYLE_BLOCK_RE, (match, css: string) =>
+    match.replace(css, scrubCssText(css))
+  );
 }
 
 export function sanitizeCss(css: string): string {
-  const safe = css
-    .replace(/url\s*\(/gi, "DISABLED-url(")
-    .replace(/@import/gi, "DISABLED-import")
-    .replace(/expression\s*\(/gi, "DISABLED-expression(")
-    .replace(/javascript\s*:/gi, "DISABLED-javascript:");
-  return safe;
+  return scrubCssText(css);
 }
