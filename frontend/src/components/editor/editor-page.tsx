@@ -358,7 +358,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
       <div className="mb-2 flex items-center justify-between">
         <p className="text-xs text-subtle">
-          Writing in whole-diary mode — start a chapter with an H1 heading.
+          Writing in whole-diary mode - start a chapter with an H1 heading.
         </p>
         <button
           type="button"

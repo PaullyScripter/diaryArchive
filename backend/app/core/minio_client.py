@@ -40,7 +40,7 @@ async def initialize_minio() -> None:
                 logger.info("MinIO bucket '%s' already exists", settings.minio_bucket)
             return True
         except Exception:
-            logger.warning("MinIO unavailable — media uploads will fail")
+            logger.warning("MinIO unavailable - media uploads will fail")
             return False
 
     result = await asyncio.to_thread(_ensure_bucket)

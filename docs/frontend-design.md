@@ -1,6 +1,6 @@
 # DiaryArchive Frontend Design
 
-> Status: Draft — v0.1
+> Status: Draft - v0.1
 > Skills: diary-frontend, diary-ui-system
 > Last updated: 2026-06-25
 
@@ -41,7 +41,7 @@ DiaryArchive's visual language draws from three sources:
 
 1. **Writing is the center of attention.** The editor and reader views are the most polished, most optimized surfaces. Navigation is secondary.
 
-2. **Typography is the primary visual element.** We express personality through type, spacing, and layout — not through illustrations, gradients, or animations.
+2. **Typography is the primary visual element.** We express personality through type, spacing, and layout - not through illustrations, gradients, or animations.
 
 3. **Warmth without nostalgia.** The design feels personal and human without relying on skeuomorphic textures or expired trends. It should feel timeless, not retro.
 
@@ -249,9 +249,9 @@ Explore  ›  Tag: life  ›  A Walk in the Rain
 ### Navigation Principles
 
 - No sticky navigation that blocks content while reading.
-- The nav bar is visible but unobtrusive — thin, muted background, not high-contrast.
+- The nav bar is visible but unobtrusive - thin, muted background, not high-contrast.
 - On the diary reader page, the nav bar can auto-hide on scroll down and reappear on scroll up.
-- The "Write" button is the most visually prominent action — it's the primary call to action.
+- The "Write" button is the most visually prominent action - it's the primary call to action.
 
 ---
 
@@ -434,7 +434,7 @@ Mobile reduces headings by one step:
 
 - **Reading content (diary body):** 65-75 characters per line. Achieved via `max-w-prose` (65ch) or custom `max-w-[68ch]`.
 - **UI content:** 80-90 characters per line. Wider to utilize space efficiently.
-- **Lists and cards:** No constraint — cards have their own internal padding.
+- **Lists and cards:** No constraint - cards have their own internal padding.
 
 ### Letter Spacing
 
@@ -488,7 +488,7 @@ Mobile reduces headings by one step:
 
 ### Palette Philosophy
 
-Warm, muted, human. No pure grays — every neutral has a warm undertone.
+Warm, muted, human. No pure grays - every neutral has a warm undertone.
 
 ### Light Theme
 
@@ -562,7 +562,7 @@ Focus-ring          #d4927a
 - Tailwind's `darkMode: 'class'` handles the switching.
 - System preference detected on first visit via `prefers-color-scheme`.
 - User can override in settings.
-- No flash of wrong theme — script in `<head>` checks stored preference before render.
+- No flash of wrong theme - script in `<head>` checks stored preference before render.
 
 ### Usage Guidelines
 
@@ -600,7 +600,7 @@ Tokens are defined as CSS custom properties on `:root` and `.dark`.
   --radius-xl: 1rem;
   --radius-full: 9999px;
 
-  /* Shadows (minimal — flat design preferred) */
+  /* Shadows (minimal - flat design preferred) */
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
@@ -664,7 +664,7 @@ We use shadcn/ui as the base, customized with the DiaryArchive design tokens. Th
 |-----------|----------------|
 | Button | 4 variants: primary (filled terracotta), secondary (outlined), ghost (subtle), destructive. Sizes: sm, default, lg, icon. |
 | Card | No shadow by default. Subtle border. Optional hover: border becomes slightly darker. |
-| Dialog | Centered modal with backdrop blur. Minimal chrome — no title bar if not needed. |
+| Dialog | Centered modal with backdrop blur. Minimal chrome - no title bar if not needed. |
 | Dropdown Menu | For user menu, overflow menus. Compact, minimal borders. |
 | Popover | For tooltips, small overlays. |
 | Select | Native-like select with styled trigger. |
@@ -728,7 +728,7 @@ The core content unit across the entire site.
 │                                      │
 │   ──────────── Comments ─────────    │
 │                                      │
-│   starreader — 1 hour ago            │
+│   starreader - 1 hour ago            │
 │   This really resonates with me...   │
 │                                      │
 │   [Write a comment...]   [Post]      │
@@ -741,7 +741,7 @@ The core content unit across the entire site.
 ┌──────────────────────────────────────┐
 │ ← Back                     Draft saved│
 │                                      │
-│ [Title: placeholder — "What's on     │
+│ [Title: placeholder - "What's on     │
 │  your mind?"]                        │
 │                                      │
 │ ┌──────────────────────────────────┐ │
@@ -866,7 +866,7 @@ No auto-playing animations, no parallax, no particle effects.
 
 ### Forms
 
-- Labels are always visible (no floating label pattern — reduces cognitive load).
+- Labels are always visible (no floating label pattern - reduces cognitive load).
 - Error messages are associated with inputs via `aria-describedby`.
 - Required fields are marked with `aria-required="true"`.
 - Submit buttons show loading state and disable during submission.
@@ -902,7 +902,7 @@ No auto-playing animations, no parallax, no particle effects.
 - Settings panel (tags, emotion, privacy) becomes a bottom sheet instead of sidebar.
 
 **Reader:**
-- Full-width reading (no `max-w-prose` constraint on very small screens — use padding instead).
+- Full-width reading (no `max-w-prose` constraint on very small screens - use padding instead).
 - Comments section at full width.
 
 **Admin:**
@@ -912,7 +912,7 @@ No auto-playing animations, no parallax, no particle effects.
 ### Touch Targets
 
 - Minimum 44×44px for all touch targets.
-- Buttons have adequate padding — no text-only links as primary actions on mobile.
+- Buttons have adequate padding - no text-only links as primary actions on mobile.
 - Swipe gestures: swipe right on a notification to mark as read (future enhancement).
 
 ### Mobile-Specific Features
@@ -1039,13 +1039,13 @@ Autosave indicator: "Saving..." / "Saved" / "Draft saved at 3:45 PM"
 
 ── Title Input ──────────────────────────────
 Large input (text-2xl, Georgia): "What's on your mind?"
-No label — the placeholder is the label.
+No label - the placeholder is the label.
 On mobile: smaller font size.
 
 ── Tiptap Editor ────────────────────────────
 Full-width content area.
 Georgia font, 1.6 line height.
-Empty state: subtle placeholder text — "Write freely. This is your space."
+Empty state: subtle placeholder text - "Write freely. This is your space."
 
 ── Floating Toolbar ─────────────────────────
 Appears when text is selected or cursor is in editor.

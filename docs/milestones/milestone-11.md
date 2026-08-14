@@ -1,8 +1,8 @@
-# Milestone 11 — Notifications
+# Milestone 11 - Notifications
 
 ## Overview
 
-**Goal:** Users receive notifications when someone interacts with their content — likes, comments, follows, and bookmarks. A notification center provides a centralized inbox, and a live bell icon shows unread counts.
+**Goal:** Users receive notifications when someone interacts with their content - likes, comments, follows, and bookmarks. A notification center provides a centralized inbox, and a live bell icon shows unread counts.
 
 **Purpose:** Notifications are the engagement loop of DiaryArchive. Without them, users must manually check their content for reactions. Notifications drive re-engagement, inform users of community activity, and build the social feedback loop that transforms a content platform into a community.
 
@@ -51,7 +51,7 @@
 
 ## Features
 
-### F11.1 — Notification Schema (Backend)
+### F11.1 - Notification Schema (Backend)
 
 **File:** `backend/app/models/notification.py`
 
@@ -78,7 +78,7 @@ class NotificationCreate(BaseModel):
     metadata: dict = {}  # Extra data: diary_title, comment_excerpt, etc.
 ```
 
-### F11.2 — Notification Creation Service (Backend)
+### F11.2 - Notification Creation Service (Backend)
 
 **File:** `backend/app/services/notification_service.py`
 
@@ -156,7 +156,7 @@ class NotificationService:
         return msg
 ```
 
-### F11.3 — Notification Creation Hooks (Backend)
+### F11.3 - Notification Creation Hooks (Backend)
 
 **Files modified:** `backend/app/services/like_service.py`, `comment_service.py`, `follow_service.py`, `bookmark_service.py`
 
@@ -206,11 +206,11 @@ await notification_service.create_notification(
 )
 ```
 
-### F11.4 — Notification List Endpoint (Backend)
+### F11.4 - Notification List Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/notifications.py`
 
-**F11.4.1 — GET /api/v1/notifications**
+**F11.4.1 - GET /api/v1/notifications**
 
 Paginated list of notifications for the current user, sorted unread-first, then by most recent.
 
@@ -277,9 +277,9 @@ async def get_notifications(
     }
 ```
 
-### F11.5 — Unread Count Endpoint (Backend)
+### F11.5 - Unread Count Endpoint (Backend)
 
-**F11.5.1 — GET /api/v1/notifications/unread-count**
+**F11.5.1 - GET /api/v1/notifications/unread-count**
 
 Fast endpoint optimized for the NavBar badge. Returns only the count.
 
@@ -289,9 +289,9 @@ Fast endpoint optimized for the NavBar badge. Returns only the count.
 - Implementation: `db.notifications.count_documents({"user_id": ..., "is_read": False})`
 - Cache: Optional Redis cache with 10-second TTL (reduces load on high-frequency polling)
 
-### F11.6 — Mark Read Endpoints (Backend)
+### F11.6 - Mark Read Endpoints (Backend)
 
-**F11.6.1 — PUT /api/v1/notifications/{id}/read**
+**F11.6.1 - PUT /api/v1/notifications/{id}/read**
 
 Mark a single notification as read.
 
@@ -300,7 +300,7 @@ Mark a single notification as read.
 - Response 200: `{ "data": { "message": "Notification marked as read" } }`
 - Logic: `db.notifications.update_one({"_id": ObjectId(id), "user_id": current_user_id}, {"$set": {"is_read": True}})`
 
-**F11.6.2 — PUT /api/v1/notifications/read-all**
+**F11.6.2 - PUT /api/v1/notifications/read-all**
 
 Mark all notifications as read for the current user.
 
@@ -309,11 +309,11 @@ Mark all notifications as read for the current user.
 - Logic: `result = await db.notifications.update_many({"user_id": ..., "is_read": False}, {"$set": {"is_read": True}})`
 - Returns count of updated documents
 
-### F11.7 — Notification Cleanup (Backend)
+### F11.7 - Notification Cleanup (Backend)
 
 **File:** `backend/app/db/indexes.py` (modified)
 
-TTL index on `notifications.created_at` — automatically deletes documents older than 90 days.
+TTL index on `notifications.created_at` - automatically deletes documents older than 90 days.
 
 ```python
 await db.notifications.create_index(
@@ -336,7 +336,7 @@ await db.notifications.create_index(
 )
 ```
 
-### F11.8 — Notification Center Page (Frontend)
+### F11.8 - Notification Center Page (Frontend)
 
 **File:** `frontend/src/app/(main)/notifications/page.tsx`
 
@@ -376,7 +376,7 @@ A dedicated page listing all notifications, grouped by date.
 - **Error:** "Couldn't load notifications" with retry button
 - **Has data:** Date-grouped list with read/unread visual distinction
 
-### F11.9 — Notification Item Component (Frontend)
+### F11.9 - Notification Item Component (Frontend)
 
 **File:** `frontend/src/components/notifications/notification-item.tsx`
 
@@ -416,7 +416,7 @@ interface NotificationItemProps {
 
 - **States:** default, hover (subtle background change), read (faded styling)
 
-### F11.10 — Notification Bell Component (Frontend)
+### F11.10 - Notification Bell Component (Frontend)
 
 **File:** `frontend/src/components/notifications/notification-bell.tsx`
 
@@ -435,7 +435,7 @@ interface NotificationBellProps {
 - Click opens a dropdown mini-list of recent notifications (last 5), with "View all" link to `/notifications`
 - Dropdown items same as `NotificationItem` but compact
 
-### F11.11 — Mark-as-Read Flow (Frontend)
+### F11.11 - Mark-as-Read Flow (Frontend)
 
 - Clicking a notification item on `/notifications` or in the bell dropdown:
   1. Optimistically mark the notification as read in local state
@@ -449,7 +449,7 @@ interface NotificationBellProps {
   3. On success, update unread count to 0
   4. On error, revert
 
-### F11.12 — Notification Polling (Frontend)
+### F11.12 - Notification Polling (Frontend)
 
 **File:** `frontend/src/hooks/use-notifications.ts`
 
@@ -487,7 +487,7 @@ export function useNotifications() {
 }
 ```
 
-### F11.13 — NavBar Badge Integration (Frontend)
+### F11.13 - NavBar Badge Integration (Frontend)
 
 **File:** `frontend/src/components/layout/navbar.tsx` (modified)
 
@@ -510,7 +510,7 @@ Add the notification bell with unread count to the authenticated NavBar state:
 - Unread count polled every 30 seconds regardless of bell state
 - When count changes audibly, no sound for MVP (future enhancement)
 
-### F11.14 — Empty State (Frontend)
+### F11.14 - Empty State (Frontend)
 
 **File:** `frontend/src/components/notifications/empty-state.tsx`
 
@@ -519,7 +519,7 @@ Add the notification bell with unread count to the authenticated NavBar state:
 - Description: "When someone likes your diary, comments on it, follows you, or bookmarks your entry, you'll see it here."
 - "Explore diaries" CTA button linking to `/explore`
 
-### F11.15 — Notification Preference Respect (Backend)
+### F11.15 - Notification Preference Respect (Backend)
 
 Ensure notification creation checks user preferences:
 
@@ -625,10 +625,10 @@ frontend/src/components/providers/auth-provider.tsx # (optional) prefetch unread
 
 | Method | Path | Auth | Rate Limit | Request | Response |
 |--------|------|------|-----------|---------|----------|
-| GET | `/notifications` | Bearer | — | `page, per_page` | `{ data: [...], meta: { total, unread_count, ... } }` |
-| GET | `/notifications/unread-count` | Bearer | — | — | `{ data: { unread_count } }` |
-| PUT | `/notifications/{id}/read` | Bearer | — | — | `{ data: { message } }` |
-| PUT | `/notifications/read-all` | Bearer | — | — | `{ data: { message, count } }` |
+| GET | `/notifications` | Bearer | - | `page, per_page` | `{ data: [...], meta: { total, unread_count, ... } }` |
+| GET | `/notifications/unread-count` | Bearer | - | - | `{ data: { unread_count } }` |
+| PUT | `/notifications/{id}/read` | Bearer | - | - | `{ data: { message } }` |
+| PUT | `/notifications/read-all` | Bearer | - | - | `{ data: { message, count } }` |
 
 ### Notification Object
 ```json
@@ -651,32 +651,32 @@ frontend/src/components/providers/auth-provider.tsx # (optional) prefetch unread
 ## Frontend
 
 ### Pages
-- `/notifications` — Notification center with date-grouped list, mark-all-read button, pagination
+- `/notifications` - Notification center with date-grouped list, mark-all-read button, pagination
 
 ### Components
-- `NotificationItem` — Single notification: type icon, actor avatar, message, timestamp, read indicator, click handler
-- `NotificationBell` — NavBar bell icon with unread count badge and compact dropdown (last 5)
-- `NotificationList` — Date-grouped list container with section headers (Today, Yesterday, This Week, Earlier)
-- `EmptyState` — Hero illustration with description and explore CTA
+- `NotificationItem` - Single notification: type icon, actor avatar, message, timestamp, read indicator, click handler
+- `NotificationBell` - NavBar bell icon with unread count badge and compact dropdown (last 5)
+- `NotificationList` - Date-grouped list container with section headers (Today, Yesterday, This Week, Earlier)
+- `EmptyState` - Hero illustration with description and explore CTA
 
 ### Hooks
-- `useNotifications()` — TanStack Query with `refetchInterval: 30_000` for polling, includes `list`, `unreadCount`, `markRead`, `markAllRead`
+- `useNotifications()` - TanStack Query with `refetchInterval: 30_000` for polling, includes `list`, `unreadCount`, `markRead`, `markAllRead`
 - Optimistic updates for mark-as-read and mark-all-read
 
 ### State Management
-- No dedicated Zustand store needed — TanStack Query cache and React component state handle it
+- No dedicated Zustand store needed - TanStack Query cache and React component state handle it
 - `useNotifications` hook manages all server state via query keys `["notifications"]`
 - Local state for bell dropdown open/close (`useState` in NavBar)
 
 ### Routing
-- `/notifications` — Protected route (redirects to login if unauthenticated)
+- `/notifications` - Protected route (redirects to login if unauthenticated)
 - Clicking a notification navigates to target: `/diary/{id}` for likes/bookmarks, `/diary/{id}#comment-{id}` for comments, `/profile/{username}` for follows
 - "View all" in bell dropdown navigates to `/notifications`
 
 ### Accessibility
 - Notification bell: `aria-label="Notifications, {count} unread"`, `role="button"`, `aria-expanded` for dropdown
 - Notification items: `role="button"`, `tabindex="0"`, `aria-label` with message text
-- Read vs unread: not conveyed by color alone — uses bold text + left border + background tint (color+shape redundancy)
+- Read vs unread: not conveyed by color alone - uses bold text + left border + background tint (color+shape redundancy)
 - Unread count: `aria-live="polite"` on badge for screen reader announcement
 - Bell dropdown: `role="menu"` with `role="menuitem"` on items, keyboard navigation (arrow keys, Escape)
 - Mark-all-read button: `aria-label="Mark all notifications as read"`
@@ -692,7 +692,7 @@ frontend/src/components/providers/auth-provider.tsx # (optional) prefetch unread
 ## Backend
 
 ### Services
-- `notification_service.py` — Create notification with preference checks, self-action filter, message building
+- `notification_service.py` - Create notification with preference checks, self-action filter, message building
 
 ### Business Logic
 
@@ -759,21 +759,21 @@ frontend/src/components/providers/auth-provider.tsx # (optional) prefetch unread
 ## Performance
 
 ### Query Patterns
-- **List:** Compound index `(user_id, is_read, created_at)` covers sort and filter — full index scan, no in-memory sort
-- **Unread count:** Covered by compound index `(user_id, is_read)` — instant count
-- **Mark read:** Update by `_id` + `user_id` — O(log n)
-- **Mark all read:** Update by `user_id` + `is_read: false` — uses index
+- **List:** Compound index `(user_id, is_read, created_at)` covers sort and filter - full index scan, no in-memory sort
+- **Unread count:** Covered by compound index `(user_id, is_read)` - instant count
+- **Mark read:** Update by `_id` + `user_id` - O(log n)
+- **Mark all read:** Update by `user_id` + `is_read: false` - uses index
 
 ### Caching
-- Unread count: Optional 10-second Redis cache `notifications:unread:{user_id}` — reduces DB load on 30-second polling cycle
+- Unread count: Optional 10-second Redis cache `notifications:unread:{user_id}` - reduces DB load on 30-second polling cycle
 - List results: Not cached (real-time requirement, frequent mutations)
 - Cache invalidation: On mark-read or mark-all-read, delete unread count cache key
 
 ### Optimization Notes
 - `actor_username` denormalized on notification document (no join/lookup needed)
-- TTL index handles cleanup automatically — no cleanup jobs needed
+- TTL index handles cleanup automatically - no cleanup jobs needed
 - Notification creation is fire-and-forget; the action endpoint (like/comment) does not wait for notification insert
-- Unread count endpoint is a fast index-covered query — suitable for 30-second polling at scale
+- Unread count endpoint is a fast index-covered query - suitable for 30-second polling at scale
 
 ---
 
@@ -821,8 +821,8 @@ frontend/src/components/providers/auth-provider.tsx # (optional) prefetch unread
 
 ## Documentation
 
-- `docs/api.md` — Update with notification endpoints, request/response schemas, error codes
-- `docs/milestones/milestone-11.md` — This document
+- `docs/api.md` - Update with notification endpoints, request/response schemas, error codes
+- `docs/milestones/milestone-11.md` - This document
 
 ---
 

@@ -1,4 +1,4 @@
-# Milestone 07 — Rich Text Editor
+# Milestone 07 - Rich Text Editor
 
 ## Overview
 
@@ -16,7 +16,7 @@
 - Draft endpoint support: diaries with `privacy: "draft"` behave as drafts
 - Autosave endpoint reuses PUT /diaries/{id} with draft support
 - Drafts excluded from all public queries, only visible to owner
-- No separate drafts collection — drafts are diaries with privacy="draft"
+- No separate drafts collection - drafts are diaries with privacy="draft"
 - Periodic cleanup of stale drafts (optional, background worker)
 
 ### Frontend
@@ -47,7 +47,7 @@
 
 ## Features
 
-### F7.1 — Tiptap Editor Integration (Frontend)
+### F7.1 - Tiptap Editor Integration (Frontend)
 
 **File:** `frontend/src/components/editor/tiptap-editor.tsx`
 
@@ -82,7 +82,7 @@ Setup:
 - Typography extension for smart quotes, em dashes, ellipsis
 - Placeholder text: "What's on your mind?"
 
-### F7.2 — Editor Toolbar (Frontend)
+### F7.2 - Editor Toolbar (Frontend)
 
 **File:** `frontend/src/components/editor/editor-toolbar.tsx`
 
@@ -104,7 +104,7 @@ Fixed toolbar at the top of the editor:
 - Tooltip on hover for each button (shows keyboard shortcut)
 - Responsive: wraps to two rows on narrow screens, collapses into "..." overflow menu if needed
 
-### F7.3 — Floating Toolbar (Frontend)
+### F7.3 - Floating Toolbar (Frontend)
 
 **File:** `frontend/src/components/editor/floating-toolbar.tsx`
 
@@ -123,7 +123,7 @@ Appears when user selects text, positioned above the selection:
 - Animated entrance (fade + slight upward slide, 150ms)
 - Dismisses on Escape key
 
-### F7.4 — Markdown Shortcuts (Frontend)
+### F7.4 - Markdown Shortcuts (Frontend)
 
 Configured via Tiptap extensions; no custom code needed for most:
 
@@ -142,9 +142,9 @@ Configured via Tiptap extensions; no custom code needed for most:
 | `` `code` `` inline | Inline code |
 | ` ``` ` at line start | Code block |
 
-Tiptap's built-in markdown shortcuts handle these; `@tiptap/extension-typography` adds smart quotes, em dashes (`--` → `—`), ellipsis (`...` → `…`).
+Tiptap's built-in markdown shortcuts handle these; `@tiptap/extension-typography` adds smart quotes, em dashes (`--` → `-`), ellipsis (`...` → `…`).
 
-### F7.5 — Keyboard Shortcuts (Frontend)
+### F7.5 - Keyboard Shortcuts (Frontend)
 
 Provided by Tiptap StarterKit + custom mappings:
 
@@ -166,7 +166,7 @@ Provided by Tiptap StarterKit + custom mappings:
 | `Ctrl+Shift+Z` / `Ctrl+Y` | Redo |
 | `Ctrl+S` | Save (trigger autosave immediately) |
 
-### F7.6 — Autosave Engine (Frontend)
+### F7.6 - Autosave Engine (Frontend)
 
 **File:** `frontend/src/hooks/use-autosave.ts`
 
@@ -199,7 +199,7 @@ Save request for drafts:
 - `privacy: "draft"` for all autosaves
 - If user explicitly publishes, change privacy to "public"
 
-### F7.7 — Draft System (Frontend)
+### F7.7 - Draft System (Frontend)
 
 **File:** `frontend/src/hooks/use-draft.ts`
 
@@ -226,7 +226,7 @@ Logic:
 6. On discard: clear localStorage draft entry + DELETE server draft if exists
 7. Draft recovery: on `/diary/new`, show banner: "Draft restored from [time] ago"
 
-### F7.8 — Diary Editor Page (Frontend)
+### F7.8 - Diary Editor Page (Frontend)
 
 **File:** `frontend/src/app/(main)/diary/new/page.tsx`
 
@@ -267,7 +267,7 @@ States:
 - Error: inline error notification ("Could not save. Retry.")
 - Unsaved changes: `beforeunload` event triggers browser warning
 
-### F7.9 — Diary Edit Page (Frontend)
+### F7.9 - Diary Edit Page (Frontend)
 
 **File:** `frontend/src/app/(main)/diary/[id]/edit/page.tsx`
 
@@ -280,14 +280,14 @@ Pre-populated with existing diary content:
 6. "Back to diary" link
 7. Autosave engine enabled on edit (draft state = "already published")
 
-### F7.10 — Settings Panel (Frontend)
+### F7.10 - Settings Panel (Frontend)
 
 **File:** `frontend/src/components/editor/editor-settings.tsx`
 
 Collapsible right sidebar or bottom drawer:
 
 **Privacy Selector:**
-- Radio group: Public (globe icon) / Draft (pencil icon) / Private (lock icon — disabled until M08)
+- Radio group: Public (globe icon) / Draft (pencil icon) / Private (lock icon - disabled until M08)
 - Description text below each option explaining visibility
 - When switching from draft to public, show confirmation: "This will publish your diary."
 
@@ -302,14 +302,14 @@ Collapsible right sidebar or bottom drawer:
 **Emotion Dropdown:**
 - Select from predefined list: joyful, grateful, hopeful, reflective, melancholic, anxious, sad, angry, inspired, loved, peaceful, excited, nostalgic, surprised, tired
 - Each option shows emoji + label
-- Nullable — no emotion selected is valid
+- Nullable - no emotion selected is valid
 
 **Comments Toggle:**
 - Switch: Enabled / Disabled
 - Description: "Allow readers to comment on this diary entry"
 - Default: enabled (from user preferences)
 
-### F7.11 — Tags Autocomplete (Frontend + Backend)
+### F7.11 - Tags Autocomplete (Frontend + Backend)
 
 **Frontend:** `frontend/src/components/editor/tags-autocomplete.tsx`
 
@@ -345,7 +345,7 @@ Response: { data: [{ name: "life", count: 24 }, { name: "lifestyle", count: 5 }]
 - Cache result in Redis for 30 seconds (TTL)
 - Case-insensitive matching
 
-### F7.12 — Word & Character Count (Frontend)
+### F7.12 - Word & Character Count (Frontend)
 
 **File:** `frontend/src/components/editor/editor-stats.tsx`
 
@@ -356,7 +356,7 @@ Bottom bar component:
 - Display: "Words: {n} · Characters: {n}"
 - Uses `@tiptap/extension-character-count`
 
-### F7.13 — Unsaved Changes Warning (Frontend)
+### F7.13 - Unsaved Changes Warning (Frontend)
 
 In the editor page component:
 - Track dirty state: compare current editor content + title to last-saved snapshot
@@ -364,7 +364,7 @@ In the editor page component:
 - On route navigation (Next.js `useRouter`): show confirmation dialog if dirty
 - Reset dirty state after successful save
 
-### F7.14 — Undo/Redo (Frontend)
+### F7.14 - Undo/Redo (Frontend)
 
 Built into Tiptap StarterKit (`@tiptap/extension-history`):
 - Undo: `editor.chain().focus().undo().run()`
@@ -503,23 +503,23 @@ GET /api/v1/tags/search?q=life&limit=10
 ## Frontend
 
 ### Pages
-- `/diary/new` — Create new diary with full Tiptap editor, settings panel, autosave
-- `/diary/[id]/edit` — Edit existing diary with pre-populated content and autosave
+- `/diary/new` - Create new diary with full Tiptap editor, settings panel, autosave
+- `/diary/[id]/edit` - Edit existing diary with pre-populated content and autosave
 
 ### Components
-- `TiptapEditor` — Configurable editor wrapper with all extensions
-- `EditorToolbar` — Fixed toolbar with formatting buttons, active state indicators, tooltips
-- `FloatingToolbar` — Selection-based mini toolbar with animated appearance
-- `EditorSettings` — Collapsible panel: privacy selector, tags autocomplete, emotion, comments toggle
-- `TagsAutocomplete` — Tag input with debounced API autocomplete, keyboard navigation, create-new support
-- `EditorStats` — Bottom bar showing word count, character count, save status
+- `TiptapEditor` - Configurable editor wrapper with all extensions
+- `EditorToolbar` - Fixed toolbar with formatting buttons, active state indicators, tooltips
+- `FloatingToolbar` - Selection-based mini toolbar with animated appearance
+- `EditorSettings` - Collapsible panel: privacy selector, tags autocomplete, emotion, comments toggle
+- `TagsAutocomplete` - Tag input with debounced API autocomplete, keyboard navigation, create-new support
+- `EditorStats` - Bottom bar showing word count, character count, save status
 
 ### Hooks
-- `useAutosave(diaryId?, title, contentHtml, privacy)` — Debounced autosave with status indicators, save-now trigger, sendBeacon on unmount
-- `useDraft()` — localStorage draft management: create, recover, discard, detect stale drafts
+- `useAutosave(diaryId?, title, contentHtml, privacy)` - Debounced autosave with status indicators, save-now trigger, sendBeacon on unmount
+- `useDraft()` - localStorage draft management: create, recover, discard, detect stale drafts
 
 ### State Management
-- `diary-store.ts` — Extended from M06: adds `draftId`, `isDirty`, `lastSavedAt`, `saveStatus` fields
+- `diary-store.ts` - Extended from M06: adds `draftId`, `isDirty`, `lastSavedAt`, `saveStatus` fields
 - `useAutosave` hook manages its own transient state internally
 
 ### Routing
@@ -593,7 +593,7 @@ GET /api/v1/tags/search?q=life&limit=10
 - `diary_repo.py` (updated): Add filter conditions to exclude drafts in public queries, add `find_drafts_by_user` method
 
 ### Background Workers
-- `cleanup_stale_drafts` — Optional periodic task (cron): delete drafts older than 7 days where `updated_at < now - 7d`. The TTL index handles this automatically; this worker is for immediate cleanup on demand.
+- `cleanup_stale_drafts` - Optional periodic task (cron): delete drafts older than 7 days where `updated_at < now - 7d`. The TTL index handles this automatically; this worker is for immediate cleanup on demand.
 
 ---
 
@@ -625,7 +625,7 @@ GET /api/v1/tags/search?q=life&limit=10
 ## Performance
 
 - Autosave debounce (30s) prevents excessive API calls during rapid typing
-- Tags autocomplete cached in Redis (30s TTL) — aggregation runs at most once per 30 seconds per prefix
+- Tags autocomplete cached in Redis (30s TTL) - aggregation runs at most once per 30 seconds per prefix
 - `content_html` limited to 100KB, `content_text` to 50KB
 - Draft queries use the compound index `{ privacy: 1, user_id: 1, updated_at: -1 }`
 - TTL index on drafts runs in background, minimal performance impact
@@ -680,10 +680,10 @@ GET /api/v1/tags/search?q=life&limit=10
 
 ## Documentation
 
-- `docs/api.md` — Update with tags search endpoint
-- `docs/milestones/milestone-07.md` — This document
-- `docs/frontend-design.md` — Add Tiptap editor usage, toolbar design, autosave architecture
-- `docs/architecture.md` — Update data flow for draft lifecycle
+- `docs/api.md` - Update with tags search endpoint
+- `docs/milestones/milestone-07.md` - This document
+- `docs/frontend-design.md` - Add Tiptap editor usage, toolbar design, autosave architecture
+- `docs/architecture.md` - Update data flow for draft lifecycle
 
 ---
 
@@ -724,7 +724,7 @@ GET /api/v1/tags/search?q=life&limit=10
 
 - Milestone 08 adds the Private privacy option in the settings panel, with client-side encryption.
 - Milestone 09 adds the comments section below the editor reader (not the editor itself).
-- Milestone 10 indexes only published (public) diaries in Meilisearch — drafts and private diaries excluded.
+- Milestone 10 indexes only published (public) diaries in Meilisearch - drafts and private diaries excluded.
 - Milestone 13 adds image upload directly into the Tiptap editor via drag-and-drop and paste.
 - The autosave engine can be extended to support conflict resolution (server version vs local version) in a future milestone.
 - Tags autocomplete can be extended in M10 to use Meilisearch for faster prefix search.

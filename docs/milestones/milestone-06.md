@@ -1,4 +1,4 @@
-# Milestone 06 — Public Diaries
+# Milestone 06 - Public Diaries
 
 ## Overview
 
@@ -17,7 +17,7 @@
 - Public feed with filters: sort (latest, updated, popular), tags (OR), emotion, year, month
 - Random diary selection via ObjectId range
 - HTML sanitization to prevent XSS in diary content
-- Denormalized stats updates (like_count, comment_count, bookmark_count) — atomic `$inc`
+- Denormalized stats updates (like_count, comment_count, bookmark_count) - atomic `$inc`
 - Diary repository with all index-aware queries
 
 ### Frontend
@@ -52,9 +52,9 @@
 
 ## Features
 
-### F6.1 — Diary CRUD Endpoints (Backend)
+### F6.1 - Diary CRUD Endpoints (Backend)
 
-**F6.1.1 — POST /diaries**
+**F6.1.1 - POST /diaries**
 
 Create a new diary entry.
 
@@ -67,7 +67,7 @@ Create a new diary entry.
 - Atomic `$inc` user's `stats.diary_count`
 - Response 201: `{ data: { id, created_at, message } }`
 
-**F6.1.2 — GET /diaries**
+**F6.1.2 - GET /diaries**
 
 List public diaries with filters.
 
@@ -76,7 +76,7 @@ List public diaries with filters.
 - Validation: month requires year; if year-month combo has no entries, return empty list
 - Response: `{ data: [ { id, title, excerpt (first 200 chars of content_text), author, tags, emotion, stats, is_liked, is_bookmarked, created_at, updated_at, published_at } ], meta: { page, per_page, total, has_next, has_prev } }`
 
-**F6.1.3 — GET /diaries/random**
+**F6.1.3 - GET /diaries/random**
 
 Get a random public diary.
 
@@ -85,7 +85,7 @@ Get a random public diary.
 - Cache result in Redis for 5 minutes
 - Response: full diary content (same shape as GET /diaries/{id})
 
-**F6.1.4 — GET /diaries/{id}**
+**F6.1.4 - GET /diaries/{id}**
 
 Get a single diary entry.
 
@@ -95,7 +95,7 @@ Get a single diary entry.
 - Enrich with `is_liked`, `is_bookmarked`, `is_owner` if authenticated
 - Response: full diary object with author info
 
-**F6.1.5 — PUT /diaries/{id}**
+**F6.1.5 - PUT /diaries/{id}**
 
 Update a diary entry.
 
@@ -107,7 +107,7 @@ Update a diary entry.
 - Update `updated_at`
 - Response 200: `{ data: { id, updated_at, message } }`
 
-**F6.1.6 — DELETE /diaries/{id}**
+**F6.1.6 - DELETE /diaries/{id}**
 
 Delete a diary entry and associated data.
 
@@ -117,7 +117,7 @@ Delete a diary entry and associated data.
 - Decrement user's `stats.diary_count`
 - Response 204: No content
 
-### F6.2 — HTML Sanitization (Backend)
+### F6.2 - HTML Sanitization (Backend)
 
 **File:** `backend/app/core/sanitize.py`
 
@@ -130,7 +130,7 @@ Server-side HTML sanitization to prevent XSS.
 - Add `rel="noopener noreferrer"` to all `<a>` tags
 - Reject content that exceeds size limits after sanitization
 
-### F6.3 — Diary Card Component (Frontend)
+### F6.3 - Diary Card Component (Frontend)
 
 **File:** `frontend/src/components/diary/diary-card.tsx`
 
@@ -155,7 +155,7 @@ The core content unit across the entire site.
 - Format relative timestamps ("2 hours ago")
 - Click navigates to `/diary/{id}`
 
-### F6.4 — Diary Card List Component (Frontend)
+### F6.4 - Diary Card List Component (Frontend)
 
 **File:** `frontend/src/components/diary/diary-card-list.tsx`
 
@@ -165,7 +165,7 @@ The core content unit across the entire site.
 - Error state: "Couldn't load diaries" with retry button
 - Pagination: "Load More" button at bottom (no infinite scroll)
 
-### F6.5 — Diary Reader Page (Frontend)
+### F6.5 - Diary Reader Page (Frontend)
 
 **File:** `frontend/src/app/(main)/diary/[id]/page.tsx`
 
@@ -188,12 +188,12 @@ Full diary content view.
 ```
 
 - Breadcrumb: Explore > Tag: life > Diary title
-- Action buttons: Like (heart), Bookmark, Share (copy link) — wired in M09
+- Action buttons: Like (heart), Bookmark, Share (copy link) - wired in M09
 - Comments section: placeholder until M09
 - Loading: skeleton
 - Error: 404/500 handling
 
-### F6.6 — Create/Edit Diary Pages (Frontend)
+### F6.6 - Create/Edit Diary Pages (Frontend)
 
 **File:** `frontend/src/app/(main)/diary/new/page.tsx`
 **File:** `frontend/src/app/(main)/diary/[id]/edit/page.tsx`
@@ -202,7 +202,7 @@ Basic form-based diary creation (Tiptap integration comes in M07).
 
 **Create page:**
 - Title input (text, max 200 chars)
-- Content textarea (for M06 MVP — plain text; Tiptap replaces this in M07)
+- Content textarea (for M06 MVP - plain text; Tiptap replaces this in M07)
 - Tags input (comma-separated, show as removable badges)
 - Emotion selector (dropdown of predefined emotions)
 - Privacy selector: Public / Draft
@@ -215,7 +215,7 @@ Basic form-based diary creation (Tiptap integration comes in M07).
 - Delete button (with confirmation dialog)
 - "Back to diary" link
 
-### F6.7 — Homepage Sections (Frontend)
+### F6.7 - Homepage Sections (Frontend)
 
 Update the homepage (`(main)/page.tsx`) from skeleton to real content:
 
@@ -225,7 +225,7 @@ Update the homepage (`(main)/page.tsx`) from skeleton to real content:
 - "Browse by Emotion" section: emotion buttons with count
 - "Browse by Year" section: year links → explore page
 
-### F6.8 — My Diaries Page (Frontend)
+### F6.8 - My Diaries Page (Frontend)
 
 **File:** `frontend/src/app/(main)/me/page.tsx`
 
@@ -237,7 +237,7 @@ Dashboard listing the current user's diaries (all privacy levels).
 - Empty state: "No diaries yet. The blank page is waiting." + Write button
 - Link to create new diary
 
-### F6.9 — Diary Store (Frontend)
+### F6.9 - Diary Store (Frontend)
 
 **File:** `frontend/src/store/diary-store.ts`
 
@@ -371,32 +371,32 @@ No new collections or indexes (all defined in M02).
 ## Frontend
 
 ### Pages
-- `/` — Homepage with live data (Latest Diaries, Random Diary, tags, emotions, years)
-- `/diary/new` — Create diary form
-- `/diary/{id}` — Diary reader
-- `/diary/{id}/edit` — Edit diary form
-- `/me` — My diaries dashboard
-- `/me/diaries` — (redirect or same as /me with diary filter)
-- `/profile/{username}` — Profile page with diary tab (from M05)
+- `/` - Homepage with live data (Latest Diaries, Random Diary, tags, emotions, years)
+- `/diary/new` - Create diary form
+- `/diary/{id}` - Diary reader
+- `/diary/{id}/edit` - Edit diary form
+- `/me` - My diaries dashboard
+- `/me/diaries` - (redirect or same as /me with diary filter)
+- `/profile/{username}` - Profile page with diary tab (from M05)
 
 ### Components
-- `DiaryCard` — Core content unit with title, excerpt, author, tags, emotion, stats, timestamp
-- `DiaryCardList` — Grid with loading skeletons, empty state, "Load More"
-- `DiaryForm` — Shared create/edit form with validation
-- `TagBadge` — Clickable tag pill
-- `EmotionBadge` — Emotion with emoji display
-- `PrivacyBadge` — Public/Draft/Private indicator
+- `DiaryCard` - Core content unit with title, excerpt, author, tags, emotion, stats, timestamp
+- `DiaryCardList` - Grid with loading skeletons, empty state, "Load More"
+- `DiaryForm` - Shared create/edit form with validation
+- `TagBadge` - Clickable tag pill
+- `EmotionBadge` - Emotion with emoji display
+- `PrivacyBadge` - Public/Draft/Private indicator
 
 ### Hooks
-- `useDiaries(filters)` — TanStack Query for GET /diaries with filters
-- `useDiary(id)` — TanStack Query for GET /diaries/{id}
-- `useMyDiaries()` — TanStack Query for GET /me/diaries
-- `useCreateDiary()` — TanStack Query mutation
-- `useUpdateDiary()` — TanStack Query mutation
-- `useDeleteDiary()` — TanStack Query mutation with cache invalidation
+- `useDiaries(filters)` - TanStack Query for GET /diaries with filters
+- `useDiary(id)` - TanStack Query for GET /diaries/{id}
+- `useMyDiaries()` - TanStack Query for GET /me/diaries
+- `useCreateDiary()` - TanStack Query mutation
+- `useUpdateDiary()` - TanStack Query mutation
+- `useDeleteDiary()` - TanStack Query mutation with cache invalidation
 
 ### State Management
-- `diary-store.ts` — Current diary for edit context, draft tracking (Zustand)
+- `diary-store.ts` - Current diary for edit context, draft tracking (Zustand)
 
 ### Accessibility
 - Diary reader: semantic `<article>` tag, `<h1>` for title
@@ -470,7 +470,7 @@ No new collections or indexes (all defined in M02).
 ### Authorization
 - Diary create: user must be authenticated and not banned
 - Diary edit/delete: must be the diary owner (check user_id matches JWT sub)
-- Admin can delete any diary (for moderation) — wired in M12
+- Admin can delete any diary (for moderation) - wired in M12
 - Private/draft diaries: return 404 to non-owners (prevents info leakage)
 
 ### Rate Limiting
@@ -488,8 +488,8 @@ No new collections or indexes (all defined in M02).
 ## Performance
 
 - Public feed queries use compound indexes (privacy + sort field)
-- Random diary uses ObjectId range — O(log n), not O(n) random sort
-- Stats are denormalized — no COUNT queries needed
+- Random diary uses ObjectId range - O(log n), not O(n) random sort
+- Stats are denormalized - no COUNT queries needed
 - Pagination uses skip/limit (acceptable for MVP; cursor-based in M14)
 - Author enrichment uses a single `find` with `$in` (not N+1 queries)
 
@@ -540,8 +540,8 @@ No new collections or indexes (all defined in M02).
 
 ## Documentation
 
-- `docs/api.md` — Update with diary endpoints, request/response schemas, error codes
-- `docs/milestones/milestone-06.md` — This document
+- `docs/api.md` - Update with diary endpoints, request/response schemas, error codes
+- `docs/milestones/milestone-06.md` - This document
 
 ---
 

@@ -366,12 +366,12 @@ class TestAdminUserManagement:
     async def test_cannot_demote_last_admin(self, client: AsyncClient):
         admin_a = await _register(client, "admin_a", is_admin=True)
         admin_b = await _register(client, "admin_b", is_admin=True)
-        # Admin A tries to demote Admin B — should succeed (2 admins remain, demoting 1 leaves 1)
+        # Admin A tries to demote Admin B - should succeed (2 admins remain, demoting 1 leaves 1)
         resp = await client.put(f"/api/v1/admin/users/{admin_b['id']}/role",
                                 json={"is_admin": False},
                                 headers=_auth_headers(admin_a["access_token"]))
         assert resp.status_code == 200
-        # Admin A tries to demote themselves — should be blocked by self-demotion guard
+        # Admin A tries to demote themselves - should be blocked by self-demotion guard
         resp2 = await client.put(f"/api/v1/admin/users/{admin_a['id']}/role",
                                  json={"is_admin": False},
                                  headers=_auth_headers(admin_a["access_token"]))

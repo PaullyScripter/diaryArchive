@@ -1,10 +1,10 @@
-# Milestone 03 — Frontend Foundation
+# Milestone 03 - Frontend Foundation
 
 ## Overview
 
 **Goal:** The frontend has a working design system, theme toggling, layout components, and responsive structure. Pages render with placeholder content.
 
-**Purpose:** Establish the visual and structural foundation for every subsequent frontend milestone. No user-facing functionality is built yet — only the shell that it will live inside.
+**Purpose:** Establish the visual and structural foundation for every subsequent frontend milestone. No user-facing functionality is built yet - only the shell that it will live inside.
 
 **Dependencies:** Milestone 01 (Monorepo), Milestone 02 (Backend Foundation)
 
@@ -48,7 +48,7 @@
 
 ## Features
 
-### F3.1 — Design Tokens & CSS Custom Properties
+### F3.1 - Design Tokens & CSS Custom Properties
 
 Define the full DiaryArchive design token system in `globals.css`.
 
@@ -77,7 +77,7 @@ Define the full DiaryArchive design token system in `globals.css`.
 - Shadows: `--shadow-sm/md/lg`
 - Transitions: `--transition-fast` (150ms), `--transition-normal` (200ms)
 
-### F3.2 — ThemeProvider
+### F3.2 - ThemeProvider
 
 Build a context-based theme system.
 
@@ -92,7 +92,7 @@ Build a context-based theme system.
 - Inline `<script>` in `<head>` that reads localStorage and sets the class before first paint
 - `suppressHydrationWarning` on `<html>` to avoid React mismatch
 
-### F3.3 — RootLayout
+### F3.3 - RootLayout
 
 - File: `frontend/src/app/layout.tsx`
 - Load Inter font via `next/font/google` with `variable: "--font-sans"`
@@ -101,7 +101,7 @@ Build a context-based theme system.
 - Wrap children in `<ThemeProvider>`
 - Apply `min-h-screen bg-background font-sans antialiased` to `<body>`
 
-### F3.4 — Route Group Layouts
+### F3.4 - Route Group Layouts
 
 **MainLayout** (used by homepage, explore, diary reader, profile, settings, notifications):
 - `frontend/src/app/(main)/layout.tsx`
@@ -125,7 +125,7 @@ Build a context-based theme system.
 - Top bar with "Admin Dashboard" header
 - Content area fills remaining space, scrollable
 
-### F3.5 — NavBar
+### F3.5 - NavBar
 
 **Anonymous state:**
 - Left: Logo (BookOpen icon + "DiaryArchive"), Explore link, Random link
@@ -140,14 +140,14 @@ Build a context-based theme system.
 - Default: transparent background with bottom border, subtle backdrop-blur
 - The NavBar is pre-built to accommodate authenticated state (avatar dropdown slot, Write button slot) but those are wired in M04.
 
-### F3.6 — Footer
+### F3.6 - Footer
 
 - Simple footer with site name, tagline "A place for your thoughts. Public or private."
 - Links: GitHub, Privacy, Terms
 - Attribution: "Built with care"
 - Responsive: stacks vertically on mobile, horizontal on desktop
 
-### F3.7 — shadcn/ui Primitives
+### F3.7 - shadcn/ui Primitives
 
 Create customized versions of essential shadcn/ui components:
 
@@ -163,7 +163,7 @@ Create customized versions of essential shadcn/ui components:
 
 All styled with DiaryArchive CSS variables. No hardcoded colors.
 
-### F3.8 — 404 & Error Pages
+### F3.8 - 404 & Error Pages
 
 **Not Found (`frontend/src/app/not-found.tsx`):**
 - Centered layout: large "404" in primary color, explanatory text, "Go home" button
@@ -174,7 +174,7 @@ All styled with DiaryArchive CSS variables. No hardcoded colors.
 - Displays "Something went wrong" with "Try again" button that calls `reset()`
 - Production-friendly: no stack traces
 
-### F3.9 — Homepage with Placeholder Content
+### F3.9 - Homepage with Placeholder Content
 
 - Welcome hero section with tagline
 - "Latest Diaries" grid (3-column) with skeleton loading cards
@@ -206,7 +206,7 @@ frontend/src/
 │   │   ├── layout.tsx              # AdminRouteLayout → AdminLayout
 │   │   └── page.tsx                # Admin placeholder
 │   ├── layout.tsx                  # RootLayout (html, body, providers)
-│   ├── page.tsx                    # [DELETED — moved to (main)/]
+│   ├── page.tsx                    # [DELETED - moved to (main)/]
 │   ├── not-found.tsx               # 404 page
 │   ├── error.tsx                   # Error boundary
 │   └── globals.css                 # Design tokens, Tailwind v4 config
@@ -304,7 +304,7 @@ No backend changes.
 
 - Inter font loaded with `display: swap` to prevent FOIT
 - Flash-prevention script is inline and tiny (<500 bytes)
-- CSS variables are inherited cheaply — no recalculation overhead
+- CSS variables are inherited cheaply - no recalculation overhead
 
 ---
 
@@ -323,8 +323,8 @@ No backend changes.
 
 ## Documentation
 
-- `docs/frontend-design.md` — Reference for design decisions (already exists)
-- `docs/milestones/milestone-03.md` — This document
+- `docs/frontend-design.md` - Reference for design decisions (already exists)
+- `docs/milestones/milestone-03.md` - This document
 
 ---
 

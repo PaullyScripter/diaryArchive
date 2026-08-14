@@ -40,7 +40,7 @@ export function TemplatePicker({ isOpen, onClose, onApply }: TemplatePickerProps
           <DialogTitle>Start from a template</DialogTitle>
           <DialogDescription>
             Whole-diary mode keeps everything in one document. A template lays
-            out chapters to get you writing quickly — you can edit, rename, and
+            out chapters to get you writing quickly - you can edit, rename, and
             reorder them afterward.
           </DialogDescription>
         </DialogHeader>
