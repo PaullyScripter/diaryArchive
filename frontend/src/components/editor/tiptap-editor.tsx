@@ -23,6 +23,7 @@ interface TiptapEditorProps {
   editable?: boolean;
   onImageDrop?: (file: File, editor: Editor) => void;
   onImagePaste?: (file: File, editor: Editor) => void;
+  onToggleAdvanced?: () => void;
 }
 
 export function TiptapEditor({
@@ -33,6 +34,7 @@ export function TiptapEditor({
   editable = true,
   onImageDrop,
   onImagePaste,
+  onToggleAdvanced,
 }: TiptapEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -94,6 +96,14 @@ export function TiptapEditor({
               return true;
             }
           }
+        }
+        return false;
+      },
+      handleKeyDown: (view, event) => {
+        if (event.key === "Tab" && !event.shiftKey && onToggleAdvanced) {
+          event.preventDefault();
+          onToggleAdvanced();
+          return true;
         }
         return false;
       },

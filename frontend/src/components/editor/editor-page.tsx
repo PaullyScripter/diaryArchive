@@ -24,6 +24,9 @@ import { MediaGalleryModal } from "@/components/media/media-gallery-modal";
 import { useAuthStore } from "@/store/auth-store";
 
 import { useDraft } from "@/hooks/use-draft";
+import { ChapterManager } from "@/components/editor/chapter-manager";
+import { TemplatePicker } from "@/components/editor/template-picker";
+import type { DiaryTemplate } from "@/lib/editor/templates";
 
 const TiptapEditor = dynamic(
   () => import("@/components/editor/tiptap-editor").then((m) => m.TiptapEditor),
@@ -77,6 +80,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showKeySetup, setShowKeySetup] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
@@ -136,6 +140,36 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       setContentWarnings(draft.contentWarnings ?? []);
     }
   }, [draft, hasRecoveredDraft, isEditMode]);
+
+  const autoOpenedRef = useRef(false);
+  const hasRecoveredRef = useRef(hasRecoveredDraft);
+  hasRecoveredRef.current = hasRecoveredDraft;
+
+  useEffect(() => {
+    if (isEditMode) return;
+    const t = setTimeout(() => {
+      if (!autoOpenedRef.current && !hasRecoveredRef.current && !title.trim() && !contentHtml.trim()) {
+        autoOpenedRef.current = true;
+        setShowTemplatePicker(true);
+      }
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const applyTemplate = (template: DiaryTemplate) => {
+    if (contentHtml.trim() && !window.confirm("Replace current content with this template?")) {
+      return;
+    }
+    setTitle(template.title);
+    setContentHtml(template.contentHtml);
+    setContentText(template.contentHtml.replace(/<[^>]*>/g, ""));
+    setTags(template.tags);
+    if (template.emotion) setEmotion(template.emotion);
+    setSourceMode(false);
+    setShowTemplatePicker(false);
+    showToast(`Applied "${template.name}" template`);
+  };
 
   useEffect(() => {
     setIsDirty(true);
@@ -346,30 +380,55 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           if (editor) handleImageUpload(file, editor);
         }}
         onOpenGallery={() => setShowGallery(true)}
+        onOpenTemplates={() => setShowTemplatePicker(true)}
       />
 
-      <div className="relative">
-        <FloatingToolbar editor={editor} />
-        {sourceMode ? (
-          <textarea
-            value={contentHtml}
-            onChange={(e) => {
-              setContentHtml(e.target.value);
-              setContentText(e.target.value.replace(/<[^>]*>/g, ""));
-              setIsDirty(true);
-            }}
-            className="w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-            placeholder="Write HTML directly..."
-          />
-        ) : (
-          <TiptapEditor
-            content={contentHtml}
-            onChange={onContentChange}
-            onEditorReady={setEditor}
-            onImageDrop={(file, editor) => handleImageUpload(file, editor)}
-            onImagePaste={(file, editor) => handleImageUpload(file, editor)}
-          />
-        )}
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex-1 min-w-0">
+          <div className="relative">
+            <FloatingToolbar editor={editor} />
+            {sourceMode ? (
+              <textarea
+                value={contentHtml}
+                onChange={(e) => {
+                  setContentHtml(e.target.value);
+                  setContentText(e.target.value.replace(/<[^>]*>/g, ""));
+                  setIsDirty(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Tab" || e.shiftKey) return;
+                  e.preventDefault();
+                  if (e.ctrlKey || e.metaKey) {
+                    setSourceMode(false);
+                    return;
+                  }
+                  const el = e.currentTarget;
+                  const { selectionStart, selectionEnd, value } = el;
+                  const next =
+                    value.slice(0, selectionStart) + "\t" + value.slice(selectionEnd);
+                  setContentHtml(next);
+                  setContentText(next.replace(/<[^>]*>/g, ""));
+                  setIsDirty(true);
+                  requestAnimationFrame(() => {
+                    el.selectionStart = el.selectionEnd = selectionStart + 1;
+                  });
+                }}
+                className="w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+                placeholder="Write HTML directly..."
+              />
+            ) : (
+              <TiptapEditor
+                content={contentHtml}
+                onChange={onContentChange}
+                onEditorReady={setEditor}
+                onImageDrop={(file, editor) => handleImageUpload(file, editor)}
+                onImagePaste={(file, editor) => handleImageUpload(file, editor)}
+                onToggleAdvanced={() => setSourceMode(true)}
+              />
+            )}
+          </div>
+        </div>
+        {!sourceMode && <ChapterManager editor={editor} />}
       </div>
 
       <EditorStats
@@ -623,6 +682,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editor={editor}
         isOpen={showGallery}
         onClose={() => setShowGallery(false)}
+      />
+      <TemplatePicker
+        isOpen={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        onApply={applyTemplate}
       />
     </div>
   );
