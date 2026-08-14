@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import {
   FileText,
   HeartHandshake,
@@ -11,6 +10,13 @@ import {
 
 import { DIARY_TEMPLATES, type DiaryTemplate } from "@/lib/editor/templates";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const TEMPLATE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "file-text": FileText,
@@ -27,50 +33,19 @@ interface TemplatePickerProps {
 }
 
 export function TemplatePicker({ isOpen, onClose, onApply }: TemplatePickerProps) {
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="template-picker-title"
-    >
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg">
-        <div className="sticky top-0 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
-          <div>
-            <h2
-              id="template-picker-title"
-              className="text-sm font-medium text-foreground"
-            >
-              Start from a template
-            </h2>
-            <p className="text-xs text-muted mt-0.5">
-              Whole-diary mode keeps everything in one document. A template lays
-              out chapters to get you writing quickly — you can edit, rename, and
-              reorder them afterward.
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onClose}
-            className="ml-4 shrink-0"
-          >
-            Close
-          </Button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Start from a template</DialogTitle>
+          <DialogDescription>
+            Whole-diary mode keeps everything in one document. A template lays
+            out chapters to get you writing quickly — you can edit, rename, and
+            reorder them afterward.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-6 py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
           {DIARY_TEMPLATES.map((template) => {
             const Icon = TEMPLATE_ICONS[template.icon] ?? FileText;
             return (
@@ -102,7 +77,13 @@ export function TemplatePicker({ isOpen, onClose, onApply }: TemplatePickerProps
             );
           })}
         </div>
-      </div>
-    </div>
+
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
