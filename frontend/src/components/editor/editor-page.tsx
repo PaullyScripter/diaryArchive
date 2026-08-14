@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Eye, Lock, Shield } from "lucide-react";
+import { Eye, Lock, Shield, Maximize2, Minimize2 } from "lucide-react";
 
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
@@ -24,6 +24,9 @@ import { MediaGalleryModal } from "@/components/media/media-gallery-modal";
 import { useAuthStore } from "@/store/auth-store";
 
 import { useDraft } from "@/hooks/use-draft";
+import { ChapterManager } from "@/components/editor/chapter-manager";
+import { TemplatePicker } from "@/components/editor/template-picker";
+import type { DiaryTemplate } from "@/lib/editor/templates";
 
 const TiptapEditor = dynamic(
   () => import("@/components/editor/tiptap-editor").then((m) => m.TiptapEditor),
@@ -77,6 +80,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [showKeySetup, setShowKeySetup] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
@@ -137,6 +142,20 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     }
   }, [draft, hasRecoveredDraft, isEditMode]);
 
+  const applyTemplate = (template: DiaryTemplate) => {
+    if (contentHtml.trim() && !window.confirm("Replace current content with this template?")) {
+      return;
+    }
+    setTitle(template.title);
+    setContentHtml(template.contentHtml);
+    setContentText(template.contentHtml.replace(/<[^>]*>/g, ""));
+    setTags(template.tags);
+    if (template.emotion) setEmotion(template.emotion);
+    setSourceMode(false);
+    setShowTemplatePicker(false);
+    showToast(`Applied "${template.name}" template`);
+  };
+
   useEffect(() => {
     setIsDirty(true);
   }, [title, contentHtml, tags, emotion, privacy, commentsEnabled, contentWarnings]);
@@ -150,6 +169,56 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     setContentText(text);
     setIsDirty(true);
   }, []);
+
+  const handleSourceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContentHtml(e.target.value);
+    setContentText(e.target.value.replace(/<[^>]*>/g, ""));
+    setIsDirty(true);
+  };
+
+  const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== "Tab" || e.shiftKey) return;
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      setSourceMode(false);
+      return;
+    }
+    const el = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = el;
+    const next =
+      value.slice(0, selectionStart) + "\t" + value.slice(selectionEnd);
+    setContentHtml(next);
+    setContentText(next.replace(/<[^>]*>/g, ""));
+    setIsDirty(true);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = selectionStart + 1;
+    });
+  };
+
+  const renderSourceEditor = (fullscreen: boolean) => (
+    <textarea
+      value={contentHtml}
+      onChange={handleSourceChange}
+      onKeyDown={handleSourceKeyDown}
+      className={
+        fullscreen
+          ? "w-full h-full font-mono text-sm bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-0 resize-none"
+          : "w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+      }
+      placeholder="Write HTML directly..."
+    />
+  );
+
+  const renderRichEditor = () => (
+    <TiptapEditor
+      content={contentHtml}
+      onChange={onContentChange}
+      onEditorReady={setEditor}
+      onImageDrop={(file, editor) => handleImageUpload(file, editor)}
+      onImagePaste={(file, editor) => handleImageUpload(file, editor)}
+      onToggleAdvanced={() => setSourceMode(true)}
+    />
+  );
 
   const words = contentText.trim() ? contentText.trim().split(/\s+/).length : 0;
   const characters = contentText.length;
@@ -186,7 +255,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           privacy: finalPrivacy,
           title: title.trim() || null,
           content_html: customCss
-            ? `<style>${customCss}</style>${contentHtml}`
+            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
             : contentHtml,
           content_text: contentText,
           tags,
@@ -233,6 +302,15 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsExpanded(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isExpanded]);
 
   const dirtyRef = useRef(isDirty);
   const titleRef = useRef(title);
@@ -338,6 +416,19 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         />
       </div>
 
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs text-subtle">
+          Writing in whole-diary mode - start a chapter with an H1 heading.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowTemplatePicker(true)}
+          className="text-xs text-link hover:underline cursor-pointer"
+        >
+          Need an idea?
+        </button>
+      </div>
+
       <EditorToolbar
         editor={editor}
         sourceMode={sourceMode}
@@ -346,31 +437,94 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           if (editor) handleImageUpload(file, editor);
         }}
         onOpenGallery={() => setShowGallery(true)}
+        onOpenTemplates={() => setShowTemplatePicker(true)}
       />
 
-      <div className="relative">
-        <FloatingToolbar editor={editor} />
-        {sourceMode ? (
-          <textarea
-            value={contentHtml}
-            onChange={(e) => {
-              setContentHtml(e.target.value);
-              setContentText(e.target.value.replace(/<[^>]*>/g, ""));
-              setIsDirty(true);
-            }}
-            className="w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-            placeholder="Write HTML directly..."
-          />
-        ) : (
-          <TiptapEditor
-            content={contentHtml}
-            onChange={onContentChange}
-            onEditorReady={setEditor}
-            onImageDrop={(file, editor) => handleImageUpload(file, editor)}
-            onImagePaste={(file, editor) => handleImageUpload(file, editor)}
-          />
-        )}
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+        <div className="flex-1 min-w-0">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              title="Expand editor to fill your screen"
+              aria-label="Expand editor to full screen"
+              className="absolute top-2 right-2 z-10 flex items-center gap-1.5 text-xs text-muted hover:text-foreground bg-background/90 border border-border rounded-md px-2.5 py-1.5 cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              Expand
+            </button>
+            <FloatingToolbar editor={editor} />
+            {sourceMode ? renderSourceEditor(false) : renderRichEditor()}
+          </div>
+        </div>
+        {!sourceMode && <ChapterManager editor={editor} />}
       </div>
+
+      {isExpanded && (
+        <div
+          className="fixed inset-0 z-40 flex flex-col bg-background"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fullscreen editor"
+        >
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
+            <p className="text-xs font-medium text-muted uppercase tracking-wider">
+              {sourceMode ? "HTML Source" : "Writing"} - Fullscreen
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSourceMode(!sourceMode)}
+                className="text-xs text-link hover:underline cursor-pointer"
+              >
+                {sourceMode ? "Switch to Visual" : "Switch to HTML"}
+              </button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsExpanded(false)}
+              >
+                <Minimize2 className="w-3.5 h-3.5 mr-1" />
+                Exit Fullscreen
+              </Button>
+            </div>
+          </div>
+          <div className="shrink-0 border-b border-border">
+            <EditorToolbar
+              editor={editor}
+              sourceMode={sourceMode}
+              onToggleSource={() => setSourceMode(!sourceMode)}
+              onImageUpload={(file) => {
+                if (editor) handleImageUpload(file, editor);
+              }}
+              onOpenGallery={() => setShowGallery(true)}
+              onOpenTemplates={() => setShowTemplatePicker(true)}
+            />
+          </div>
+          <div className="flex-1 min-h-0 flex flex-col p-4 gap-4">
+            <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border">
+              <FloatingToolbar editor={editor} />
+              {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
+            </div>
+            {sourceMode && (
+              <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                  <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
+                    Custom CSS{" "}
+                    <span className="text-subtle font-normal">(advanced)</span>
+                  </h3>
+                </div>
+                <textarea
+                  value={customCss}
+                  onChange={(e) => setCustomCss(e.target.value)}
+                  placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
+                  className="flex-1 min-h-0 font-mono text-xs bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-0 resize-none"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <EditorStats
         words={words}
@@ -405,9 +559,19 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             <textarea
               value={customCss}
               onChange={(e) => setCustomCss(e.target.value)}
-              placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
-              className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+              disabled={!sourceMode}
+              placeholder={sourceMode
+                ? "/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
+                : "Enable HTML mode (</>) to edit custom CSS"}
+              aria-disabled={!sourceMode}
+              className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-50 disabled:cursor-not-allowed"
             />
+            {!sourceMode && (
+              <p className="mt-1 text-xs text-subtle">
+                Custom CSS is an HTML-mode feature. Switch to HTML source ({"</>"})
+                to enable editing.
+              </p>
+            )}
             <details className="mt-2 text-xs">
               <summary className="text-subtle cursor-pointer hover:text-muted">
                 Available CSS variables
@@ -443,7 +607,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       </div>
 
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           role="dialog"
           aria-modal="true"
           aria-labelledby="preview-dialog-title">
@@ -472,7 +636,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </Button>
               </div>
             </div>
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-hidden">
               <h1 className="font-serif text-2xl font-bold text-foreground mb-2">
                 {title || "Untitled"}
               </h1>
@@ -500,7 +664,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               )}
 
               <article
-                className="font-serif text-base leading-relaxed text-foreground max-w-none [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
+                className="font-serif text-base leading-relaxed text-foreground max-w-none overflow-x-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
                 dangerouslySetInnerHTML={{
                   __html: sanitizeHtml(
                     customCss
@@ -515,7 +679,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       )}
 
       {showKeySetup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           role="dialog"
           aria-modal="true"
           aria-label="End-to-end encryption setup">
@@ -623,6 +787,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editor={editor}
         isOpen={showGallery}
         onClose={() => setShowGallery(false)}
+      />
+      <TemplatePicker
+        isOpen={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        onApply={applyTemplate}
       />
     </div>
   );

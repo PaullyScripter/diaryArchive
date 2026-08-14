@@ -1,4 +1,4 @@
-# Milestone 05 — User Profiles
+# Milestone 05 - User Profiles
 
 ## Overview
 
@@ -22,7 +22,7 @@
 ### Frontend
 - Public profile page with avatar, bio, quote, feeling, stats, tabs
 - Settings page with 3 tab views: Profile, Account, Preferences
-- Avatar upload widget (preview, crop — using file input for now, actual upload to MinIO in M13)
+- Avatar upload widget (preview, crop - using file input for now, actual upload to MinIO in M13)
 - Theme preference in settings syncs with ThemeProvider
 
 ### Database
@@ -43,9 +43,9 @@
 
 ## Features
 
-### F5.1 — Profile Endpoints (Backend)
+### F5.1 - Profile Endpoints (Backend)
 
-**F5.1.1 — GET /users/{username}**
+**F5.1.1 - GET /users/{username}**
 
 Get a user's public profile.
 
@@ -54,7 +54,7 @@ Get a user's public profile.
 - Return 404 if not found, 403 if banned
 - Response: `{ data: { id, username, avatar_path, about, favorite_quote, currently_feeling, stats (diary_count, follower_count, following_count), created_at, is_following } }`
 
-**F5.1.2 — PUT /users/me**
+**F5.1.2 - PUT /users/me**
 
 Update the current user's profile.
 
@@ -64,7 +64,7 @@ Update the current user's profile.
 - Validation: `preferences.theme` must be "light", "dark", or "system"
 - Response: `{ data: { id, username, about, favorite_quote, currently_feeling, updated_at } }`
 
-**F5.1.3 — PUT /users/me/email**
+**F5.1.3 - PUT /users/me/email**
 
 Add, change, or remove email.
 
@@ -75,7 +75,7 @@ Add, change, or remove email.
 - Validation: valid email format, unique across users
 - Response: `{ data: { has_email, email_verified, message } }`
 
-**F5.1.4 — GET /users/{username}/diaries**
+**F5.1.4 - GET /users/{username}/diaries**
 
 List a user's public diaries.
 
@@ -84,7 +84,7 @@ List a user's public diaries.
 - Only returns public diaries (not private or draft)
 - Response: standard paginated diary list (envelope: { data: [...], meta: { page, per_page, total, has_next, has_prev } })
 
-### F5.2 — Profile Page (Frontend)
+### F5.2 - Profile Page (Frontend)
 
 **File:** `frontend/src/app/(main)/profile/[username]/page.tsx`
 
@@ -94,7 +94,7 @@ List a user's public diaries.
 - Bio text (about)
 - "Currently feeling" emotion badge
 - Stats row: X diaries · Y followers · Z following
-- Follow/Unfollow button (if viewing another user — wired in M09)
+- Follow/Unfollow button (if viewing another user - wired in M09)
 - Edit Profile button (if viewing own profile)
 
 **Tabs:**
@@ -108,7 +108,7 @@ List a user's public diaries.
 - Empty: "No diaries yet. The blank page is waiting." + Write button
 - Error: inline error message with retry
 
-### F5.3 — Settings Page (Frontend)
+### F5.3 - Settings Page (Frontend)
 
 **File:** `frontend/src/app/(main)/settings/page.tsx`
 
@@ -133,7 +133,7 @@ Three tabs via shadcn/ui Tabs component:
 - Email notifications: toggle (disabled if no email)
 - Default comment setting for new diaries: toggle
 
-### F5.4 — Avatar Component (Frontend)
+### F5.4 - Avatar Component (Frontend)
 
 **File:** `frontend/src/components/shared/avatar.tsx`
 
@@ -142,7 +142,7 @@ Three tabs via shadcn/ui Tabs component:
 - Fallback: first letter of username, background color from hash
 - Skeleton variant for loading state
 
-### F5.5 — Stats Display Component (Frontend)
+### F5.5 - Stats Display Component (Frontend)
 
 **File:** `frontend/src/components/shared/stats-display.tsx`
 
@@ -166,7 +166,7 @@ backend/app/
 ### Modified Files (Backend)
 ```
 backend/app/api/v1/router.py         # Include users router
-backend/app/models/user.py           # Already exists from M02 — may need UserProfileResponse
+backend/app/models/user.py           # Already exists from M02 - may need UserProfileResponse
 ```
 
 ### New Files (Frontend)
@@ -233,17 +233,17 @@ No schema changes. All `users` collection fields already defined.
 ## Frontend
 
 ### Pages
-- `/profile/[username]` — Public profile with tabs
-- `/settings` — Settings with Profile/Account/Preferences tabs
+- `/profile/[username]` - Public profile with tabs
+- `/settings` - Settings with Profile/Account/Preferences tabs
 
 ### Components
-- `Avatar` — Circular image with fallback initials, multiple sizes
-- `StatsDisplay` — Icon + number for diary/follower/following counts
+- `Avatar` - Circular image with fallback initials, multiple sizes
+- `StatsDisplay` - Icon + number for diary/follower/following counts
 - Settings forms for each tab
 
 ### Hooks
-- `useUser(username)` — TanStack Query for fetching user profile (GET /users/{username})
-- `useUpdateProfile()` — TanStack Query mutation for PUT /users/me
+- `useUser(username)` - TanStack Query for fetching user profile (GET /users/{username})
+- `useUpdateProfile()` - TanStack Query mutation for PUT /users/me
 
 ### State Management
 - Auth store already handles user state; settings updates call the API and refresh the store
@@ -308,7 +308,7 @@ No schema changes. All `users` collection fields already defined.
 
 ## Performance
 
-- Profile lookups use the unique `username` index — O(log n)
+- Profile lookups use the unique `username` index - O(log n)
 - Stats are denormalized on the user document (no count queries needed)
 - Profile enrichment (`is_following`) requires one additional DB lookup per profile view
 
@@ -344,8 +344,8 @@ No schema changes. All `users` collection fields already defined.
 
 ## Documentation
 
-- `docs/api.md` — Update with user profile and settings endpoints
-- `docs/milestones/milestone-05.md` — This document
+- `docs/api.md` - Update with user profile and settings endpoints
+- `docs/milestones/milestone-05.md` - This document
 
 ---
 
@@ -355,7 +355,7 @@ No schema changes. All `users` collection fields already defined.
 2. Visiting `/profile/{nonexistent}` returns a 404 page.
 3. Visiting `/profile/{banned_user}` returns a 403 page.
 4. The Edit Profile button appears only on the user's own profile page.
-5. The settings page has 3 tabs: Profile, Account, Preferences — all functional.
+5. The settings page has 3 tabs: Profile, Account, Preferences - all functional.
 6. Updating the profile (about, quote, feeling) immediately reflects on the profile page.
 7. Adding/changing/removing email updates the user's email status.
 8. Changing the theme in settings persists across page reloads.

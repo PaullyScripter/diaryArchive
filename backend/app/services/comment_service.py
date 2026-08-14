@@ -315,7 +315,7 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
 
         comment_reason = admin_delete_reason.strip() if admin_delete_reason else "Content policy violation"
         diary_title = diary.get("title", "a diary")
-        title = f'Your comment on "{diary_title}" was removed — {comment_reason}'
+        title = f'Your comment on "{diary_title}" was removed - {comment_reason}'
         body = (
             f"Hello,\n\n"
             f"Your comment on \"{diary_title}\" has been removed by an administrator"

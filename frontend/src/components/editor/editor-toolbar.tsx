@@ -20,6 +20,7 @@ import {
   Code2,
   Image,
   Images,
+  LayoutTemplate,
 } from "lucide-react";
 
 const FONTS = [
@@ -45,10 +46,11 @@ interface EditorToolbarProps {
   onToggleSource: () => void;
   onImageUpload?: (file: File) => void;
   onOpenGallery?: () => void;
+  onOpenTemplates?: () => void;
 }
 
-export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUpload, onOpenGallery }: EditorToolbarProps) {
-  if (!editor || editor.isDestroyed) return null;
+export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUpload, onOpenGallery, onOpenTemplates }: EditorToolbarProps) {
+  const editorAvailable = !!editor && !editor.isDestroyed;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,10 +68,12 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUploa
     }
   };
 
-  const activeFont =
-    (editor.getAttributes("textStyle") as { fontFamily?: string }).fontFamily || "";
-  const activeFontSize =
-    (editor.getAttributes("textStyle") as { fontSize?: string }).fontSize || "";
+  const activeFont = editorAvailable
+    ? (editor.getAttributes("textStyle") as { fontFamily?: string }).fontFamily || ""
+    : "";
+  const activeFontSize = editorAvailable
+    ? (editor.getAttributes("textStyle") as { fontSize?: string }).fontSize || ""
+    : "";
 
   const btnBase =
     "p-1.5 rounded transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed";
@@ -78,161 +82,177 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUploa
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border border-border rounded-md bg-background px-2 py-1.5 mb-2">
-      <select
-        value={activeFont}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v) editor.chain().focus().setFontFamily(v).run();
-          else editor.chain().focus().unsetFontFamily().run();
-        }}
-        className="text-xs bg-background border border-border rounded px-1 py-1 text-muted cursor-pointer mr-1 max-w-[80px]"
-      >
-        {FONTS.map((f) => (
-          <option key={f.value} value={f.value}>
-            {f.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={activeFontSize}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v) editor.chain().focus().setFontSize(v).run();
-          else editor.chain().focus().unsetFontSize().run();
-        }}
-        className="text-xs bg-background border border-border rounded px-1 py-1 text-muted cursor-pointer mr-1 max-w-[70px]"
-      >
-        <option value="">Size</option>
-        {FONT_SIZES.map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
-        ))}
-      </select>
-
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {[
-        { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: () => editor.isActive("bold"), label: "Bold" },
-        { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: () => editor.isActive("italic"), label: "Italic" },
-        { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: () => editor.isActive("underline"), label: "Underline" },
-        { icon: Strikethrough, action: () => editor.chain().focus().toggleStrike().run(), active: () => editor.isActive("strike"), label: "Strikethrough" },
-      ].map((btn) => (
-        <button
-          key={btn.label}
-          type="button"
-          onClick={btn.action}
-          title={btn.label}
-          aria-label={btn.label}
-          aria-pressed={btn.active()}
-          className={`${btnBase} ${btn.active() ? btnActive : btnNormal}`}
-        >
-          <btn.icon className="w-3.5 h-3.5" />
-        </button>
-      ))}
-
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {[
-        { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: () => editor.isActive("heading", { level: 1 }), label: "H1" },
-        { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: () => editor.isActive("heading", { level: 2 }), label: "H2" },
-        { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: () => editor.isActive("heading", { level: 3 }), label: "H3" },
-      ].map((btn) => (
-        <button
-          key={btn.label}
-          type="button"
-          onClick={btn.action}
-          title={btn.label}
-          aria-label={btn.label}
-          aria-pressed={btn.active()}
-          className={`${btnBase} ${btn.active() ? btnActive : btnNormal}`}
-        >
-          <btn.icon className="w-3.5 h-3.5" />
-        </button>
-      ))}
-
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {[
-        { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: () => editor.isActive("blockquote"), label: "Quote" },
-        { icon: Code, action: () => editor.chain().focus().toggleCodeBlock().run(), active: () => editor.isActive("codeBlock"), label: "Code" },
-        { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: () => editor.isActive("bulletList"), label: "Bullet List" },
-        { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: () => editor.isActive("orderedList"), label: "Numbered List" },
-        { icon: ListChecks, action: () => editor.chain().focus().toggleTaskList().run(), active: () => editor.isActive("taskList"), label: "Check List" },
-      ].map((btn) => (
-        <button
-          key={btn.label}
-          type="button"
-          onClick={btn.action}
-          title={btn.label}
-          aria-label={btn.label}
-          aria-pressed={btn.active()}
-          className={`${btnBase} ${btn.active() ? btnActive : btnNormal}`}
-        >
-          <btn.icon className="w-3.5 h-3.5" />
-        </button>
-      ))}
-
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {[
-        { icon: Undo2, action: () => editor.chain().focus().undo().run(), disabled: !editor.can().undo(), label: "Undo" },
-        { icon: Redo2, action: () => editor.chain().focus().redo().run(), disabled: !editor.can().redo(), label: "Redo" },
-      ].map((btn) => (
-        <button
-          key={btn.label}
-          type="button"
-          onClick={btn.action}
-          disabled={btn.disabled}
-          title={btn.label}
-          aria-label={btn.label}
-          className={`${btnBase} ${btnNormal}`}
-        >
-          <btn.icon className="w-3.5 h-3.5" />
-        </button>
-      ))}
-
-      <div className="w-px h-5 bg-border mx-1" />
-
-      {onImageUpload && (
+      {editorAvailable && (
         <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-            className="hidden"
-            onChange={handleFileChange}
-            aria-label="Upload image"
-          />
-          <button
-            type="button"
-            onClick={handleImageClick}
-            title="Insert image"
-            aria-label="Insert image"
-            className={`${btnBase} ${btnNormal}`}
+          <select
+            value={activeFont}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) editor.chain().focus().setFontFamily(v).run();
+              else editor.chain().focus().unsetFontFamily().run();
+            }}
+            className="text-xs bg-background border border-border rounded px-1 py-1 text-muted cursor-pointer mr-1 max-w-[80px]"
           >
-            <Image className="w-3.5 h-3.5" />
-          </button>
-          {onOpenGallery && (
+            {FONTS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={activeFontSize}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v) editor.chain().focus().setFontSize(v).run();
+              else editor.chain().focus().unsetFontSize().run();
+            }}
+            className="text-xs bg-background border border-border rounded px-1 py-1 text-muted cursor-pointer mr-1 max-w-[70px]"
+          >
+            <option value="">Size</option>
+            {FONT_SIZES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          {[
+            { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: () => editor.isActive("bold"), label: "Bold" },
+            { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: () => editor.isActive("italic"), label: "Italic" },
+            { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: () => editor.isActive("underline"), label: "Underline" },
+            { icon: Strikethrough, action: () => editor.chain().focus().toggleStrike().run(), active: () => editor.isActive("strike"), label: "Strikethrough" },
+          ].map((btn) => (
             <button
+              key={btn.label}
               type="button"
-              onClick={onOpenGallery}
-              title="Media gallery"
-              aria-label="Open media gallery"
+              onClick={btn.action}
+              title={btn.label}
+              aria-label={btn.label}
+              aria-pressed={btn.active()}
+              className={`${btnBase} ${btn.active() ? btnActive : btnNormal}`}
+            >
+              <btn.icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          {[
+            { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: () => editor.isActive("heading", { level: 1 }), label: "H1" },
+            { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: () => editor.isActive("heading", { level: 2 }), label: "H2" },
+            { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: () => editor.isActive("heading", { level: 3 }), label: "H3" },
+          ].map((btn) => (
+            <button
+              key={btn.label}
+              type="button"
+              onClick={btn.action}
+              title={btn.label}
+              aria-label={btn.label}
+              aria-pressed={btn.active()}
+              className={`${btnBase} ${btn.active() ? btnActive : btnNormal}`}
+            >
+              <btn.icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          {[
+            { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: () => editor.isActive("blockquote"), label: "Quote" },
+            { icon: Code, action: () => editor.chain().focus().toggleCodeBlock().run(), active: () => editor.isActive("codeBlock"), label: "Code" },
+            { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: () => editor.isActive("bulletList"), label: "Bullet List" },
+            { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: () => editor.isActive("orderedList"), label: "Numbered List" },
+            { icon: ListChecks, action: () => editor.chain().focus().toggleTaskList().run(), active: () => editor.isActive("taskList"), label: "Check List" },
+          ].map((btn) => (
+            <button
+              key={btn.label}
+              type="button"
+              onClick={btn.action}
+              title={btn.label}
+              aria-label={btn.label}
+              aria-pressed={btn.active()}
+              className={`${btnBase} ${btn.active() ? btnActive : btnNormal}`}
+            >
+              <btn.icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+
+          <div className="w-px h-5 bg-border mx-1" />
+
+          {[
+            { icon: Undo2, action: () => editor.chain().focus().undo().run(), disabled: !editor.can().undo(), label: "Undo" },
+            { icon: Redo2, action: () => editor.chain().focus().redo().run(), disabled: !editor.can().redo(), label: "Redo" },
+          ].map((btn) => (
+            <button
+              key={btn.label}
+              type="button"
+              onClick={btn.action}
+              disabled={btn.disabled}
+              title={btn.label}
+              aria-label={btn.label}
               className={`${btnBase} ${btnNormal}`}
             >
-              <Images className="w-3.5 h-3.5" />
+              <btn.icon className="w-3.5 h-3.5" />
             </button>
-          )}
+          ))}
+
           <div className="w-px h-5 bg-border mx-1" />
+
+          {onImageUpload && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                className="hidden"
+                onChange={handleFileChange}
+                aria-label="Upload image"
+              />
+              <button
+                type="button"
+                onClick={handleImageClick}
+                title="Insert image"
+                aria-label="Insert image"
+                className={`${btnBase} ${btnNormal}`}
+              >
+                <Image className="w-3.5 h-3.5" />
+              </button>
+              {onOpenGallery && (
+                <button
+                  type="button"
+                  onClick={onOpenGallery}
+                  title="Media gallery"
+                  aria-label="Open media gallery"
+                  className={`${btnBase} ${btnNormal}`}
+                >
+                  <Images className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <div className="w-px h-5 bg-border mx-1" />
+            </>
+          )}
         </>
+      )}
+
+      {onOpenTemplates && (
+        <button
+          type="button"
+          onClick={onOpenTemplates}
+          title="Start from a template"
+          aria-label="Start from a template"
+          className={`${btnBase} ${btnNormal}`}
+        >
+          <LayoutTemplate className="w-3.5 h-3.5" />
+        </button>
       )}
 
       <button
         type="button"
         onClick={onToggleSource}
-        title="Toggle source code view"
+        title={sourceMode ? "Exit source code view (Ctrl+Tab)" : "Toggle source code view (Tab)"}
         aria-label="Source code"
         className={`${btnBase} ${sourceMode ? btnActive : btnNormal}`}
       >

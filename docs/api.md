@@ -219,7 +219,7 @@ refresh_token=<token>
 }
 ```
 **Set-Cookie:** `refresh_token=<new_token>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800`
-(The refresh token is rotated — old one is revoked.)
+(The refresh token is rotated - old one is revoked.)
 
 **Errors:**
 
@@ -512,7 +512,7 @@ List a user's public diaries.
 }
 ```
 
-**Note:** Only public diaries are returned. Private and draft diaries are excluded for all users (including the owner — the owner uses `/api/v1/me/diaries` which includes their own private/draft entries).
+**Note:** Only public diaries are returned. Private and draft diaries are excluded for all users (including the owner - the owner uses `/api/v1/me/diaries` which includes their own private/draft entries).
 
 **Errors:**
 
@@ -603,7 +603,7 @@ Update the current user's profile.
 | `preferences.email_notifications` | Boolean. Only effective if user has email. |
 | `preferences.notify_on_*` | Booleans. |
 
-All fields are optional — only provided fields are updated.
+All fields are optional - only provided fields are updated.
 
 **Success (200):**
 ```json
@@ -781,10 +781,10 @@ List public diaries. Supports browsing by latest, recently updated, tags, emotio
 | `per_page` | int | 20 | Items per page (max 100) |
 | `sort` | string | `latest` | Sort mode: `latest`, `updated`, `popular` |
 | `order` | string | `desc` | Sort order: `asc`, `desc` |
-| `tags` | string | — | Comma-separated tag filter (OR logic) |
-| `emotion` | string | — | Emotion filter (single value) |
-| `year` | int | — | Year filter (e.g., 2026) |
-| `month` | int | — | Month filter (1-12). Requires `year`. |
+| `tags` | string | - | Comma-separated tag filter (OR logic) |
+| `emotion` | string | - | Emotion filter (single value) |
+| `year` | int | - | Year filter (e.g., 2026) |
+| `month` | int | - | Month filter (1-12). Requires `year`. |
 
 **Success (200):**
 ```json
@@ -956,7 +956,7 @@ Get a single diary entry.
 |-----------|-------------|
 | `id` | Diary ID (24-char hex) |
 
-**Success (200) — public diary:**
+**Success (200) - public diary:**
 ```json
 {
   "data": {
@@ -986,7 +986,7 @@ Get a single diary entry.
 }
 ```
 
-**Success (200) — private diary:**
+**Success (200) - private diary:**
 ```json
 {
   "data": {
@@ -1056,7 +1056,7 @@ Update a diary entry.
 }
 ```
 
-All fields are optional — only provided fields are updated. Cannot change `privacy` from `private` to anything else (or vice versa) — deleting and recreating is safer.
+All fields are optional - only provided fields are updated. Cannot change `privacy` from `private` to anything else (or vice versa) - deleting and recreating is safer.
 
 **Validation:** Same as POST /api/v1/diaries, but all fields optional.
 
@@ -1577,14 +1577,14 @@ Full-text search across public diaries using Meilisearch.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `q` | string | `""` | Full-text search query (empty = browse all) |
-| `tags` | string | — | Comma-separated tag filter (OR logic) |
-| `emotion` | string | — | Single emotion filter |
-| `year` | int | — | Filter by year |
-| `month` | int | — | Filter by month (requires `year`) |
+| `tags` | string | - | Comma-separated tag filter (OR logic) |
+| `emotion` | string | - | Single emotion filter |
+| `year` | int | - | Filter by year |
+| `month` | int | - | Filter by month (requires `year`) |
 | `sort` | string | `created_at:desc` | Sort field and order (`created_at:desc`, `like_count:desc`, etc.) |
 | `page` | int | 1 | Page number |
 | `per_page` | int | 20 | Results per page (max 50) |
-| `author` | string | — | Filter by username |
+| `author` | string | - | Filter by username |
 
 **Success (200):**
 ```json
@@ -1959,7 +1959,7 @@ List/search users.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `q` | string | — | Search by username prefix |
+| `q` | string | - | Search by username prefix |
 | `page` | int | 1 | Page number |
 | `per_page` | int | 20 | Items per page |
 
@@ -2077,8 +2077,8 @@ View the audit trail of admin actions.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `actor_id` | string | — | Filter by admin user ID |
-| `action` | string | — | Filter by action type |
+| `actor_id` | string | - | Filter by admin user ID |
+| `action` | string | - | Filter by action type |
 | `page` | int | 1 | Page number |
 | `per_page` | int | 20 | Items per page (max 100) |
 

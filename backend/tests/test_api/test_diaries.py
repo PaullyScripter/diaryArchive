@@ -28,7 +28,7 @@ async def client():
 async def auth_token(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "diaryauthor", "password": "ValidPass123"},
+        json={"username": "diaryauthor", "password": "ValidPass123", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
@@ -162,11 +162,11 @@ class TestUpdateDiary:
 
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "otherperson", "password": "OtherPass123"},
+            json={"username": "otherperson", "password": "OtherPass123", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "otherperson", "password": "OtherPass123"},
+            json={"username": "otherperson", "password": "OtherPass123", "accepted_terms": True},
         )
         other_token = login_resp.json()["data"]["access_token"]
 

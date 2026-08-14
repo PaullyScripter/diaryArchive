@@ -1,4 +1,4 @@
-# Milestone 10 — Explore & Search
+# Milestone 10 - Explore & Search
 
 ## Overview
 
@@ -58,7 +58,7 @@
 
 ## Features
 
-### F10.1 — Meilisearch Index Configuration (Backend)
+### F10.1 - Meilisearch Index Configuration (Backend)
 
 **File:** `backend/app/search/config.py`
 
@@ -86,9 +86,9 @@ async def initialize_search_indexes():
 ```
 
 - Called on application startup (FastAPI `lifespan` event)
-- Idempotent — safe to call on every restart
+- Idempotent - safe to call on every restart
 
-### F10.2 — Search Indexing Service (Backend)
+### F10.2 - Search Indexing Service (Backend)
 
 **File:** `backend/app/search/indexer.py`
 
@@ -136,7 +136,7 @@ class DiaryIndexer:
         }
 ```
 
-**F10.2.1 — Indexing Hooks in Diary Service**
+**F10.2.1 - Indexing Hooks in Diary Service**
 
 **File:** `backend/app/services/diary_service.py` (modified)
 
@@ -148,11 +148,11 @@ Hook calls in existing diary CRUD:
 
 All hooks fire asynchronously (Fire-and-forget via `asyncio.create_task` or background task queue). The endpoint response does not wait for indexing to complete.
 
-### F10.3 — Search Endpoint (Backend)
+### F10.3 - Search Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/search.py`
 
-**F10.3.1 — GET /api/v1/search**
+**F10.3.1 - GET /api/v1/search**
 
 Full-text search across public diaries with filtering, pagination, and highlighting.
 
@@ -164,14 +164,14 @@ Full-text search across public diaries with filtering, pagination, and highlight
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `q` | string | `""` | Full-text query (empty = browse all) |
-| `tags` | string | — | Comma-separated tag filter (OR logic) |
-| `emotion` | string | — | Single emotion filter |
-| `year` | int | — | Filter by year |
-| `month` | int | — | Filter by month (requires `year`) |
+| `tags` | string | - | Comma-separated tag filter (OR logic) |
+| `emotion` | string | - | Single emotion filter |
+| `year` | int | - | Filter by year |
+| `month` | int | - | Filter by month (requires `year`) |
 | `sort` | string | `"created_at:desc"` | Sort field and direction (`field:order`) |
 | `page` | int | `1` | Page number (1-indexed) |
 | `per_page` | int | `20` | Results per page (max 50) |
-| `author` | string | — | Filter by username |
+| `author` | string | - | Filter by username |
 
 **Response:**
 
@@ -279,11 +279,11 @@ async def search_diaries(
     }
 ```
 
-### F10.4 — Popular Tags Endpoint (Backend)
+### F10.4 - Popular Tags Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/tags.py`
 
-**F10.4.1 — GET /api/v1/tags/popular**
+**F10.4.1 - GET /api/v1/tags/popular**
 
 Return most-used tags from recent public diaries (last 90 days), cached.
 
@@ -310,11 +310,11 @@ async def get_popular_tags(limit: int = 30, days: int = 90):
 
 **Response:** `{ "data": [ { "tag": "life", "count": 42 }, ... ] }`
 
-### F10.5 — Emotions Endpoint (Backend)
+### F10.5 - Emotions Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/emotions.py`
 
-**F10.5.1 — GET /api/v1/emotions**
+**F10.5.1 - GET /api/v1/emotions**
 
 Return available emotions with diary counts from recent public diaries, cached.
 
@@ -338,7 +338,7 @@ async def get_emotions(days: int = 90):
 
 **Response:** `{ "data": [ { "emotion": "hopeful", "count": 87 }, ... ] }`
 
-### F10.6 — Search Result Enrichment (Backend)
+### F10.6 - Search Result Enrichment (Backend)
 
 **File:** `backend/app/search/enricher.py`
 
@@ -388,7 +388,7 @@ async def enrich_search_results(hits: list[dict], current_user: dict | None) -> 
     return enriched
 ```
 
-### F10.7 — Periodic Re-Sync Job (Backend)
+### F10.7 - Periodic Re-Sync Job (Backend)
 
 **File:** `backend/app/search/sync.py`
 
@@ -426,7 +426,7 @@ async def full_reindex():
 - Logs completion with document count
 - Health check: compare count between Meilisearch and MongoDB (`db.diaries.count_documents({"privacy": "public"})`)
 
-### F10.8 — Explore Page (Frontend)
+### F10.8 - Explore Page (Frontend)
 
 **File:** `frontend/src/app/(main)/explore/page.tsx`
 
@@ -460,7 +460,7 @@ The central discovery hub. Replaces the placeholder from M03.
 - **Loading:** Skeleton grid matching the DiaryCardList pattern from M06.
 - **Error:** "Couldn't load search results" with retry button.
 
-### F10.9 — Tag Cloud Component (Frontend)
+### F10.9 - Tag Cloud Component (Frontend)
 
 **File:** `frontend/src/components/explore/tag-cloud.tsx`
 
@@ -487,7 +487,7 @@ size = min_size + (count - min_count) / (max_count - min_count) * (max_size - mi
 opacity = 0.5 + (count - min_count) / (max_count - min_count) * 0.5
 ```
 
-### F10.10 — Emotion Browser Component (Frontend)
+### F10.10 - Emotion Browser Component (Frontend)
 
 **File:** `frontend/src/components/explore/emotion-browser.tsx`
 
@@ -520,7 +520,7 @@ interface EmotionBrowserProps {
   ```
 - Empty state: "No emotions recorded yet."
 
-### F10.11 — Date Archive Browser (Frontend)
+### F10.11 - Date Archive Browser (Frontend)
 
 **File:** `frontend/src/components/explore/date-archive.tsx`
 
@@ -538,7 +538,7 @@ interface DateArchiveProps {
 - Current year selected by default initially
 - Responsive: horizontal scroll on mobile for years
 
-### F10.12 — Search Bar Component (Frontend)
+### F10.12 - Search Bar Component (Frontend)
 
 **File:** `frontend/src/components/explore/search-bar.tsx`
 
@@ -552,13 +552,13 @@ interface SearchBarProps {
 ```
 
 - Text input with search icon on left, clear (×) button on right when value is non-empty
-- Debounced onChange input (300ms) — does not fire on every keystroke
+- Debounced onChange input (300ms) - does not fire on every keystroke
 - Autofocus on mount (on explore page)
 - Loading spinner icon when results are being fetched
 - Accessible: `<label>` with `htmlFor`, `aria-label="Search diaries"`
 - Keyboard: Enter submits immediately (skips debounce)
 
-### F10.13 — Active Filter Badges (Frontend)
+### F10.13 - Active Filter Badges (Frontend)
 
 **File:** `frontend/src/components/explore/active-filters.tsx`
 
@@ -579,7 +579,7 @@ interface ActiveFiltersProps {
 - "Clear all" link at the end
 - Only shown when at least one filter is active
 
-### F10.14 — Explore Store (Frontend)
+### F10.14 - Explore Store (Frontend)
 
 **File:** `frontend/src/store/explore-store.ts`
 
@@ -610,7 +610,7 @@ interface ExploreState {
 }
 ```
 
-### F10.15 — Homepage Update (Frontend)
+### F10.15 - Homepage Update (Frontend)
 
 **File:** `frontend/src/app/(main)/page.tsx` (modified)
 
@@ -681,8 +681,8 @@ frontend/package.json                             # Add @tanstack/react-query (i
 ## Database Changes
 
 ### New Indexes
-- `diaries` collection: `{ privacy: 1, published_at: -1, tags: 1 }` — supports aggregation queries for tag popularity and emotion counts
-- `diaries` collection: `{ privacy: 1, published_at: -1, emotion: 1 }` — supports emotion aggregation
+- `diaries` collection: `{ privacy: 1, published_at: -1, tags: 1 }` - supports aggregation queries for tag popularity and emotion counts
+- `diaries` collection: `{ privacy: 1, published_at: -1, emotion: 1 }` - supports emotion aggregation
 
 ### Migrations
 - Run aggregation pipelines on existing data to verify tag/emotion counts
@@ -695,8 +695,8 @@ frontend/package.json                             # Add @tanstack/react-query (i
 | Method | Path | Auth | Rate Limit | Request | Response |
 |--------|------|------|-----------|---------|----------|
 | GET | `/search` | Optional | 30/min (auth), 60/min (anon) | `q, tags, emotion, year, month, sort, page, per_page, author` | `{ data: [...hits], meta: { page, total, ... } }` |
-| GET | `/tags/popular` | Optional | — | `limit, days` | `{ data: [{ tag, count }] }` |
-| GET | `/emotions` | Optional | — | `days` | `{ data: [{ emotion, count }] }` |
+| GET | `/tags/popular` | Optional | - | `limit, days` | `{ data: [{ tag, count }] }` |
+| GET | `/emotions` | Optional | - | `days` | `{ data: [{ emotion, count }] }` |
 
 ### Search Request Example
 ```
@@ -747,26 +747,26 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 ## Frontend
 
 ### Pages
-- `/explore` — Full explore page with search bar, tag cloud, emotion browser, date archive, and results grid. Replaces the M03 placeholder.
+- `/explore` - Full explore page with search bar, tag cloud, emotion browser, date archive, and results grid. Replaces the M03 placeholder.
 
 ### Components
-- `SearchBar` — Debounced text input with search icon, clear button, loading indicator
-- `TagCloud` — Flex-wrap tag badges sized by popularity, clickable for filtering
-- `EmotionBrowser` — Grid of emotion buttons with emoji, label, and count
-- `DateArchive` — Year selector + month grid for date-based browsing
-- `ActiveFilters` — Removable filter badges with "Clear all"
-- `SearchResults` — Grid of DiaryCards with highlighted search terms
+- `SearchBar` - Debounced text input with search icon, clear button, loading indicator
+- `TagCloud` - Flex-wrap tag badges sized by popularity, clickable for filtering
+- `EmotionBrowser` - Grid of emotion buttons with emoji, label, and count
+- `DateArchive` - Year selector + month grid for date-based browsing
+- `ActiveFilters` - Removable filter badges with "Clear all"
+- `SearchResults` - Grid of DiaryCards with highlighted search terms
 
 ### Hooks
-- `useSearch()` — TanStack Query hook wrapping `GET /api/v1/search`, refetches on query/filter/page change. Debounced query input with `keepPreviousData: true` for smooth pagination.
-- `usePopularTags()` — TanStack Query hook for `GET /api/v1/tags/popular`, cached/staleTime 5 min
-- `useEmotions()` — TanStack Query hook for `GET /api/v1/emotions`, cached/staleTime 5 min
+- `useSearch()` - TanStack Query hook wrapping `GET /api/v1/search`, refetches on query/filter/page change. Debounced query input with `keepPreviousData: true` for smooth pagination.
+- `usePopularTags()` - TanStack Query hook for `GET /api/v1/tags/popular`, cached/staleTime 5 min
+- `useEmotions()` - TanStack Query hook for `GET /api/v1/emotions`, cached/staleTime 5 min
 
 ### State Management
-- `explore-store.ts` — Zustand store holding current search query, selected filters (tags, emotion, year/month), sort, pagination state. Centralizes filter state so all components stay in sync.
+- `explore-store.ts` - Zustand store holding current search query, selected filters (tags, emotion, year/month), sort, pagination state. Centralizes filter state so all components stay in sync.
 
 ### Routing
-- `/explore?q=...&tags=...&emotion=...&year=...&month=...` — URL query params reflect current filters for shareable/bookmarkable URLs
+- `/explore?q=...&tags=...&emotion=...&year=...&month=...` - URL query params reflect current filters for shareable/bookmarkable URLs
 - On mount, parse query params from URL and hydrate store
 - On filter change, update URL query params (pushState, no page reload)
 
@@ -790,9 +790,9 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 ## Backend
 
 ### Services
-- `search_service.py` — Orchestrates search queries: validates parameters, calls Meilisearch, enriches results, returns paginated response
-- `tags_service.py` — Aggregates tag popularity from diaries collection, manages cache
-- `emotions_service.py` — Aggregates emotion counts from diaries collection, manages cache
+- `search_service.py` - Orchestrates search queries: validates parameters, calls Meilisearch, enriches results, returns paginated response
+- `tags_service.py` - Aggregates tag popularity from diaries collection, manages cache
+- `emotions_service.py` - Aggregates emotion counts from diaries collection, manages cache
 
 ### Business Logic
 
@@ -818,12 +818,12 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 5. Compare total count between Meilisearch and MongoDB (health check)
 
 ### Repositories
-- `MeilisearchIndex` — Wrapper around Meilisearch client for the public_diaries index (typed methods: `search_diaries`, `add_diary`, `update_diary`, `remove_diary`, `bulk_add`, `clear`)
+- `MeilisearchIndex` - Wrapper around Meilisearch client for the public_diaries index (typed methods: `search_diaries`, `add_diary`, `update_diary`, `remove_diary`, `bulk_add`, `clear`)
 - Author lookup uses existing `UserRepository.find_by_ids`
 
 ### Background Workers
-- `full_meilisearch_reindex` — Daily at 03:00 UTC, full reconciliation of MongoDB → Meilisearch
-- `index_diary` — Async task triggered by diary create/update/delete (can use `asyncio.create_task` for MVP, migrate to Celery in M14)
+- `full_meilisearch_reindex` - Daily at 03:00 UTC, full reconciliation of MongoDB → Meilisearch
+- `index_diary` - Async task triggered by diary create/update/delete (can use `asyncio.create_task` for MVP, migrate to Celery in M14)
 
 ---
 
@@ -835,7 +835,7 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 - Rate limiting prevents search abuse / scraping
 
 ### Authorization
-- Meilisearch index only contains public diaries — no private or draft content ever indexed
+- Meilisearch index only contains public diaries - no private or draft content ever indexed
 - Server-side enrichment enforces privacy: even if a document somehow leaked into the index, only public data is returned
 - Admin access to Meilisearch dashboard (if exposed) restricted in production
 
@@ -856,7 +856,7 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 
 ### Query Patterns
 - Meilisearch handles full-text search with sub-10ms response times at expected scale (<100K documents)
-- Tag popularity and emotion counts use MongoDB aggregation with compound indexes — sub-50ms
+- Tag popularity and emotion counts use MongoDB aggregation with compound indexes - sub-50ms
 - Redis caching: tags and emotions cached for 5 minutes with TTL
 - Search results cached at Redis level for identical queries (optional, 30-second TTL for popular queries)
 
@@ -866,7 +866,7 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 | Popular tags | Redis | 5 min | Manual on new diary creation (can skip for simplicity) |
 | Emotion counts | Redis | 5 min | Manual on new diary creation |
 | Search results (page 1, common queries) | Redis | 30 sec | TTL-based expiry |
-| Meilisearch index | — | — | Real-time updates via hooks, daily full sync for consistency |
+| Meilisearch index | - | - | Real-time updates via hooks, daily full sync for consistency |
 
 ### Indexing Throughput
 - Real-time indexing: Single document add/update takes 2-5ms in Meilisearch
@@ -878,7 +878,7 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 - Tag cloud aggregation uses `$match` on `privacy: "public"` and recent date range first (indexed), then `$unwind`/`$group` on a filtered subset
 - Emotion aggregation follows the same pattern
 - Search pagination uses Meilisearch built-in pagination (not MongoDB skip/limit)
-- Author enrichment uses a single `$in` batch query by author_id — no N+1
+- Author enrichment uses a single `$in` batch query by author_id - no N+1
 
 ---
 
@@ -936,9 +936,9 @@ GET /api/v1/search?q=rain&tags=life,weather&emotion=hopeful&sort=created_at:desc
 
 ## Documentation
 
-- `docs/api.md` — Update with search, tags, emotions endpoint details, request/response schemas, error codes
-- `docs/search-architecture.md` — New document covering Meilisearch index design, sync strategy, re-index procedure
-- `docs/milestones/milestone-10.md` — This document
+- `docs/api.md` - Update with search, tags, emotions endpoint details, request/response schemas, error codes
+- `docs/search-architecture.md` - New document covering Meilisearch index design, sync strategy, re-index procedure
+- `docs/milestones/milestone-10.md` - This document
 
 ---
 

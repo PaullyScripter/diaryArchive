@@ -17,6 +17,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -45,9 +46,14 @@ export default function RegisterPage() {
         return;
       }
 
+      if (!acceptedTerms) {
+        setError("You must read and agree to the Terms of Service and Privacy Policy to create an account");
+        return;
+      }
+
       setLoading(true);
       try {
-        await register(username.trim(), password, email.trim() || undefined);
+        await register(username.trim(), password, email.trim() || undefined, acceptedTerms);
         router.push("/");
       } catch (err: unknown) {
         if (err && typeof err === "object" && "response" in err) {
@@ -60,7 +66,7 @@ export default function RegisterPage() {
         setLoading(false);
       }
     },
-    [username, password, email, register, router],
+    [username, password, email, acceptedTerms, register, router],
   );
 
   useEffect(() => {
@@ -127,15 +133,62 @@ export default function RegisterPage() {
           />
         </div>
 
+        <div className="rounded-lg border border-border bg-overlay/5 p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              disabled={loading}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
+              aria-describedby="terms-consent-note"
+            />
+            <span className="text-sm leading-relaxed text-muted" id="terms-consent-note">
+              I have read and agree to the{" "}
+              <Link
+                href="/policy/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-link hover:text-link-hover underline underline-offset-2"
+              >
+                Terms of Service
+              </Link>{" "}
+              and the{" "}
+              <Link
+                href="/policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-link hover:text-link-hover underline underline-offset-2"
+              >
+                Privacy Policy
+              </Link>
+              . Your private diaries are encrypted end-to-end; you must accept these
+              terms to create an account.
+            </span>
+          </label>
+        </div>
+
         {error && (
           <p id="register-error" className="text-sm text-destructive" role="alert">
             {error}
           </p>
         )}
 
-        <Button type="submit" variant="primary" disabled={loading} aria-busy={loading} className="w-full">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={loading || !acceptedTerms}
+          aria-busy={loading}
+          aria-disabled={!acceptedTerms}
+          className="w-full disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           {loading ? "Creating account..." : "Create account"}
         </Button>
+        {!acceptedTerms && (
+          <p className="text-xs text-subtle text-center">
+            Agree to the Terms of Service and Privacy Policy to continue.
+          </p>
+        )}
 
         <p className="text-xs text-muted">
           Already have an account?{" "}

@@ -40,7 +40,7 @@ interface AuthState {
   banReason: string;
 
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, email?: string) => Promise<void>;
+  register: (username: string, password: string, email?: string, acceptedTerms?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   setUser: (user: User) => void;
@@ -116,11 +116,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  register: async (username: string, password: string, email?: string) => {
+  register: async (username: string, password: string, email?: string, acceptedTerms?: boolean) => {
     const response = await apiClient.post("/auth/register", {
       username,
       password,
       email: email || undefined,
+      accepted_terms: !!acceptedTerms,
     });
     const data = response.data.data || response.data;
     set({
