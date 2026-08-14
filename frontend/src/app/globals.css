@@ -78,6 +78,7 @@
 .dark .bg-muted\/20 { background-color: color-mix(in oklab, hsl(40 5% 60%) 20%, transparent) !important; }
 .dark .bg-destructive\/5 { background-color: color-mix(in oklab, hsl(0 60% 65%) 5%, transparent) !important; }
 .dark .bg-destructive\/10 { background-color: color-mix(in oklab, hsl(0 60% 65%) 10%, transparent) !important; }
+.dark .bg-background\/90 { background-color: color-mix(in oklab, hsl(40 5% 12%) 90%, transparent) !important; }
 
 .dark .border-border { border-color: hsl(40 5% 22%) !important; }
 
