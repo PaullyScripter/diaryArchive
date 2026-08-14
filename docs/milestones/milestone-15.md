@@ -1,4 +1,4 @@
-# Milestone 15 — Production Deployment
+# Milestone 15 - Production Deployment
 
 ## Overview
 
@@ -6,7 +6,7 @@
 
 **Purpose:** After 14 milestones of feature development and polish, this milestone transitions the application from development to production. It covers infrastructure provisioning, CI/CD automation, monitoring, backup strategies, load testing, and the final launch sequence.
 
-**Dependencies:** Milestone 14 (Polish & Performance) — all features complete, performance optimized, and accessibility verified.
+**Dependencies:** Milestone 14 (Polish & Performance) - all features complete, performance optimized, and accessibility verified.
 
 ---
 
@@ -54,7 +54,7 @@
 
 ## Features
 
-### F15.1 — Production Server Provisioning (Infrastructure)
+### F15.1 - Production Server Provisioning (Infrastructure)
 
 **Provision a VPS with:**
 
@@ -124,7 +124,7 @@ mkdir -p /opt/diaryarchive/{data,logs,backups,config}
 mkdir -p /opt/diaryarchive/data/{mongodb,redis,minio,meilisearch}
 ```
 
-### F15.2 — Cloudflare Configuration (Infrastructure)
+### F15.2 - Cloudflare Configuration (Infrastructure)
 
 **DNS Configuration:**
 ```
@@ -136,14 +136,14 @@ CNAME www               diaryarchive.com        Proxied
 ```
 
 **SSL/TLS Settings:**
-- SSL/TLS encryption mode: **Full (Strict)** — requires valid origin certificate
+- SSL/TLS encryption mode: **Full (Strict)** - requires valid origin certificate
 - Always Use HTTPS: **On**
 - Minimum TLS Version: **1.2**
 - Automatic HTTPS Rewrites: **On**
 - Certificate: Cloudflare Origin CA certificate installed on Nginx
 
 **Security Settings:**
-- WAF: Managed Ruleset — OWASP Core Ruleset (Paranoia Level 2)
+- WAF: Managed Ruleset - OWASP Core Ruleset (Paranoia Level 2)
 - Bot Fight Mode: **On** (or Super Bot Fight Mode)
 - Rate Limiting:
   - `/api/v1/auth/login`: 100 requests/10s per IP
@@ -173,7 +173,7 @@ diaryarchive.com/_next/static/* → Cache Level: Standard, Edge TTL: 365d
 diaryarchive.com/api/* → Cache Level: Bypass, Security Level: High
 ```
 
-### F15.3 — Nginx Configuration (Infrastructure)
+### F15.3 - Nginx Configuration (Infrastructure)
 
 **File:** `docker/nginx/nginx.conf`
 
@@ -250,7 +250,7 @@ server {
         proxy_pass http://backend;
     }
 
-    # Media access — bypass backend for cached media from MinIO
+    # Media access - bypass backend for cached media from MinIO
     location /media/ {
         proxy_pass http://minio:9000/;
         proxy_set_header Host $host;
@@ -293,7 +293,7 @@ server {
         proxy_set_header Connection "upgrade";
     }
 
-    # Static assets — long cache
+    # Static assets - long cache
     location /_next/static/ {
         proxy_pass http://frontend;
         proxy_cache_valid 200 365d;
@@ -309,7 +309,7 @@ server {
 }
 ```
 
-### F15.4 — Production Docker Compose (Infrastructure)
+### F15.4 - Production Docker Compose (Infrastructure)
 
 **File:** `docker-compose.prod.yml`
 
@@ -584,7 +584,7 @@ volumes:
   nginx_logs:
 ```
 
-### F15.5 — Environment Variables Configuration (Infrastructure)
+### F15.5 - Environment Variables Configuration (Infrastructure)
 
 **File:** `.env.production`
 
@@ -634,7 +634,7 @@ Secrets stored in:
 - 1Password / Bitwarden for team access
 - GitHub Actions secrets for CI/CD
 
-### F15.6 — MongoDB Replica Set Setup (Infrastructure)
+### F15.6 - MongoDB Replica Set Setup (Infrastructure)
 
 **Initiate replica set** (run once on primary):
 
@@ -675,7 +675,7 @@ chmod 400 docker/mongodb/keyfile
 chown 999:999 docker/mongodb/keyfile  # mongodb user UID
 ```
 
-### F15.7 — Redis Persistence Configuration (Infrastructure)
+### F15.7 - Redis Persistence Configuration (Infrastructure)
 
 Redis configured with AOF persistence (append-only file):
 
@@ -697,7 +697,7 @@ redis:
 - Maxmemory policy: `allkeys-lru` (cache use case; no strict durability needed)
 - Maxmemory: 128MB (production; adjust based on usage)
 
-### F15.8 — MinIO Production Configuration (Infrastructure)
+### F15.8 - MinIO Production Configuration (Infrastructure)
 
 For production, two options:
 
@@ -715,7 +715,7 @@ For production, two options:
 
 For MVP, Option A with daily backups to R2 is the recommended path.
 
-### F15.9 — GitHub Actions CD Pipeline (Infrastructure)
+### F15.9 - GitHub Actions CD Pipeline (Infrastructure)
 
 **File:** `.github/workflows/deploy.yml`
 
@@ -818,7 +818,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
 
-### F15.10 — Monitoring Setup (Infrastructure)
+### F15.10 - Monitoring Setup (Infrastructure)
 
 **Health check endpoint** (`GET /api/v1/health`):
 
@@ -863,7 +863,7 @@ Docker Compose services:
 - Warning: Memory usage > 80%
 - Info: New deployment started
 
-### F15.11 — Backup Setup (Infrastructure)
+### F15.11 - Backup Setup (Infrastructure)
 
 **File:** `scripts/backup.sh`
 
@@ -943,7 +943,7 @@ tar xzf ./restore/backup.tar.gz -C ./restore/
 mongorestore --drop --gzip ./restore/mongodb-2026-06-25-030000/
 ```
 
-### F15.12 — Centralized Logging Setup (Infrastructure)
+### F15.12 - Centralized Logging Setup (Infrastructure)
 
 **Option: Loki + Promtail + Grafana** (lightweight, no Elasticsearch overhead)
 
@@ -990,7 +990,7 @@ Grafana dashboards:
 - **Redis Dashboard**: hit rate, memory usage, connected clients
 - **Deployment Dashboard**: deployment frequency, success rate, rollback rate
 
-### F15.13 — SMTP Configuration (Infrastructure)
+### F15.13 - SMTP Configuration (Infrastructure)
 
 **Transactional email provider:** SendGrid (or Mailgun, Postmark, AWS SES)
 
@@ -1029,7 +1029,7 @@ async def send_email(to: str, subject: str, html_body: str):
         server.send_message(msg)
 ```
 
-### F15.14 — Security Audit (Infrastructure)
+### F15.14 - Security Audit (Infrastructure)
 
 **Pre-launch security checklist:**
 
@@ -1052,7 +1052,7 @@ async def send_email(to: str, subject: str, html_body: str):
 | Session management | Manual | Logout invalidates, tokens expire |
 | Backups test restore | Manual | Restore from backup works end-to-end |
 
-### F15.15 — Load Testing (Infrastructure)
+### F15.15 - Load Testing (Infrastructure)
 
 **Tool:** k6 (or Artillery)
 
@@ -1100,29 +1100,29 @@ export default function () {
 - If throughput < 500 req/s: increase backend `deploy.resources.limits.cpus` to 2
 - If CPU > 80% on backend: add a second backend instance behind Nginx load balancing
 
-### F15.16 — Soft Launch (Operations)
+### F15.16 - Soft Launch (Operations)
 
-**Phase 1 — Internal testing (1-2 days):**
+**Phase 1 - Internal testing (1-2 days):**
 - Deploy to production behind Cloudflare
 - Give access to 5-10 internal testers
 - Verify all workflows: register, create diary (public/private), upload media, comment, like, search, settings
 - Monitor error rates, response times, resource usage
 - Fix any production-specific issues
 
-**Phase 2 — Closed beta (3-5 days):**
+**Phase 2 - Closed beta (3-5 days):**
 - Open registration with invite-only code
 - Limit to 100 users
 - Monitor MongoDB query patterns, disk usage, memory usage
 - Collect feedback on UX, performance, bugs
 - Tune rate limits and caching based on real traffic
 
-**Phase 3 — Soft launch (3-7 days):**
+**Phase 3 - Soft launch (3-7 days):**
 - Remove invite requirement
 - Announce on social media / relevant communities
 - Monitor: error rates, response times, resource usage, backup success
 - Keep rollback plan ready (redeploy previous Docker images)
 
-### F15.17 — Full Launch (Operations)
+### F15.17 - Full Launch (Operations)
 
 **Launch checklist:**
 1. All tests pass (backend + frontend + load test)
@@ -1138,11 +1138,11 @@ export default function () {
 
 **Post-launch monitoring (first 48 hours):**
 - Real-time error monitoring (Grafana/DataDog/Sentry)
-- Response time dashboards — watch for degradation
-- Database connection pool — watch for exhaustion
-- Disk usage — watch for unexpected growth
-- Backup verification — confirm first 3 backups succeed
-- User feedback collection — inline feedback widget
+- Response time dashboards - watch for degradation
+- Database connection pool - watch for exhaustion
+- Disk usage - watch for unexpected growth
+- Backup verification - confirm first 3 backups succeed
+- User feedback collection - inline feedback widget
 
 ---
 
@@ -1153,11 +1153,11 @@ export default function () {
 docker/
 ├── nginx/
 │   ├── nginx.conf                     # Production Nginx config (reverse proxy, SSL, rate limiting)
-│   └── ssl/                           # Cloudflare origin certificates (not committed — .gitignored)
+│   └── ssl/                           # Cloudflare origin certificates (not committed - .gitignored)
 │       ├── origin-cert.pem
 │       └── origin-key.pem
 ├── mongodb/
-│   └── keyfile                        # Replica set authentication key (not committed — .gitignored)
+│   └── keyfile                        # Replica set authentication key (not committed - .gitignored)
 ├── loki/
 │   └── config.yaml                    # Loki log aggregation config
 ├── promtail/
@@ -1178,7 +1178,7 @@ scripts/
 └── loadtest.js                        # k6 load test script
 .github/workflows/
 └── deploy.yml                         # CD pipeline (test → build → deploy → health check)
-docker-compose.prod.yml                # Production Docker Compose (already exists — updated)
+docker-compose.prod.yml                # Production Docker Compose (already exists - updated)
 .env.production                        # Production environment variables (not committed)
 ```
 
@@ -1241,7 +1241,7 @@ No new backend features. The following are configured for production:
 
 | Service | CPU Limit | Memory Limit | Restart Policy | Health Check |
 |---------|-----------|-------------|----------------|--------------|
-| nginx | 0.5 | 256M | unless-stopped | — (monitored externally) |
+| nginx | 0.5 | 256M | unless-stopped | - (monitored externally) |
 | backend | 1.0 | 512M | unless-stopped | GET /api/v1/health |
 | frontend | 0.5 | 256M | unless-stopped | HTTP 200 on / |
 | mongodb-primary | 1.0 | 1G | unless-stopped | mongosh ping |
@@ -1250,9 +1250,9 @@ No new backend features. The following are configured for production:
 | redis | 0.5 | 256M | unless-stopped | redis-cli ping |
 | minio | 0.5 | 512M | unless-stopped | /minio/health/live |
 | meilisearch | 0.5 | 256M | unless-stopped | /health |
-| loki | 0.5 | 512M | unless-stopped | — |
-| promtail | 0.25 | 128M | unless-stopped | — |
-| grafana | 0.5 | 256M | unless-stopped | — |
+| loki | 0.5 | 512M | unless-stopped | - |
+| promtail | 0.25 | 128M | unless-stopped | - |
+| grafana | 0.5 | 256M | unless-stopped | - |
 
 ### Network Architecture
 
@@ -1274,7 +1274,7 @@ Nginx (reverse proxy, rate limiting, SSL termination, gzip)
 Docker Compose (diaryarchive-network)
     ├── backend     (FastAPI, 1 replica)
     ├── frontend    (Next.js, 1 replica)
-    ├── mongodb     (3-node replica set — primary, secondary, arbiter)
+    ├── mongodb     (3-node replica set - primary, secondary, arbiter)
     ├── redis       (AOF persistence)
     ├── minio       (S3-compatible object storage)
     ├── meilisearch (full-text search)
@@ -1410,7 +1410,7 @@ Slack notification (success/failure)
 
 ## Documentation
 
-- `docs/deployment.md` — Comprehensive deployment guide including:
+- `docs/deployment.md` - Comprehensive deployment guide including:
   - Server provisioning
   - Environment variable setup
   - Docker Compose production configuration
@@ -1420,14 +1420,14 @@ Slack notification (success/failure)
   - Deployment rollback
   - Scaling guide
 
-- `docs/monitoring.md` — Monitoring setup guide:
+- `docs/monitoring.md` - Monitoring setup guide:
   - Health check configuration
   - Grafana dashboard setup
   - Alerting rules and thresholds
   - Log aggregation with Loki
   - Runbook for common alerts
 
-- `docs/security.md` — Update with:
+- `docs/security.md` - Update with:
   - Production security configuration
   - SSH hardening
   - Cloudflare WAF rules
@@ -1435,13 +1435,13 @@ Slack notification (success/failure)
   - Rate limiting configuration
   - Incident response plan
 
-- `README.md` — Update with:
+- `README.md` - Update with:
   - Architecture overview (diagram)
   - Production domain URLs
   - Quick start for development
   - Deployment reference to docs/
 
-- `docs/milestones/milestone-15.md` — This document
+- `docs/milestones/milestone-15.md` - This document
 
 ---
 

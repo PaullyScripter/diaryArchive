@@ -1,10 +1,10 @@
-# Milestone 08 — Private Diaries & Encryption
+# Milestone 08 - Private Diaries & Encryption
 
 ## Overview
 
 **Goal:** Users can create private diaries with true end-to-end encryption. The server stores only ciphertext and cannot read the content. Private diaries are invisible in public listings and search results.
 
-**Purpose:** Privacy is a core value of DiaryArchive. Many users want a secure space for personal thoughts — a digital journal that even the platform cannot access. This milestone delivers cryptographic trust: the server is treated as an untrusted storage layer. Encryption and decryption happen entirely in the browser using the Web Crypto API.
+**Purpose:** Privacy is a core value of DiaryArchive. Many users want a secure space for personal thoughts - a digital journal that even the platform cannot access. This milestone delivers cryptographic trust: the server is treated as an untrusted storage layer. Encryption and decryption happen entirely in the browser using the Web Crypto API.
 
 **Dependencies:** Milestone 07 (Rich Text Editor), Milestone 04 (Authentication)
 
@@ -20,7 +20,7 @@
 - Master key management: store `encrypted_master_key` and `master_key_salt` on the user document
 - Password change: re-encrypt master key with new password-derived key
 - Password reset: clear `encrypted_master_key` and `master_key_salt` (irrecoverable data loss)
-- No decryption endpoints — the client must not send the master key to the server
+- No decryption endpoints - the client must not send the master key to the server
 
 ### Frontend
 - `crypto.ts` module: Web Crypto API wrapper for all encryption operations
@@ -35,11 +35,11 @@
 
 ### Database
 - `diaries` collection: private diaries store `encrypted_data` (BSON binary), no `content_html`, no `content_text`
-- `users` collection: two new fields — `encrypted_master_key` (hex string), `master_key_salt` (hex string)
+- `users` collection: two new fields - `encrypted_master_key` (hex string), `master_key_salt` (hex string)
 - No new collections
 
 ### API
-- No new endpoints — diary CRUD handles private diaries through field validation
+- No new endpoints - diary CRUD handles private diaries through field validation
 - Change password endpoint updated to accept `new_encrypted_master_key` and `new_master_key_salt`
 - Password reset endpoint clears master key fields
 
@@ -59,7 +59,7 @@
 
 ## Features
 
-### F8.1 — Crypto Utilities Module (Frontend)
+### F8.1 - Crypto Utilities Module (Frontend)
 
 **File:** `frontend/src/lib/crypto.ts`
 
@@ -259,7 +259,7 @@ function hexToBuffer(hex: string): Uint8Array {
 }
 ```
 
-### F8.2 — Master Key Lifecycle (Frontend)
+### F8.2 - Master Key Lifecycle (Frontend)
 
 **File:** `frontend/src/hooks/use-master-key.ts`
 
@@ -274,11 +274,11 @@ interface MasterKeyState {
 Lifecycle:
 1. **On first private diary creation:** Call `generateMasterKey()`, encrypt with password via `encryptMasterKey()`, store `encryptedMasterKey` and `salt` on user profile via `PUT /users/me/encryption-key`
 2. **On app load (if user has encryptedMasterKey):** Prompt for password (if not already in session memory), derive password key, unwrap master key. Store master key in React state (not persisted).
-3. **On logout:** Clear master key from React state (no persistence possible — master key is only in memory).
+3. **On logout:** Clear master key from React state (no persistence possible - master key is only in memory).
 4. **On password change (F8.11):** Re-encrypt existing master key with new password, send new `encryptedMasterKey` + `salt` alongside the password change request.
 5. **On password reset (F8.12):** Server clears `encryptedMasterKey` + `salt`. User is warned that private diaries are lost.
 
-### F8.3 — Private Diary Storage (Backend)
+### F8.3 - Private Diary Storage (Backend)
 
 **File:** `backend/app/services/diary_service.py` (updated)
 
@@ -305,7 +305,7 @@ async def update_diary(self, diary_id: str, user_id: str, data: DiaryUpdateReque
     # ... proceed with update
 ```
 
-### F8.4 — Privacy Filter on Queries (Backend)
+### F8.4 - Privacy Filter on Queries (Backend)
 
 **File:** `backend/app/repositories/diary_repo.py` (updated)
 
@@ -321,7 +321,7 @@ Specific queries:
 - `find_user_diaries` (other user's page): `{"privacy": "public", "user_id": owner_id}`
 - `find_my_diaries` (own page): No privacy filter (owner sees all)
 
-### F8.5 — Encrypted Data Schema (Backend)
+### F8.5 - Encrypted Data Schema (Backend)
 
 **File:** `backend/app/models/diary.py` (updated)
 
@@ -342,7 +342,7 @@ class DiaryCreateRequest(BaseModel):
     comments_enabled: bool = True
 ```
 
-### F8.6 — Editor Private Mode (Frontend)
+### F8.6 - Editor Private Mode (Frontend)
 
 **File:** `frontend/src/components/editor/editor-settings.tsx` (updated)
 
@@ -353,7 +353,7 @@ When privacy selector is set to "Private":
 4. The `encrypted_data` object is sent instead of `content_html`/`content_text`
 5. Title input shows a small lock icon to indicate title is encrypted too
 
-### F8.7 — Private Diary Reader (Frontend)
+### F8.7 - Private Diary Reader (Frontend)
 
 **File:** `frontend/src/app/(main)/diary/[id]/page.tsx` (updated)
 
@@ -366,7 +366,7 @@ Additional flow for private diaries:
 6. Show "End-to-end encrypted" badge near the privacy badge
 7. Handle decryption failure (wrong password / corrupted data): show error message with "The diary cannot be decrypted. This may happen if your password has changed since this diary was created."
 
-### F8.8 — Private Diary List Items (Frontend)
+### F8.8 - Private Diary List Items (Frontend)
 
 **File:** `frontend/src/components/diary/diary-card.tsx` (updated)
 
@@ -375,9 +375,9 @@ On `/me` (my diaries) page:
 - Decrypt title in batch: iterate visible private diaries, decrypt titles using loaded master key
 - Show loading state while decrypting ("Decrypting...")
 - Show lock icon on the card
-- On failed decryption: show "Unable to decrypt — [Learn why]" with tooltip
+- On failed decryption: show "Unable to decrypt - [Learn why]" with tooltip
 
-### F8.9 — Privacy Selector Widget (Frontend)
+### F8.9 - Privacy Selector Widget (Frontend)
 
 **File:** `frontend/src/components/editor/privacy-selector.tsx`
 
@@ -400,7 +400,7 @@ Radio-style selector with clear explanation for each option:
 - Private option is disabled if the user has no master key generated yet (with "Set up encryption" action)
 - Privacy change between public/private/draft is not allowed after creation (F8.3)
 
-### F8.10 — Master Key Generation UX (Frontend)
+### F8.10 - Master Key Generation UX (Frontend)
 
 When user selects "Private" privacy for the first time:
 1. Show dialog: "Set up end-to-end encryption"
@@ -410,7 +410,7 @@ When user selects "Private" privacy for the first time:
 5. On click: generate master key, encrypt with password, store on server via API call
 6. On success: show confirmation, close dialog, proceed with private diary creation
 
-### F8.11 — Password Change with Key Re-encryption (Frontend)
+### F8.11 - Password Change with Key Re-encryption (Frontend)
 
 **File:** `frontend/src/app/(main)/settings/page.tsx` (updated)
 
@@ -422,7 +422,7 @@ Extended password change flow:
 5. Server verifies current password, updates password hash, stores new encrypted master key + salt
 6. If user has no master key, skip steps 2-4 (standard password change)
 
-### F8.12 — Password Reset with Data Loss Warning (Frontend)
+### F8.12 - Password Reset with Data Loss Warning (Frontend)
 
 **File:** `frontend/src/app/(auth)/reset-password/page.tsx` (updated)
 
@@ -430,7 +430,7 @@ Password reset flow:
 1. User submits reset token + new password
 2. If user has `encrypted_master_key`, show warning: "You have private diaries that are encrypted with your old password. After resetting, these diaries will be unrecoverable. [Cancel] [I understand, reset anyway]"
 3. On confirmation: server clears `encrypted_master_key` and `master_key_salt` fields, sets new password hash
-4. On next login: user has no master key — private diaries cannot be decrypted (UI shows them as "unavailable")
+4. On next login: user has no master key - private diaries cannot be decrypted (UI shows them as "unavailable")
 
 ---
 
@@ -489,7 +489,7 @@ backend/app/
 
 ### Modified Collections
 
-**`users` collection — new fields:**
+**`users` collection - new fields:**
 ```javascript
 {
   encrypted_master_key: String | null,  // hex-encoded wrapped master key
@@ -497,7 +497,7 @@ backend/app/
 }
 ```
 
-**`diaries` collection — private diary document:**
+**`diaries` collection - private diary document:**
 ```javascript
 {
   privacy: "private",
@@ -522,7 +522,7 @@ backend/app/
 
 ### New Indexes
 ```javascript
-// No new indexes — existing indexes are sufficient
+// No new indexes - existing indexes are sufficient
 // Private diaries are excluded from all public queries via filter, not separate index
 ```
 
@@ -618,26 +618,26 @@ PUT /api/v1/auth/change-password
 ## Frontend
 
 ### Pages
-- `/diary/[id]` — Updated: decrypts and displays private diaries with password prompt if no master key in memory
-- `/diary/[id]/edit` — Updated: encrypts content before save for private diaries
-- `/me` — Updated: decrypts private diary titles in list with loading states
-- `/settings` — Updated: password change includes key re-encryption step
-- `/reset-password` — Updated: shows data loss warning for users with private diaries
+- `/diary/[id]` - Updated: decrypts and displays private diaries with password prompt if no master key in memory
+- `/diary/[id]/edit` - Updated: encrypts content before save for private diaries
+- `/me` - Updated: decrypts private diary titles in list with loading states
+- `/settings` - Updated: password change includes key re-encryption step
+- `/reset-password` - Updated: shows data loss warning for users with private diaries
 
 ### Components
-- `PrivacySelector` — Three-option radio card with explanations, icon, and master key setup flow
-- `TiptapEditor` — Updated: encrypts content before save when privacy=private
-- `DiaryCard` — Updated: shows "Encrypted diary" placeholder, lock icon, decrypt-in-progress skeleton
-- `DiaryCardList` — Updated: batch decrypt private diary titles on /me page
+- `PrivacySelector` - Three-option radio card with explanations, icon, and master key setup flow
+- `TiptapEditor` - Updated: encrypts content before save when privacy=private
+- `DiaryCard` - Updated: shows "Encrypted diary" placeholder, lock icon, decrypt-in-progress skeleton
+- `DiaryCardList` - Updated: batch decrypt private diary titles on /me page
 
 ### Hooks
-- `useMasterKey()` — Load/decrypt master key from server, manage lifecycle (load on app startup, clear on logout)
-- `useDiary(id)` — Updated: decrypt private diary content after fetching
-- `useMyDiaries()` — Updated: decrypt titles in list
+- `useMasterKey()` - Load/decrypt master key from server, manage lifecycle (load on app startup, clear on logout)
+- `useDiary(id)` - Updated: decrypt private diary content after fetching
+- `useMyDiaries()` - Updated: decrypt titles in list
 
 ### State Management
-- `diary-store.ts` — Add `masterKey` reference (CryptoKey is not serializable, stored in React state)
-- `auth-store.ts` — Add `hasMasterKey` boolean (derived from user.encrypted_master_key presence)
+- `diary-store.ts` - Add `masterKey` reference (CryptoKey is not serializable, stored in React state)
+- `auth-store.ts` - Add `hasMasterKey` boolean (derived from user.encrypted_master_key presence)
 
 ### Routing
 - Private diary reader: no special routing; access control enforced server-side (404 for non-owners)
@@ -648,7 +648,7 @@ PUT /api/v1/auth/change-password
 - Lock icon on private diary cards has `aria-label="End-to-end encrypted"`
 - Password prompt overlay for private diary reading has focus trap, Escape to dismiss
 - Decryption failure: error message announced via `aria-live="polite"`
-- "Encrypted" badge uses accessible color (does not rely solely on color — includes lock icon)
+- "Encrypted" badge uses accessible color (does not rely solely on color - includes lock icon)
 - Loading skeleton for decryption has `aria-label="Decrypting diary content"`
 
 ### Responsive Design
@@ -680,7 +680,7 @@ PUT /api/v1/auth/change-password
 **Update private diary:**
 1. Verify existing diary is also private (no privacy change allowed)
 2. If `encrypted_data` provided, replace existing blob
-3. If tags provided, update tags (tags are not encrypted — they enable search/filter)
+3. If tags provided, update tags (tags are not encrypted - they enable search/filter)
 4. Return updated diary
 
 **Privacy filter on public feed:**
@@ -705,7 +705,7 @@ PUT /api/v1/auth/change-password
 - `diary_repo.py` (updated): Privacy-aware query methods, private diary exclusion
 
 ### Background Workers
-- None specific to encryption. Private diaries are subject to the same TTL/stale cleanup as drafts if they are older than 7 days and still in draft/private state without meaningful content (debatable — typically private diaries are not auto-deleted).
+- None specific to encryption. Private diaries are subject to the same TTL/stale cleanup as drafts if they are older than 7 days and still in draft/private state without meaningful content (debatable - typically private diaries are not auto-deleted).
 
 ---
 
@@ -721,7 +721,7 @@ PUT /api/v1/auth/change-password
 - No admin backdoor: admins cannot read private diary content (only see `encrypted_data` blob + tags)
 
 ### Encryption Architecture
-- Algorithm: AES-256-GCM (authenticated encryption — detects tampering)
+- Algorithm: AES-256-GCM (authenticated encryption - detects tampering)
 - Key derivation: PBKDF2 with 600,000 iterations (Web Crypto limitation; Argon2id via WASM in future)
 - Per-diary key: HKDF-SHA256 from master key + random 16-byte salt
 - IV: 12 random bytes per diary (AES-GCM recommended IV size)
@@ -733,7 +733,7 @@ PUT /api/v1/auth/change-password
 ### OWASP
 - Cryptographic storage: AES-256-GCM is NIST-approved, widely vetted
 - Key management: Master key encrypted at rest on server (with user's password), decrypted in browser only
-- Data integrity: GCM provides authentication tag — tampered ciphertext fails to decrypt
+- Data integrity: GCM provides authentication tag - tampered ciphertext fails to decrypt
 - Weak password: PBKDF2 iterations slow brute-force; 600k iterations = ~500ms on modern hardware
 - Session management: Master key cleared on logout; password change re-encrypts rather than decrypts
 - Insecure direct object reference (IDOR): Private diary access check at query level, not just response
@@ -747,10 +747,10 @@ PUT /api/v1/auth/change-password
 
 ## Performance
 
-- Encryption/decryption is client-side — zero server overhead
+- Encryption/decryption is client-side - zero server overhead
 - PBKDF2 with 600k iterations takes ~500ms on modern browsers (acceptable for login / first private diary read per session)
 - Per-diary HKDF derivation is fast (~5ms)
-- AES-256-GCM encrypts/decrypts at ~100 MB/s on modern hardware (diary content is typically <100KB — sub-millisecond)
+- AES-256-GCM encrypts/decrypts at ~100 MB/s on modern hardware (diary content is typically <100KB - sub-millisecond)
 - Master key is cached in browser memory for the session (no repeated PBKDF2)
 - Batch title decryption on /me page: uses `Promise.all` for parallel decryption of visible diaries
 - Server queries filter private diaries at the query level using indexes (no application-level filtering)
@@ -802,17 +802,17 @@ PUT /api/v1/auth/change-password
 
 ## Documentation
 
-- `docs/api.md` — Update with encryption key endpoint, private diary request/response schemas
-- `docs/architecture.md` — Add E2E encryption data flow diagram
-- `docs/security.md` — Document encryption architecture, threat model, key management
-- `docs/milestones/milestone-08.md` — This document
-- `docs/diary-encryption/SKILL.md` — Encryption skill reference
+- `docs/api.md` - Update with encryption key endpoint, private diary request/response schemas
+- `docs/architecture.md` - Add E2E encryption data flow diagram
+- `docs/security.md` - Document encryption architecture, threat model, key management
+- `docs/milestones/milestone-08.md` - This document
+- `docs/diary-encryption/SKILL.md` - Encryption skill reference
 
 ---
 
 ## Acceptance Criteria
 
-1. A user can create a private diary. The server stores only `encrypted_data` — `content_html` and `content_text` are absent from the database document.
+1. A user can create a private diary. The server stores only `encrypted_data` - `content_html` and `content_text` are absent from the database document.
 2. Private diaries do not appear in the public feed, random diary, or any public listing.
 3. A user who is not the owner receives 404 when accessing a private diary by ID.
 4. The owner can read their private diary: content is decrypted and rendered in the browser.
@@ -835,7 +835,7 @@ PUT /api/v1/auth/change-password
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
 | PBKDF2 is not Argon2id (Web Crypto limitation) | High | Use WASM-based Argon2id module in future; PBKDF2 with 600k iterations is still strong |
-| User loses password — private diaries lost forever | Medium | Clear warning during setup; email recovery does NOT recover master key (by design) |
+| User loses password - private diaries lost forever | Medium | Clear warning during setup; email recovery does NOT recover master key (by design) |
 | Master key generation fails in old browsers | Low | Check `window.crypto.subtle` availability; show error page for unsupported browsers |
 | Encryption performance on low-end mobile | Low | PBKDF2 takes ~1s; cache master key; per-diary derivation is fast |
 | Timing side-channel on master key presence | Low | `/auth/me` always returns `has_master_key` for authenticated users (no timing difference) |
@@ -846,10 +846,10 @@ PUT /api/v1/auth/change-password
 
 ## Future Considerations
 
-- Milestone 10 adds Meilisearch indexing — private diaries are explicitly excluded from search indexes.
+- Milestone 10 adds Meilisearch indexing - private diaries are explicitly excluded from search indexes.
 - Milestone 11 notifications: private diaries are excluded from notification triggers (no likes, comments, follows on private diaries).
 - Milestone 14 performance: add content padding to hide plaintext length, upgrade to WASM Argon2id.
 - Tags encryption: a future milestone can add an `encrypted_tags` field for complete content privacy, with server-side search replaced by client-side filtering after batch decryption.
-- Key recovery: a future milestone could support a recovery key (separate from password) stored encrypted with a recovery phrase — user opt-in.
+- Key recovery: a future milestone could support a recovery key (separate from password) stored encrypted with a recovery phrase - user opt-in.
 - Multi-device: master key export/import between devices using QR code or encrypted file transfer.
 - Admin moderation: private diaries are inherently unmoderatable. If abuse reporting is needed, users can report tags/title metadata only.

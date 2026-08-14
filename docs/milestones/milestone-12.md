@@ -1,4 +1,4 @@
-# Milestone 12 — Admin Dashboard
+# Milestone 12 - Admin Dashboard
 
 ## Overview
 
@@ -33,8 +33,8 @@
 - Conditional admin nav visibility (only shown to admin users)
 
 ### Database
-- New collection: `reports` — stores user-submitted reports with status, resolution
-- New collection: `audit_logs` — append-only log of all admin actions
+- New collection: `reports` - stores user-submitted reports with status, resolution
+- New collection: `audit_logs` - append-only log of all admin actions
 - No changes to existing collections (new fields added: none)
 
 ### API
@@ -54,7 +54,7 @@
 
 ## Features
 
-### F12.1 — Admin Middleware (Backend)
+### F12.1 - Admin Middleware (Backend)
 
 **File:** `backend/app/api/deps.py` (modified)
 
@@ -72,11 +72,11 @@ Applied as a dependency to all admin router endpoints:
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 ```
 
-### F12.2 — Report System (Backend)
+### F12.2 - Report System (Backend)
 
 **File:** `backend/app/api/v1/endpoints/reports.py`
 
-**F12.2.1 — POST /api/v1/reports**
+**F12.2.1 - POST /api/v1/reports**
 
 Submit a report against a diary, comment, or user.
 
@@ -96,7 +96,7 @@ Submit a report against a diary, comment, or user.
 - Prevents duplicate reports (same user + same target_id + pending status = 409)
 - Response 201: `{ "data": { "id": "...", "message": "Report submitted" } }`
 
-**F12.2.2 — GET /api/v1/admin/reports**
+**F12.2.2 - GET /api/v1/admin/reports**
 
 List reports with status filtering. Admin only.
 
@@ -128,7 +128,7 @@ List reports with status filtering. Admin only.
 - Target preview: Include enough context for admin review (diary title + first 200 chars for diary, comment body for comment, username + bio for user)
 - Enriches reports with reporter info and target preview in a single batch query
 
-**F12.2.3 — PUT /api/v1/admin/reports/{id}**
+**F12.2.3 - PUT /api/v1/admin/reports/{id}**
 
 Update report status. Admin only.
 
@@ -146,11 +146,11 @@ Update report status. Admin only.
 - Logs action to audit log automatically
 - Response 200: `{ "data": { "id": "...", "status": "resolved", "message": "Report resolved" } }`
 
-### F12.3 — User Management (Backend)
+### F12.3 - User Management (Backend)
 
 **File:** `backend/app/api/v1/endpoints/admin_users.py`
 
-**F12.3.1 — GET /api/v1/admin/users**
+**F12.3.1 - GET /api/v1/admin/users**
 
 List and search users. Admin only.
 
@@ -180,7 +180,7 @@ List and search users. Admin only.
 - Does NOT expose password_hash, email_encrypted, email_hash, or other sensitive fields
 - Search is case-insensitive regex on username (indexed for performance)
 
-**F12.3.2 — PUT /api/v1/admin/users/{id}/ban**
+**F12.3.2 - PUT /api/v1/admin/users/{id}/ban**
 
 Ban or unban a user. Admin only.
 
@@ -188,7 +188,7 @@ Ban or unban a user. Admin only.
 ```json
 {
   "is_banned": true,
-  "reason": "Repeated violations of TOS section 3.2 — hate speech after 3 warnings"
+  "reason": "Repeated violations of TOS section 3.2 - hate speech after 3 warnings"
 }
 ```
 - Setting `is_banned: true` bans the user, `false` unbans
@@ -202,17 +202,17 @@ Ban or unban a user. Admin only.
   - Logs action to audit log
 - Response 200: `{ "data": { "id": "...", "is_banned": true, "message": "User banned" } }`
 
-**F12.3.3 — PUT /api/v1/admin/users/{id}/role**
+**F12.3.3 - PUT /api/v1/admin/users/{id}/role**
 
 Change a user's admin status. Admin only.
 
 - Request: `{ "is_admin": true }`
-- Cannot change own admin status (self-protection — must be done by another admin)
+- Cannot change own admin status (self-protection - must be done by another admin)
 - Cannot demote the last admin (prevent lockout)
 - Logs action to audit log
 - Response 200: `{ "data": { "id": "...", "is_admin": true, "message": "User role updated" } }`
 
-### F12.4 — Audit Logging (Backend)
+### F12.4 - Audit Logging (Backend)
 
 **File:** `backend/app/services/audit_service.py`
 
@@ -259,7 +259,7 @@ class AuditService:
 | `delete_diary` | diary | `{ diary_title, author_username }` |
 | `delete_comment` | comment | `{ diary_id, comment_excerpt }` |
 
-**F12.4.1 — GET /api/v1/admin/audit-logs**
+**F12.4.1 - GET /api/v1/admin/audit-logs**
 
 View audit logs. Admin only.
 
@@ -268,11 +268,11 @@ View audit logs. Admin only.
 - Sorted by `created_at: -1` (newest first)
 - Response: paginated list of audit log entries
 
-### F12.5 — Dashboard Stats Endpoint (Backend)
+### F12.5 - Dashboard Stats Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/admin_stats.py`
 
-**F12.5.1 — GET /api/v1/admin/stats**
+**F12.5.1 - GET /api/v1/admin/stats**
 
 Dashboard statistics. Admin only.
 
@@ -331,11 +331,11 @@ async def get_admin_stats():
 - Response: `{ "data": { users: {...}, diaries: {...}, interactions: {...}, reports: {...}, storage: {...}, system: {...} } }`
 - Cached in Redis for 5 minutes (TTL)
 
-### F12.6 — Health Check Endpoint (Backend)
+### F12.6 - Health Check Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/admin_health.py`
 
-**F12.6.1 — GET /api/v1/admin/health**
+**F12.6.1 - GET /api/v1/admin/health**
 
 Service health status. Admin only.
 
@@ -381,7 +381,7 @@ async def get_health():
     }
 ```
 
-### F12.7 — Admin Layout (Frontend)
+### F12.7 - Admin Layout (Frontend)
 
 **File:** `frontend/src/components/layout/admin-layout.tsx` (populated from M03 placeholder)
 
@@ -406,7 +406,7 @@ async def get_health():
 - "Back to Site" link at bottom of sidebar
 - Content area: fills remaining width, scrollable
 
-### F12.8 — Admin Overview Page (Frontend)
+### F12.8 - Admin Overview Page (Frontend)
 
 **File:** `frontend/src/app/admin/page.tsx`
 
@@ -434,7 +434,7 @@ Stats dashboard with card grid:
 - Error: "Couldn't load stats" with retry
 - Data fetched from `GET /api/v1/admin/stats`
 
-### F12.9 — Report Queue Page (Frontend)
+### F12.9 - Report Queue Page (Frontend)
 
 **File:** `frontend/src/app/admin/reports/page.tsx`
 
@@ -460,7 +460,7 @@ Stats dashboard with card grid:
 - Click row to expand report detail or navigate to review page
 - Actions per row: Review (opens detail), Resolve (quick action with confirmation), Dismiss (quick action with confirmation)
 
-### F12.10 — Report Review Workflow (Frontend)
+### F12.10 - Report Review Workflow (Frontend)
 
 **File:** `frontend/src/app/admin/reports/[id]/page.tsx`
 
@@ -484,9 +484,9 @@ Stats dashboard with card grid:
 │                                                   │
 │ ┌──────────────────────────────────┐             │
 │ │ Action                           │             │
-│ │ [Resolve — warn user]            │             │
-│ │ [Resolve — remove content]       │             │
-│ │ [Dismiss — no violation]         │             │
+│ │ [Resolve - warn user]            │             │
+│ │ [Resolve - remove content]       │             │
+│ │ [Dismiss - no violation]         │             │
 │ │                                   │             │
 │ │ Resolution note: [textarea]       │             │
 │ │ [Submit]                          │             │
@@ -496,13 +496,13 @@ Stats dashboard with card grid:
 
 - Shows full target content in a preview section (read-only rendered view of the diary/comment/profile)
 - Action buttons for common moderator actions:
-  - "Resolve — warn user": Sets report resolved, creates audit log
-  - "Resolve — remove content": Deletes the reported content, sets report resolved, creates audit log
-  - "Dismiss — no violation": Sets report dismissed
+  - "Resolve - warn user": Sets report resolved, creates audit log
+  - "Resolve - remove content": Deletes the reported content, sets report resolved, creates audit log
+  - "Dismiss - no violation": Sets report dismissed
 - Resolution note textarea (required for resolve, optional for dismiss)
 - Confirmation dialog before destructive actions (remove content)
 
-### F12.11 — User Management Page (Frontend)
+### F12.11 - User Management Page (Frontend)
 
 **File:** `frontend/src/app/admin/users/page.tsx`
 
@@ -556,7 +556,7 @@ Actions: [Ban User] [Remove Admin] [View Profile]
 └──────────────────────────────────────┘
 ```
 
-### F12.12 — Audit Log Viewer (Frontend)
+### F12.12 - Audit Log Viewer (Frontend)
 
 **File:** `frontend/src/app/admin/audit-logs/page.tsx`
 
@@ -581,7 +581,7 @@ Actions: [Ban User] [Remove Admin] [View Profile]
 - Click row to expand details showing full JSON of the action's detail object
 - Empty state: "No audit logs match your filters"
 
-### F12.13 — System Health Page (Frontend)
+### F12.13 - System Health Page (Frontend)
 
 **File:** `frontend/src/app/admin/health/page.tsx`
 
@@ -613,7 +613,7 @@ Actions: [Ban User] [Remove Admin] [View Profile]
 - Storage section shows MinIO connection status (placeholder until M13)
 - Indexing section shows Meilisync health
 
-### F12.14 — Conditional Admin Nav (Frontend)
+### F12.14 - Conditional Admin Nav (Frontend)
 
 **File:** `frontend/src/components/layout/navbar.tsx` (modified)
 
@@ -779,55 +779,55 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 
 | Method | Path | Rate Limit | Request | Response |
 |--------|------|-----------|---------|----------|
-| GET | `/admin/reports` | — | `status, page, per_page, sort` | `{ data: [...], meta }` |
-| PUT | `/admin/reports/{id}` | — | `{ status, resolution_note }` | `{ data: { id, status, message } }` |
-| GET | `/admin/users` | — | `q, page, per_page, sort, status` | `{ data: [...], meta }` |
-| PUT | `/admin/users/{id}/ban` | — | `{ is_banned, reason }` | `{ data: { id, is_banned, message } }` |
-| PUT | `/admin/users/{id}/role` | — | `{ is_admin }` | `{ data: { id, is_admin, message } }` |
-| GET | `/admin/audit-logs` | — | `action, target_type, admin_id, from_date, to_date, page, per_page` | `{ data: [...], meta }` |
-| GET | `/admin/stats` | — | — | `{ data: { users, diaries, interactions, reports, storage, system } }` |
-| GET | `/admin/health` | — | — | `{ data: { status, timestamp, checks } }` |
+| GET | `/admin/reports` | - | `status, page, per_page, sort` | `{ data: [...], meta }` |
+| PUT | `/admin/reports/{id}` | - | `{ status, resolution_note }` | `{ data: { id, status, message } }` |
+| GET | `/admin/users` | - | `q, page, per_page, sort, status` | `{ data: [...], meta }` |
+| PUT | `/admin/users/{id}/ban` | - | `{ is_banned, reason }` | `{ data: { id, is_banned, message } }` |
+| PUT | `/admin/users/{id}/role` | - | `{ is_admin }` | `{ data: { id, is_admin, message } }` |
+| GET | `/admin/audit-logs` | - | `action, target_type, admin_id, from_date, to_date, page, per_page` | `{ data: [...], meta }` |
+| GET | `/admin/stats` | - | - | `{ data: { users, diaries, interactions, reports, storage, system } }` |
+| GET | `/admin/health` | - | - | `{ data: { status, timestamp, checks } }` |
 
 ---
 
 ## Frontend
 
 ### Pages
-- `/admin` — Overview dashboard with stats cards
-- `/admin/reports` — Report queue table with status filter
-- `/admin/reports/{id}` — Report review workflow with target preview and action buttons
-- `/admin/users` — User management with search, ban/unban, role change
-- `/admin/audit-logs` — Audit log viewer with action/date filters
-- `/admin/health` — System health dashboard with service status indicators
+- `/admin` - Overview dashboard with stats cards
+- `/admin/reports` - Report queue table with status filter
+- `/admin/reports/{id}` - Report review workflow with target preview and action buttons
+- `/admin/users` - User management with search, ban/unban, role change
+- `/admin/audit-logs` - Audit log viewer with action/date filters
+- `/admin/health` - System health dashboard with service status indicators
 
 ### Components
-- `StatsCard` — Stat display: icon, value, label, optional trend
-- `ReportTable` — Report queue table with status badges, row expansion
-- `ReportReview` — Report detail with target preview and action workflow
-- `UserTable` — User management table with search, action dropdown
-- `UserDetailModal` — Full user detail view in modal
-- `BanDialog` — Confirmation dialog with reason textarea
-- `AuditLogTable` — Filterable log table with expandable detail rows
-- `HealthIndicator` — Service health dot (green/yellow/red) + label + latency
-- `AdminSidebar` — Navigation sidebar with active state
+- `StatsCard` - Stat display: icon, value, label, optional trend
+- `ReportTable` - Report queue table with status badges, row expansion
+- `ReportReview` - Report detail with target preview and action workflow
+- `UserTable` - User management table with search, action dropdown
+- `UserDetailModal` - Full user detail view in modal
+- `BanDialog` - Confirmation dialog with reason textarea
+- `AuditLogTable` - Filterable log table with expandable detail rows
+- `HealthIndicator` - Service health dot (green/yellow/red) + label + latency
+- `AdminSidebar` - Navigation sidebar with active state
 
 ### Hooks
-- `useAdminStats()` — TanStack Query for `GET /admin/stats`, staleTime 5min
-- `useAdminReports(filters)` — TanStack Query for `GET /admin/reports`
-- `useUpdateReport()` — TanStack Query mutation for `PUT /admin/reports/{id}`
-- `useAdminUsers(filters)` — TanStack Query for `GET /admin/users`
-- `useBanUser()` — TanStack Query mutation for `PUT /admin/users/{id}/ban`
-- `useChangeUserRole()` — TanStack Query mutation for `PUT /admin/users/{id}/role`
-- `useAdminAuditLogs(filters)` — TanStack Query for `GET /admin/audit-logs`
-- `useAdminHealth()` — TanStack Query for `GET /admin/health`, refetchInterval 30s
+- `useAdminStats()` - TanStack Query for `GET /admin/stats`, staleTime 5min
+- `useAdminReports(filters)` - TanStack Query for `GET /admin/reports`
+- `useUpdateReport()` - TanStack Query mutation for `PUT /admin/reports/{id}`
+- `useAdminUsers(filters)` - TanStack Query for `GET /admin/users`
+- `useBanUser()` - TanStack Query mutation for `PUT /admin/users/{id}/ban`
+- `useChangeUserRole()` - TanStack Query mutation for `PUT /admin/users/{id}/role`
+- `useAdminAuditLogs(filters)` - TanStack Query for `GET /admin/audit-logs`
+- `useAdminHealth()` - TanStack Query for `GET /admin/health`, refetchInterval 30s
 
 ### State Management
 - TanStack Query cache for all admin data (no Zustand needed)
-- URL query params for filters (status, search, page) — shareable report queue URLs
+- URL query params for filters (status, search, page) - shareable report queue URLs
 - React state for modals (ban dialog, user detail, confirmation)
 
 ### Routing
-- `/admin/*` — All admin routes protected by the admin layout's check
+- `/admin/*` - All admin routes protected by the admin layout's check
 - Admin layout checks `user.is_admin` on mount; if not admin, redirects to `/` with a toast "Admin access required"
 - URL params for report detail: `/admin/reports/{id}`
 - Query params for filters: `/admin/reports?status=pending&page=1`
@@ -854,7 +854,7 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 ## Backend
 
 ### Services
-- `audit_service.py` — Log all admin actions to `audit_logs` collection with structured data
+- `audit_service.py` - Log all admin actions to `audit_logs` collection with structured data
 
 ### Business Logic
 
@@ -893,8 +893,8 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 - User management uses existing `UserRepository` with `find_by_username_search`, `update_ban_status`, `update_role`
 
 ### Background Workers
-- `cleanup_old_reports` — Optional: delete resolved/dismissed reports older than 1 year (TTL index handles this)
-- `cleanup_old_audit_logs` — Optional: TTL index applies here too
+- `cleanup_old_reports` - Optional: delete resolved/dismissed reports older than 1 year (TTL index handles this)
+- `cleanup_old_audit_logs` - Optional: TTL index applies here too
 
 ---
 
@@ -906,7 +906,7 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 - Reports can be submitted by any authenticated user (not admin-only)
 
 ### Authorization
-- `is_admin` flag checked on every admin request — no exceptions
+- `is_admin` flag checked on every admin request - no exceptions
 - Cannot ban another admin (self-protection)
 - Cannot change own admin role (must be done by another admin)
 - Cannot demote the last remaining admin (prevents platform lockout)
@@ -927,7 +927,7 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 - Every admin action is logged with: admin identity, action type, target, timestamp, and details
 - Audit logs are append-only (no deletion or modification)
 - Audit logs retained for 1 year (TTL index)
-- Ban/reason required — ensures accountability
+- Ban/reason required - ensures accountability
 
 ### OWASP Considerations
 - Mass assignment: Only documented fields accepted in all admin mutations (Pydantic models)
@@ -941,10 +941,10 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 ## Performance
 
 ### Query Patterns
-- **Admin stats:** Multiple `count_documents` calls and 1-2 aggregation pipelines. Cached in Redis for 5 minutes — dashboard is read-heavy, not real-time.
-- **Report list:** Filtered by status index `(status, created_at)` — O(log n). No enrichment joins needed (reporter info denormalized in response).
+- **Admin stats:** Multiple `count_documents` calls and 1-2 aggregation pipelines. Cached in Redis for 5 minutes - dashboard is read-heavy, not real-time.
+- **Report list:** Filtered by status index `(status, created_at)` - O(log n). No enrichment joins needed (reporter info denormalized in response).
 - **User search:** Case-insensitive regex on username. At scale, consider a dedicated search index or Meilisearch for user search.
-- **Audit logs:** Filtered scan with index on `(action, created_at)` — O(log n). Append-only means no write contention.
+- **Audit logs:** Filtered scan with index on `(action, created_at)` - O(log n). Append-only means no write contention.
 - **Health check:** Ping each service sequentially (<10ms per service). Called every 30 seconds by the frontend. Lightweight.
 
 ### Caching Strategy
@@ -957,7 +957,7 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 ### Optimization Notes
 - Admin users are typically few (<10), so admin endpoint load is negligible
 - Report creation and audit logging are fire-and-forget writes (no read after write)
-- Audit logs are append-only, never updated — ideal for TTL-based auto-cleanup
+- Audit logs are append-only, never updated - ideal for TTL-based auto-cleanup
 - User search uses regex on `username` with a sparse index; for larger deployments, add Meilisearch user index
 
 ---
@@ -1022,9 +1022,9 @@ frontend/src/middleware.ts               # (optional) Add admin route protection
 
 ## Documentation
 
-- `docs/api.md` — Update with report, admin user management, audit log, stats, health endpoints
-- `docs/admin-guide.md` — New document covering admin workflow: how to review reports, ban users, interpret audit logs, understand health indicators
-- `docs/milestones/milestone-12.md` — This document
+- `docs/api.md` - Update with report, admin user management, audit log, stats, health endpoints
+- `docs/admin-guide.md` - New document covering admin workflow: how to review reports, ban users, interpret audit logs, understand health indicators
+- `docs/milestones/milestone-12.md` - This document
 
 ---
 

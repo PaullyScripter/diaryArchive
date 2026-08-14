@@ -1,4 +1,4 @@
-# Milestone 09 — Social Features
+# Milestone 09 - Social Features
 
 ## Overview
 
@@ -52,9 +52,9 @@
 
 ## Features
 
-### F9.1 — Comment CRUD (Backend)
+### F9.1 - Comment CRUD (Backend)
 
-**F9.1.1 — POST /diaries/{id}/comments**
+**F9.1.1 - POST /diaries/{id}/comments**
 
 Create a comment on a diary.
 
@@ -66,18 +66,18 @@ Create a comment on a diary.
 - Atomic `$inc` diary's `stats.comment_count`
 - Response 201: `{ data: { id, content, created_at, author } }`
 
-**F9.1.2 — GET /diaries/{id}/comments**
+**F9.1.2 - GET /diaries/{id}/comments**
 
 List comments for a diary.
 
 - Auth: Optional (public diaries allow anyone to read comments)
 - Query: `page`, `per_page` (max 50)
 - Sorted by `created_at` ascending (oldest first)
-- Deleted comments return `{ is_deleted: true, content: null }` — ghost comment placeholder
+- Deleted comments return `{ is_deleted: true, content: null }` - ghost comment placeholder
 - Enriched with author info (username, avatar_path)
 - Response: `{ data: [comment objects], meta: { page, per_page, total, has_next, has_prev } }`
 
-**F9.1.3 — DELETE /diaries/{id}/comments/{commentId}**
+**F9.1.3 - DELETE /diaries/{id}/comments/{commentId}**
 
 Soft-delete a comment.
 
@@ -87,9 +87,9 @@ Soft-delete a comment.
 - Do NOT decrement `stats.comment_count` (count reflects total comments including deleted)
 - Response 204
 
-### F9.2 — Like Toggle (Backend)
+### F9.2 - Like Toggle (Backend)
 
-**F9.2.1 — POST /diaries/{id}/like**
+**F9.2.1 - POST /diaries/{id}/like**
 
 Toggle like on a diary.
 
@@ -97,13 +97,13 @@ Toggle like on a diary.
 - Check if like exists:
   - If exists: delete like document, `$inc` diary `stats.like_count` by -1
   - If not exists: create like document, `$inc` diary `stats.like_count` by +1
-- Prevent self-like? No — users can like their own diaries
+- Prevent self-like? No - users can like their own diaries
 - Response 200: `{ data: { is_liked: true/false, like_count: number } }`
-- Return current state (idempotent toggle — calling twice returns to original state)
+- Return current state (idempotent toggle - calling twice returns to original state)
 
-### F9.3 — Bookmark Toggle (Backend)
+### F9.3 - Bookmark Toggle (Backend)
 
-**F9.3.1 — POST /diaries/{id}/bookmark**
+**F9.3.1 - POST /diaries/{id}/bookmark**
 
 Toggle bookmark on a diary.
 
@@ -113,9 +113,9 @@ Toggle bookmark on a diary.
   - If not exists: create bookmark, `$inc` diary `stats.bookmark_count` by +1
 - Response 200: `{ data: { is_bookmarked: true/false, bookmark_count: number } }`
 
-### F9.4 — Follow/Unfollow (Backend)
+### F9.4 - Follow/Unfollow (Backend)
 
-**F9.4.1 — POST /users/{username}/follow**
+**F9.4.1 - POST /users/{username}/follow**
 
 Toggle follow on a user.
 
@@ -127,9 +127,9 @@ Toggle follow on a user.
   - If not exists: create follow, `$inc` target user's `stats.follower_count` by +1, `$inc` current user's `stats.following_count` by +1
 - Response 200: `{ data: { is_following: true/false, follower_count: number } }`
 
-### F9.5 — User's Likes & Bookmarks (Backend)
+### F9.5 - User's Likes & Bookmarks (Backend)
 
-**F9.5.1 — GET /me/likes**
+**F9.5.1 - GET /me/likes**
 
 List diaries the current user has liked.
 
@@ -138,7 +138,7 @@ List diaries the current user has liked.
 - Look up like documents for current user, then fetch corresponding diaries
 - Response: `{ data: [diary objects], meta: { page, per_page, total, has_next, has_prev } }`
 
-**F9.5.2 — GET /me/bookmarks**
+**F9.5.2 - GET /me/bookmarks**
 
 List diaries the current user has bookmarked.
 
@@ -146,9 +146,9 @@ List diaries the current user has bookmarked.
 - Same pattern as likes
 - Response: `{ data: [diary objects], meta: { ... } }`
 
-### F9.6 — Follower/Following Lists (Backend)
+### F9.6 - Follower/Following Lists (Backend)
 
-**F9.6.1 — GET /users/{username}/followers**
+**F9.6.1 - GET /users/{username}/followers**
 
 List followers of a user.
 
@@ -157,7 +157,7 @@ List followers of a user.
 - Enriched with `is_following` (if requesting user is authenticated)
 - Response: `{ data: [{ id, username, avatar_path, is_following }], meta: { ... } }`
 
-**F9.6.2 — GET /users/{username}/following**
+**F9.6.2 - GET /users/{username}/following**
 
 List users a user is following.
 
@@ -165,7 +165,7 @@ List users a user is following.
 - Same pattern as followers
 - Response: `{ data: [{ id, username, avatar_path, is_following }], meta: { ... } }`
 
-### F9.7 — Enrichment (Backend)
+### F9.7 - Enrichment (Backend)
 
 **File:** `backend/app/services/enrichment_service.py`
 
@@ -205,7 +205,7 @@ async def enrich_diaries(
     return diaries
 ```
 
-### F9.8 — Comment Section Component (Frontend)
+### F9.8 - Comment Section Component (Frontend)
 
 **File:** `frontend/src/components/social/comment-section.tsx`
 
@@ -242,7 +242,7 @@ Features:
 - Loading skeleton: 3 placeholder comment rows while fetching
 - Max 2000 characters per comment, with character counter below input
 
-### F9.9 — Like Button Component (Frontend)
+### F9.9 - Like Button Component (Frontend)
 
 **File:** `frontend/src/components/social/like-button.tsx`
 
@@ -264,7 +264,7 @@ Features:
 - Tooltip: "Like" / "Unlike"
 - Accessible: `<button>` with `aria-pressed="true/false"` and `aria-label="Like (n)"`
 
-### F9.10 — Bookmark Button Component (Frontend)
+### F9.10 - Bookmark Button Component (Frontend)
 
 **File:** `frontend/src/components/social/bookmark-button.tsx`
 
@@ -275,7 +275,7 @@ Features:
 - Tooltip: "Bookmark" / "Remove bookmark"
 - Accessible: `aria-pressed` pattern
 
-### F9.11 — Follow Button Component (Frontend)
+### F9.11 - Follow Button Component (Frontend)
 
 **File:** `frontend/src/components/social/follow-button.tsx`
 
@@ -290,13 +290,13 @@ interface FollowButtonProps {
 Features:
 - States:
   - Not following: "Follow" (outlined button, primary color)
-  - Following: "Following" (filled button, hover shows "Unfollow") — known as "following button pattern"
+  - Following: "Following" (filled button, hover shows "Unfollow") - known as "following button pattern"
   - On hover over "Following": text changes to "Unfollow" with red tint
 - Optimistic toggle
 - Size variant: small (profile list), medium (profile header), large (hero)
 - Accessible: `aria-pressed` pattern, label changes dynamically
 
-### F9.12 — My Likes Page (Frontend)
+### F9.12 - My Likes Page (Frontend)
 
 **File:** `frontend/src/app/(main)/me/likes/page.tsx`
 
@@ -307,7 +307,7 @@ Features:
 - Error: retry
 - Pagination: "Load more"
 
-### F9.13 — My Bookmarks Page (Frontend)
+### F9.13 - My Bookmarks Page (Frontend)
 
 **File:** `frontend/src/app/(main)/me/bookmarks/page.tsx`
 
@@ -316,7 +316,7 @@ Features:
 - Empty state: "No bookmarks yet. Bookmark diaries you want to read later." + Explore button
 - All other states same as likes page
 
-### F9.14 — Followers/Following Lists (Frontend)
+### F9.14 - Followers/Following Lists (Frontend)
 
 **File:** `frontend/src/app/(main)/profile/[username]/page.tsx` (tabs updated)
 
@@ -340,7 +340,7 @@ interface UserCardProps {
 }
 ```
 
-### F9.15 — Following Feed (Frontend)
+### F9.15 - Following Feed (Frontend)
 
 **File:** `frontend/src/app/(main)/page.tsx` (updated)
 
@@ -594,34 +594,34 @@ POST /api/v1/diaries/665a2b3c.../comments
 ## Frontend
 
 ### Pages
-- `/` — Updated: "From People You Follow" section
-- `/diary/[id]` — Updated: comment section, like button, bookmark button wired
-- `/profile/[username]` — Updated: Followers/Following tabs, follow button in header
-- `/me/likes` — Grid of liked diaries
-- `/me/bookmarks` — Grid of bookmarked diaries
+- `/` - Updated: "From People You Follow" section
+- `/diary/[id]` - Updated: comment section, like button, bookmark button wired
+- `/profile/[username]` - Updated: Followers/Following tabs, follow button in header
+- `/me/likes` - Grid of liked diaries
+- `/me/bookmarks` - Grid of bookmarked diaries
 
 ### Components
-- `CommentSection` — Full comment list with input, delete, pagination, states
-- `CommentItem` — Single comment rendering (normal, deleted)
-- `LikeButton` — Heart icon with count, animated toggle, optimistic update
-- `BookmarkButton` — Bookmark icon toggle, optimistic update
-- `FollowButton` — Follow/unfollow with hover-to-unfollow pattern, optimistic update
-- `UserCard` — Avatar + username + bio + follow button for lists
+- `CommentSection` - Full comment list with input, delete, pagination, states
+- `CommentItem` - Single comment rendering (normal, deleted)
+- `LikeButton` - Heart icon with count, animated toggle, optimistic update
+- `BookmarkButton` - Bookmark icon toggle, optimistic update
+- `FollowButton` - Follow/unfollow with hover-to-unfollow pattern, optimistic update
+- `UserCard` - Avatar + username + bio + follow button for lists
 
 ### Hooks
-- `useComments(diaryId)` — TanStack Query for GET /diaries/{id}/comments
-- `useCreateComment(diaryId)` — TanStack Query mutation with optimistic add
-- `useDeleteComment(diaryId)` — TanStack Query mutation with optimistic removal
-- `useToggleLike(diaryId)` — TanStack Query mutation with optimistic toggle
-- `useToggleBookmark(diaryId)` — TanStack Query mutation with optimistic toggle
-- `useToggleFollow(username)` — TanStack Query mutation with optimistic toggle
-- `useMyLikes()` — TanStack Query for GET /me/likes
-- `useMyBookmarks()` — TanStack Query for GET /me/bookmarks
-- `useFollowers(username)` — TanStack Query for GET /users/{username}/followers
-- `useFollowing(username)` — TanStack Query for GET /users/{username}/following
+- `useComments(diaryId)` - TanStack Query for GET /diaries/{id}/comments
+- `useCreateComment(diaryId)` - TanStack Query mutation with optimistic add
+- `useDeleteComment(diaryId)` - TanStack Query mutation with optimistic removal
+- `useToggleLike(diaryId)` - TanStack Query mutation with optimistic toggle
+- `useToggleBookmark(diaryId)` - TanStack Query mutation with optimistic toggle
+- `useToggleFollow(username)` - TanStack Query mutation with optimistic toggle
+- `useMyLikes()` - TanStack Query for GET /me/likes
+- `useMyBookmarks()` - TanStack Query for GET /me/bookmarks
+- `useFollowers(username)` - TanStack Query for GET /users/{username}/followers
+- `useFollowing(username)` - TanStack Query for GET /users/{username}/following
 
 ### State Management
-- `diary-store.ts` — Optional: cache like/bookmark states for immediate UI response
+- `diary-store.ts` - Optional: cache like/bookmark states for immediate UI response
 - Social hooks use TanStack Query cache invalidation on mutation success (e.g., toggling like invalidates diary queries to refresh `is_liked` and `like_count`)
 
 ### Routing
@@ -661,8 +661,8 @@ POST /api/v1/diaries/665a2b3c.../comments
 
 **Create comment:**
 1. Verify diary exists and is accessible to user
-2. Check `comments_enabled` — 400 if disabled
-3. Check `comments_locked` — 400 if locked
+2. Check `comments_enabled` - 400 if disabled
+3. Check `comments_locked` - 400 if locked
 4. Sanitize input: strip HTML, max 2000 chars
 5. Create comment document
 6. Atomic `$inc` diary's `stats.comment_count`
@@ -679,7 +679,7 @@ POST /api/v1/diaries/665a2b3c.../comments
 3. If exists: delete one, `$inc` like_count by -1
 4. If not exists: insert one, `$inc` like_count by +1
 5. Return current `is_liked` and `like_count`
-6. No duplicate prevention needed — compound unique index prevents duplicates at DB level
+6. No duplicate prevention needed - compound unique index prevents duplicates at DB level
 
 **Toggle follow:**
 1. Verify target user exists and is not banned
@@ -706,7 +706,7 @@ POST /api/v1/diaries/665a2b3c.../comments
 - `follow_repo.py`: `find_by_follower_and_following`, `find_followers`, `find_following`, `create`, `delete`
 
 ### Background Workers
-- `delete_orphaned_likes_bookmarks` — When a diary is deleted, cascade delete associated likes/bookmarks/comments (already handled in diary_service cascade logic from M06)
+- `delete_orphaned_likes_bookmarks` - When a diary is deleted, cascade delete associated likes/bookmarks/comments (already handled in diary_service cascade logic from M06)
 
 ---
 
@@ -748,12 +748,12 @@ POST /api/v1/diaries/665a2b3c.../comments
 
 ## Performance
 
-- Like/bookmark/follow toggle uses compound unique index — ultra-fast existence check
+- Like/bookmark/follow toggle uses compound unique index - ultra-fast existence check
 - Comment list uses covered query on `{ diary_id, created_at }` index
 - Batch enrichment avoids N+1: single query for all likes/bookmarks per diary list
-- `$inc` stats updates are atomic and O(1) — no read-modify-write race conditions
+- `$inc` stats updates are atomic and O(1) - no read-modify-write race conditions
 - Deep pagination on comments uses skip/limit (acceptable for typical comment counts <500)
-- Follower/following lists use paginated indexes — fast even for users with 100k+ followers
+- Follower/following lists use paginated indexes - fast even for users with 100k+ followers
 - All new collections have appropriate indexes from the start (no missing-index scans)
 
 ### Caching Opportunities
@@ -824,10 +824,10 @@ POST /api/v1/diaries/665a2b3c.../comments
 
 ## Documentation
 
-- `docs/api.md` — Update with comments, likes, bookmarks, follows endpoints, all request/response schemas, error codes
-- `docs/architecture.md` — Add social interaction data flow diagram
-- `docs/milestones/milestone-09.md` — This document
-- `docs/database.md` — Update with new collections, indexes, and migration steps
+- `docs/api.md` - Update with comments, likes, bookmarks, follows endpoints, all request/response schemas, error codes
+- `docs/architecture.md` - Add social interaction data flow diagram
+- `docs/milestones/milestone-09.md` - This document
+- `docs/database.md` - Update with new collections, indexes, and migration steps
 
 ---
 
@@ -866,7 +866,7 @@ POST /api/v1/diaries/665a2b3c.../comments
 | Comment count out of sync | Low | Atomic `$inc` ensures consistency; optional periodic recount job in M14 |
 | Like/Bookmark stats on private diaries | Low | Private diaries: comments/likes/bookmarks disabled server-side |
 | Follow spam (mass follow/unfollow) | Medium | Rate limiting (20/min), future anti-abuse heuristics |
-| N+1 enrichment queries | Low | Batch lookups in enrichment service — single query per flag type |
+| N+1 enrichment queries | Low | Batch lookups in enrichment service - single query per flag type |
 | Deleted comment thread confusion | Low | Soft-delete preserves thread structure; "[deleted]" is clear enough |
 
 ---
@@ -875,8 +875,8 @@ POST /api/v1/diaries/665a2b3c.../comments
 
 - Milestone 11 (Notifications) wires into comment, like, follow actions to notify users.
 - Milestone 12 (Admin Dashboard) adds comment moderation, abuse report management, and the ability to lock comment threads.
-- Milestone 10 adds search — comments are not searchable, but comment counts appear in diary search results.
-- Nested (threaded) comments are a future enhancement — this milestone uses flat ordering.
+- Milestone 10 adds search - comments are not searchable, but comment counts appear in diary search results.
+- Nested (threaded) comments are a future enhancement - this milestone uses flat ordering.
 - Comment editing is intentionally excluded from this milestone (MVP is create + delete only).
 - Replying to comments (nested threads) is a future milestone.
 - "Likes from people you follow" enrichment on diary cards is a future UX enhancement.

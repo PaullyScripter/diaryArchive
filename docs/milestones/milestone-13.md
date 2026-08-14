@@ -1,4 +1,4 @@
-# Milestone 13 — Media System
+# Milestone 13 - Media System
 
 ## Overview
 
@@ -48,7 +48,7 @@
 
 ## Features
 
-### F13.1 — MinIO Client Service (Backend)
+### F13.1 - MinIO Client Service (Backend)
 
 **File:** `backend/app/services/minio_service.py`
 
@@ -95,7 +95,7 @@ class MinioService:
 - `delete_prefix()`: removes all objects under a prefix (used for cascade delete)
 - `get_presigned_url()`: generates presigned GET URL with configurable expiry
 
-### F13.2 — Image Optimization Service (Backend)
+### F13.2 - Image Optimization Service (Backend)
 
 **File:** `backend/app/services/image_service.py`
 
@@ -148,7 +148,7 @@ async def process_image(data: bytes, content_type: str) -> dict:
 - GIF files: preserve animation by saving as GIF (not WebP) for thumbnail only
 - All variants stored in MinIO with suffix: `_thumbnail.webp`, `_standard.webp`
 
-### F13.3 — MIME Type Validation (Backend)
+### F13.3 - MIME Type Validation (Backend)
 
 **File:** `backend/app/core/validators.py`
 
@@ -174,7 +174,7 @@ def validate_mime_type(data: bytes) -> str:
     return kind.mime
 ```
 
-### F13.4 — Size Validation (Backend)
+### F13.4 - Size Validation (Backend)
 
 ```python
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -185,7 +185,7 @@ def validate_file_size(data: bytes):
         raise FileTooLargeError(f"File exceeds maximum size of {MAX_FILE_SIZE // (1024*1024)}MB")
 ```
 
-### F13.5 — Media Upload Endpoint (Backend)
+### F13.5 - Media Upload Endpoint (Backend)
 
 **File:** `backend/app/api/v1/endpoints/media.py`
 
@@ -200,7 +200,7 @@ POST /api/v1/media/upload
   2. Read file bytes into memory
   3. Validate MIME type by magic bytes
   4. Validate file size
-  5. Generate UUID-based filename: `{uuid}.{ext}` — but stored as `.webp`
+  5. Generate UUID-based filename: `{uuid}.{ext}` - but stored as `.webp`
   6. Process image: generate thumbnail + standard variants
   7. Upload all variants to MinIO (public bucket for public diaries, private bucket for private)
   8. Create media document in MongoDB
@@ -229,7 +229,7 @@ async def upload_media(
     return {"data": result}
 ```
 
-### F13.6 — Media Delete Endpoint (Backend)
+### F13.6 - Media Delete Endpoint (Backend)
 
 DELETE /api/v1/media/{id}
 
@@ -243,7 +243,7 @@ DELETE /api/v1/media/{id}
   5. Delete media document from MongoDB
   6. Return 204
 
-### F13.7 — Private Media URL Signing (Backend)
+### F13.7 - Private Media URL Signing (Backend)
 
 GET /api/v1/media/{id}/url
 
@@ -255,7 +255,7 @@ GET /api/v1/media/{id}/url
   3. Generate presigned GET URL (15-minute expiry)
   4. Return signed URL
 
-### F13.8 — Media Cleanup on Diary Delete (Backend)
+### F13.8 - Media Cleanup on Diary Delete (Backend)
 
 **File:** `backend/app/services/media_service.py`
 
@@ -277,7 +277,7 @@ async def cascade_delete_diary_media(diary_id: str):
     await media_repo.delete_by_diary(diary_id)
 ```
 
-### F13.9 — Media Repository (Backend)
+### F13.9 - Media Repository (Backend)
 
 **File:** `backend/app/repositories/media_repo.py`
 
@@ -310,7 +310,7 @@ class MediaRepository(BaseRepository):
         await self.collection.delete_many({"diary_id": ObjectId(diary_id)})
 ```
 
-### F13.10 — Gallery Endpoint (Backend)
+### F13.10 - Gallery Endpoint (Backend)
 
 GET /api/v1/media?page=1&per_page=20
 
@@ -319,7 +319,7 @@ GET /api/v1/media?page=1&per_page=20
 - Each item: id, thumbnail_url, original_url, content_type, file_size, created_at, diary_id
 - Response: `{ data: [...], meta: { page, per_page, total, has_next, has_prev } }`
 
-### F13.11 — Image Upload Plugin for Tiptap (Frontend)
+### F13.11 - Image Upload Plugin for Tiptap (Frontend)
 
 **File:** `frontend/src/components/editor/extensions/image-upload.ts`
 
@@ -385,7 +385,7 @@ export const ImageUpload = Extension.create({
 - Paste: captures paste event, extracts image files from clipboard, uploads and inserts
 - File picker toolbar button: opens native file picker, uploads selected files
 
-### F13.12 — Upload Progress Component (Frontend)
+### F13.12 - Upload Progress Component (Frontend)
 
 **File:** `frontend/src/components/editor/upload-progress.tsx`
 
@@ -404,7 +404,7 @@ interface UploadProgressProps {
 - Multiple concurrent uploads shown as stacked progress items
 - Auto-dismiss on completion after 2 seconds
 
-### F13.13 — In-Editor Image Resize (Frontend)
+### F13.13 - In-Editor Image Resize (Frontend)
 
 **File:** `frontend/src/components/editor/extensions/resizable-image.ts`
 
@@ -452,7 +452,7 @@ export const ResizableImage = Image.extend({
 - Click to select, drag handle to resize proportionally
 - Double-click image to open viewer modal
 
-### F13.14 — Image Gallery Modal (Frontend)
+### F13.14 - Image Gallery Modal (Frontend)
 
 **File:** `frontend/src/components/editor/image-gallery.tsx`
 
@@ -467,7 +467,7 @@ Modal that displays user's previously uploaded images:
 - Search/filter: filter by filename or date (basic)
 - Insert behavior: adds image node at current cursor position with standard variant URL
 
-### F13.15 — Client-Side File Validation (Frontend)
+### F13.15 - Client-Side File Validation (Frontend)
 
 **File:** `frontend/src/lib/media/validation.ts`
 
@@ -602,10 +602,10 @@ frontend/package.json                             # Add tiptap extension deps if
 | Method | Path | Auth | Rate Limit | Request | Response |
 |--------|------|------|-----------|---------|----------|
 | POST | `/media/upload` | Bearer | 30/min | `multipart/form-data: file + diary_id?` | `{ data: { id, variants, created_at } }` |
-| DELETE | `/media/{id}` | Bearer | 60/min | — | 204 No Content |
-| GET | `/media/{id}/url` | Bearer | 120/min | — | `{ data: { url, expires_at } }` |
+| DELETE | `/media/{id}` | Bearer | 60/min | - | 204 No Content |
+| GET | `/media/{id}/url` | Bearer | 120/min | - | `{ data: { url, expires_at } }` |
 | GET | `/media` | Bearer | 60/min | `?page=1&per_page=20` | `{ data: [...], meta: {...} }` |
-| GET | `/media/{id}` | Bearer | 60/min | — | `{ data: { full media record } }` |
+| GET | `/media/{id}` | Bearer | 60/min | - | `{ data: { full media record } }` |
 
 ### Upload Response
 
@@ -643,7 +643,7 @@ frontend/package.json                             # Add tiptap extension deps if
 ## Frontend
 
 ### Pages
-- `/media` — User's media gallery with thumbnail grid, pagination, delete functionality
+- `/media` - User's media gallery with thumbnail grid, pagination, delete functionality
 
 ### Editor Integration
 - Tiptap toolbar gets 3 new buttons: Upload Image (file picker), Gallery (browse modal), Image Settings (alignment, size, link)
@@ -652,12 +652,12 @@ frontend/package.json                             # Add tiptap extension deps if
 - Upload progress shown as a floating indicator above the editor
 
 ### Components
-- `UploadProgress` — Animated progress bar for each concurrent upload
-- `ImageGallery` — Modal grid of user's uploaded images with insert action
-- `ResizableImage` — Tiptap node view with drag-resize handle and alignment controls
+- `UploadProgress` - Animated progress bar for each concurrent upload
+- `ImageGallery` - Modal grid of user's uploaded images with insert action
+- `ResizableImage` - Tiptap node view with drag-resize handle and alignment controls
 
 ### Hooks
-- `useUpload()` — Mutation with progress callback:
+- `useUpload()` - Mutation with progress callback:
   ```typescript
   function useUpload() {
     return useMutation({
@@ -673,9 +673,9 @@ frontend/package.json                             # Add tiptap extension deps if
     });
   }
   ```
-- `useMediaGallery(page)` — TanStack Query for paginated media list
-- `useDeleteMedia()` — TanStack Query mutation with cache invalidation
-- `useMediaUrl(id)` — TanStack Query for presigned URL (for private media)
+- `useMediaGallery(page)` - TanStack Query for paginated media list
+- `useDeleteMedia()` - TanStack Query mutation with cache invalidation
+- `useMediaUrl(id)` - TanStack Query for presigned URL (for private media)
 
 ### State Management
 - Upload queue stored in local component state (not global store)
@@ -722,7 +722,7 @@ frontend/package.json                             # Add tiptap extension deps if
 
 **Upload flow:**
 1. Receive multipart upload with file and optional diary_id
-2. Read entire file into memory (up to 10MB — acceptable for images)
+2. Read entire file into memory (up to 10MB - acceptable for images)
 3. Validate MIME type by magic bytes → 415 if unsupported
 4. Validate file size → 413 if too large
 5. Generate UUID v4 for the media record
@@ -760,8 +760,8 @@ frontend/package.json                             # Add tiptap extension deps if
 - `MediaRepository`: `create`, `find_by_id`, `find_by_diary`, `find_by_user` (paginated), `delete`, `delete_by_diary`
 
 ### Background Workers
-- `cleanup_orphaned_media` — Periodic task (daily) that finds media records where `diary_id` points to a deleted diary and removes them. Run as a Celery task or APScheduler job.
-- `cleanup_expired_signed_urls` — No cleanup needed (presigned URLs are stateless, no server-side tracking)
+- `cleanup_orphaned_media` - Periodic task (daily) that finds media records where `diary_id` points to a deleted diary and removes them. Run as a Celery task or APScheduler job.
+- `cleanup_expired_signed_urls` - No cleanup needed (presigned URLs are stateless, no server-side tracking)
 
 ---
 
@@ -783,13 +783,13 @@ frontend/package.json                             # Add tiptap extension deps if
 - Uploader info stored in media record for audit trail
 
 ### OWASP
-- File upload validation: MIME type checked by magic bytes (not extension) — prevents disguised executables
-- Path traversal: UUID-based filenames with no user-controlled path components — prevents directory traversal
-- Size limits: 10MB per file, 20MB per request — prevents storage DoS
-- Content-Type: server sets Content-Type from validated MIME, not from upload — prevents MIME confusion
-- Rate limiting: 30 uploads/min per user — prevents upload DoS
+- File upload validation: MIME type checked by magic bytes (not extension) - prevents disguised executables
+- Path traversal: UUID-based filenames with no user-controlled path components - prevents directory traversal
+- Size limits: 10MB per file, 20MB per request - prevents storage DoS
+- Content-Type: server sets Content-Type from validated MIME, not from upload - prevents MIME confusion
+- Rate limiting: 30 uploads/min per user - prevents upload DoS
 - Image bombs: Pillow has built-in decompression bomb protection (`Image.MAX_IMAGE_PIXELS` set to 178M)
-- EXIF stripping: EXIF data removed during WebP conversion — prevents location/metadata leakage
+- EXIF stripping: EXIF data removed during WebP conversion - prevents location/metadata leakage
 - CSRF: All mutating endpoints require Bearer token (not cookie-only)
 - Signed URLs: short-lived (15min), scoped to specific object
 
@@ -797,13 +797,13 @@ frontend/package.json                             # Add tiptap extension deps if
 
 ## Performance
 
-- Image processing uses Pillow in-memory (no temp files) — fast for images up to 10MB
+- Image processing uses Pillow in-memory (no temp files) - fast for images up to 10MB
 - Variants generated sequentially (acceptable at expected scale <10 uploads/sec)
-- MinIO upload is async — does not block the event loop
-- Media gallery queries use index on `{ user_id: 1, created_at: -1 }` — sub-millisecond
-- Presigned URL generation is O(1) — no server-side state needed
-- Thumbnails (150px) used in gallery listings — significantly less bandwidth than originals
-- Standard variant (1200px) used in diary reader — balances quality and load time
+- MinIO upload is async - does not block the event loop
+- Media gallery queries use index on `{ user_id: 1, created_at: -1 }` - sub-millisecond
+- Presigned URL generation is O(1) - no server-side state needed
+- Thumbnails (150px) used in gallery listings - significantly less bandwidth than originals
+- Standard variant (1200px) used in diary reader - balances quality and load time
 
 ### Caching
 - Media URLs from gallery response are cacheable (CDN cache for public variants)
@@ -869,10 +869,10 @@ frontend/package.json                             # Add tiptap extension deps if
 
 ## Documentation
 
-- `docs/api.md` — Update with media endpoints, request/response schemas, error codes
-- `docs/milestones/milestone-13.md` — This document
-- `docs/architecture.md` — Update storage architecture with MinIO details
-- `README.md` — Add MinIO setup instructions for development
+- `docs/api.md` - Update with media endpoints, request/response schemas, error codes
+- `docs/milestones/milestone-13.md` - This document
+- `docs/architecture.md` - Update storage architecture with MinIO details
+- `README.md` - Add MinIO setup instructions for development
 
 ---
 
@@ -915,7 +915,7 @@ frontend/package.json                             # Add tiptap extension deps if
 ## Future Considerations
 
 - Milestone 14 adds image CDN caching and WebP AVIF fallback based on Accept headers.
-- User avatars currently stored as URL strings — Migrate to MinIO upload using this milestone's infrastructure.
+- User avatars currently stored as URL strings - Migrate to MinIO upload using this milestone's infrastructure.
 - Video/audio upload support (extend MIME allowlist, generate poster frames for video).
 - Client-side image compression before upload for large files (Canvas API resize).
 - AI-powered image moderation (NSFW detection, content moderation).
