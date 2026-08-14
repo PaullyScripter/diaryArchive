@@ -1,4 +1,4 @@
-# Milestone 04 — Authentication
+# Milestone 04 - Authentication
 
 ## Overview
 
@@ -40,7 +40,7 @@
 ### Security
 - Argon2id password hashing (memory-hard, resists GPU/ASIC)
 - Passwords never returned in responses
-- Email encrypted at rest (AES-256-GCM) — server never stores plaintext email
+- Email encrypted at rest (AES-256-GCM) - server never stores plaintext email
 - Refresh tokens stored as SHA-256 hashes (not plaintext)
 - Rate limiting prevents brute force
 - JWT short expiry limits leaked-token window
@@ -51,7 +51,7 @@
 
 ## Features
 
-### F4.1 — Password Hashing (Backend)
+### F4.1 - Password Hashing (Backend)
 
 **File:** `backend/app/core/security.py`
 
@@ -75,7 +75,7 @@ Parameters (Argon2id):
 - Parallelism: 4
 - Output: 256 bits
 
-### F4.2 — JWT Token Service (Backend)
+### F4.2 - JWT Token Service (Backend)
 
 **File:** `backend/app/core/security.py`
 
@@ -83,7 +83,7 @@ Parameters (Argon2id):
 - `decode_access_token(token)`: verifies and decodes JWT, raises `AuthenticationException` on expiry or invalid signature
 - Algorithm: HS256, secret from `settings.secret_key`
 
-### F4.3 — Refresh Token Service (Backend)
+### F4.3 - Refresh Token Service (Backend)
 
 **File:** `backend/app/core/security.py`
 
@@ -91,7 +91,7 @@ Parameters (Argon2id):
 - `hash_token(token)`: returns SHA-256 hex digest
 - Refresh token doc stored in `refresh_tokens` collection: `{ user_id, token_hash, expires_at, created_at }`
 
-### F4.4 — Auth Router & Endpoints (Backend)
+### F4.4 - Auth Router & Endpoints (Backend)
 
 **File:** `backend/app/api/v1/endpoints/auth.py`
 
@@ -100,13 +100,13 @@ Parameters (Argon2id):
 | `/auth/register` | POST | None | 5/min/IP | Create account |
 | `/auth/login` | POST | None | 10/min/IP | Sign in |
 | `/auth/refresh` | POST | Cookie | 20/min/IP | Refresh access token |
-| `/auth/logout` | POST | Bearer | — | Invalidate refresh token |
-| `/auth/me` | GET | Bearer | — | Get current user profile |
-| `/auth/change-password` | PUT | Bearer | — | Change password |
+| `/auth/logout` | POST | Bearer | - | Invalidate refresh token |
+| `/auth/me` | GET | Bearer | - | Get current user profile |
+| `/auth/change-password` | PUT | Bearer | - | Change password |
 | `/auth/request-password-reset` | POST | None | 3/hr/email | Request reset email |
 | `/auth/reset-password` | POST | None | 5/hr/token | Reset password with token |
 
-**F4.4.1 — POST /auth/register**
+**F4.4.1 - POST /auth/register**
 - Request: `{ username (3-20 chars, alphanumeric + underscore), password (8-128 chars, at least one letter and one digit), email (optional) }`
 - Validate input, check username uniqueness (case-insensitive), check email uniqueness (if provided)
 - Hash password, encrypt email if provided (AES-256-GCM), create user document
@@ -114,57 +114,57 @@ Parameters (Argon2id):
 - Response 201: `{ data: { id, username, created_at, access_token } }`
 - Set-Cookie: `refresh_token=<token>; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800`
 
-**F4.4.2 — POST /auth/login**
+**F4.4.2 - POST /auth/login**
 - Request: `{ username, password }`
 - Find user by username, verify password, check ban status
 - Update `last_login_at`, generate tokens
 - Response 200: `{ data: { id, username, is_admin, access_token } }`
 - Set-Cookie: same as register
 
-**F4.4.3 — POST /auth/refresh**
+**F4.4.3 - POST /auth/refresh**
 - Read refresh_token from cookie, hash it, find in DB
 - Verify not expired, check user not banned
 - Delete old token, issue new refresh token (rotation), issue new access token
 - Response 200: `{ data: { access_token } }`
 - Set-Cookie: new refresh_token
 
-**F4.4.4 — POST /auth/logout**
+**F4.4.4 - POST /auth/logout**
 - Read refresh_token from cookie, delete from DB
 - Response 204, Clear-Cookie
 
-**F4.4.5 — GET /auth/me**
+**F4.4.5 - GET /auth/me**
 - Requires Bearer token
 - Return full user profile (excluding password_hash, email_encrypted, email_hash)
 - Response: `{ data: { id, username, avatar_path, about, favorite_quote, currently_feeling, has_email, email_verified, preferences, stats, is_admin, created_at, last_login_at } }`
 
-**F4.4.6 — PUT /auth/change-password**
+**F4.4.6 - PUT /auth/change-password**
 - Request: `{ current_password, new_password }`
 - Verify current password, validate new password rules
 - Hash new password, update user document
 - Revoke ALL refresh tokens for this user
 - Response 200: `{ data: { message } }`
 
-**F4.4.7 — POST /auth/request-password-reset**
+**F4.4.7 - POST /auth/request-password-reset**
 - Request: `{ username }`
 - If user exists and has email, generate reset token, store hash in `password_reset_tokens`, send email (SMTP)
 - Always return 200 (prevent username enumeration)
 - Response: `{ data: { message: "If this account has an email, a reset link has been sent." } }`
 
-**F4.4.8 — POST /auth/reset-password**
+**F4.4.8 - POST /auth/reset-password**
 - Request: `{ token, new_password }`
 - Hash token, find in `password_reset_tokens`, verify not expired and not used
 - Mark token as used, change password, revoke all refresh tokens
 - Clear `encrypted_master_key` and `master_key_salt` (private diaries become unreachable)
 - Response 200: `{ data: { message: "Password reset successfully." } }`
 
-### F4.5 — FastAPI Dependencies (Backend)
+### F4.5 - FastAPI Dependencies (Backend)
 
 **File:** `backend/app/api/deps.py`
 
 - `get_current_user`: decode Bearer token from Authorization header, load user from DB by `sub` (user_id), raise 401 if missing/invalid, raise 403 if banned
 - Return User document from MongoDB
 
-### F4.6 — Rate Limiting (Backend)
+### F4.6 - Rate Limiting (Backend)
 
 **File:** `backend/app/core/security.py` or `backend/app/core/deps.py`
 
@@ -172,7 +172,7 @@ Parameters (Argon2id):
 - Middleware or dependency that checks rate limit for auth endpoints
 - Keys: `rate_limit:{endpoint}:{ip}` with TTL matching the window
 
-### F4.7 — Auth Store (Frontend)
+### F4.7 - Auth Store (Frontend)
 
 **File:** `frontend/src/store/auth-store.ts`
 
@@ -190,13 +190,13 @@ interface AuthState {
 }
 ```
 
-- Access token stored in memory (not localStorage — XSS safe)
+- Access token stored in memory (not localStorage - XSS safe)
 - Refresh token in httpOnly cookie (set by server, not accessible to JS)
 - `login()` calls POST /auth/login, stores access token in memory, sets user
 - `refreshAuth()` calls POST /auth/refresh, updates access token
 - `logout()` calls POST /auth/logout, clears state
 
-### F4.8 — API Client Base (Frontend)
+### F4.8 - API Client Base (Frontend)
 
 **File:** `frontend/src/lib/api/client.ts`
 
@@ -206,7 +206,7 @@ interface AuthState {
 - Response interceptor: on 401, call `/auth/refresh`, retry original request (once)
 - If refresh also fails, redirect to `/login`
 
-### F4.9 — Auth Provider & Protected Routes (Frontend)
+### F4.9 - Auth Provider & Protected Routes (Frontend)
 
 **File:** `frontend/src/components/providers/auth-provider.tsx`
 
@@ -220,7 +220,7 @@ interface AuthState {
 - If not authenticated, redirect to `/login?redirect=<path>`
 - If authenticated, render children
 
-### F4.10 — Auth-Aware NavBar (Frontend)
+### F4.10 - Auth-Aware NavBar (Frontend)
 
 Update `navbar.tsx` to react to auth state:
 
@@ -228,9 +228,9 @@ Update `navbar.tsx` to react to auth state:
 - "Log in" / "Register" buttons → User avatar dropdown
 - Avatar dropdown items: "My Diaries", "Bookmarks", "Likes", "Settings", "Log out"
 - "Write" button (prominent, links to `/diary/new`) appears
-- Notification bell with unread count (placeholder — wired in M11)
+- Notification bell with unread count (placeholder - wired in M11)
 
-### F4.11 — Login & Register Pages (Frontend)
+### F4.11 - Login & Register Pages (Frontend)
 
 Upgrade from placeholders to functional pages:
 
@@ -252,7 +252,7 @@ Upgrade from placeholders to functional pages:
 - On success: redirect to `/`
 - Link to login
 
-### F4.12 — Password Strength Indicator (Frontend)
+### F4.12 - Password Strength Indicator (Frontend)
 
 **File:** `frontend/src/components/auth/password-strength.tsx`
 
@@ -322,12 +322,12 @@ frontend/package.json                        # Zustand dependency
 ## Database Changes
 
 ### Collections
-- `users` — already created in M02, now populated with real data
-- `refresh_tokens` — already created in M02
-- `password_reset_tokens` — already created in M02
+- `users` - already created in M02, now populated with real data
+- `refresh_tokens` - already created in M02
+- `password_reset_tokens` - already created in M02
 
 ### New Indexes
-No new indexes needed — all defined in M02.
+No new indexes needed - all defined in M02.
 
 ### Migrations
 None. Schema is additive.
@@ -340,10 +340,10 @@ None. Schema is additive.
 |--------|------|------|-----------|-------------|----------|
 | POST | `/auth/register` | None | 5/min/IP | `{ username, password, email? }` | `{ data: { id, username, created_at, access_token } }` + Set-Cookie |
 | POST | `/auth/login` | None | 10/min/IP | `{ username, password }` | `{ data: { id, username, is_admin, access_token } }` + Set-Cookie |
-| POST | `/auth/refresh` | Cookie | 20/min/IP | — | `{ data: { access_token } }` + Set-Cookie |
-| POST | `/auth/logout` | Bearer | — | — | 204 + Clear-Cookie |
-| GET | `/auth/me` | Bearer | — | — | `{ data: { user profile } }` |
-| PUT | `/auth/change-password` | Bearer | — | `{ current_password, new_password }` | `{ data: { message } }` |
+| POST | `/auth/refresh` | Cookie | 20/min/IP | - | `{ data: { access_token } }` + Set-Cookie |
+| POST | `/auth/logout` | Bearer | - | - | 204 + Clear-Cookie |
+| GET | `/auth/me` | Bearer | - | - | `{ data: { user profile } }` |
+| PUT | `/auth/change-password` | Bearer | - | `{ current_password, new_password }` | `{ data: { message } }` |
 | POST | `/auth/request-password-reset` | None | 3/hr/email | `{ username }` | `{ data: { message } }` |
 | POST | `/auth/reset-password` | None | 5/hr/token | `{ token, new_password }` | `{ data: { message } }` |
 
@@ -360,19 +360,19 @@ None. Schema is additive.
 ## Frontend
 
 ### Pages
-- `/login` — Functional login form with validation, error handling, loading state, redirect support
-- `/register` — Functional registration with password strength indicator, privacy warning
+- `/login` - Functional login form with validation, error handling, loading state, redirect support
+- `/register` - Functional registration with password strength indicator, privacy warning
 
 ### Components
-- `PasswordStrength` — Real-time visual feedback during registration
-- `ProtectedRoute` — Auth gate that redirects unauthenticated users
-- `AuthProvider` — Initializes auth state on app hydration
+- `PasswordStrength` - Real-time visual feedback during registration
+- `ProtectedRoute` - Auth gate that redirects unauthenticated users
+- `AuthProvider` - Initializes auth state on app hydration
 
 ### Hooks
-- `useAuth` — Wrapper around auth store for convenient access (optional, can use store directly)
+- `useAuth` - Wrapper around auth store for convenient access (optional, can use store directly)
 
 ### State Management
-- `auth-store.ts` — Zustand store for user state, access token, login/logout/refresh actions
+- `auth-store.ts` - Zustand store for user state, access token, login/logout/refresh actions
 
 ### Routing
 - Protected routes redirect to `/login?redirect=<path>` if unauthenticated
@@ -439,7 +439,7 @@ None. Schema is additive.
 - `PasswordResetTokenRepository`: `create`, `find_by_hash`, `mark_used`, `delete_expired`
 
 ### Background Workers
-- `cleanup_expired_tokens` — Could be a periodic task in M14; TTL index handles cleanup for now.
+- `cleanup_expired_tokens` - Could be a periodic task in M14; TTL index handles cleanup for now.
 
 ---
 
@@ -475,9 +475,9 @@ None. Schema is additive.
 ## Performance
 
 - JWT verification is O(1), no DB lookup for access token validation
-- Refresh token lookup uses unique index on `token_hash` — sub-millisecond
-- Rate limiting uses Redis sorted sets — O(log n) per check
-- Password hashing is intentionally slow (Argon2id) — this is a security feature, not a bottleneck at expected scale (<10 req/s on register)
+- Refresh token lookup uses unique index on `token_hash` - sub-millisecond
+- Rate limiting uses Redis sorted sets - O(log n) per check
+- Password hashing is intentionally slow (Argon2id) - this is a security feature, not a bottleneck at expected scale (<10 req/s on register)
 
 ---
 
@@ -515,8 +515,8 @@ None. Schema is additive.
 
 ## Documentation
 
-- `docs/api.md` — Update with auth endpoint details, request/response schemas, error codes
-- `docs/milestones/milestone-04.md` — This document
+- `docs/api.md` - Update with auth endpoint details, request/response schemas, error codes
+- `docs/milestones/milestone-04.md` - This document
 
 ---
 

@@ -64,6 +64,21 @@
 .dark .bg-foreground { background-color: hsl(40 5% 82%) !important; }
 .dark .bg-overlay { background-color: hsl(0 0% 100% / 0.04) !important; }
 .dark .bg-tag-bg { background-color: hsl(40 5% 20%) !important; }
+.dark .bg-accent { background-color: hsl(15 55% 72%) !important; }
+.dark .bg-accent-soft { background-color: hsl(15 25% 26%) !important; }
+.dark .bg-muted { background-color: hsl(40 5% 60%) !important; }
+.dark .bg-subtle { background-color: hsl(40 5% 45%) !important; }
+.dark .bg-destructive { background-color: hsl(0 60% 65%) !important; }
+.dark .bg-link { background-color: hsl(210 60% 65%) !important; }
+
+.dark .bg-accent\/5 { background-color: color-mix(in oklab, hsl(15 55% 72%) 5%, transparent) !important; }
+.dark .bg-accent\/10 { background-color: color-mix(in oklab, hsl(15 55% 72%) 10%, transparent) !important; }
+.dark .bg-accent\/15 { background-color: color-mix(in oklab, hsl(15 55% 72%) 15%, transparent) !important; }
+.dark .bg-accent\/20 { background-color: color-mix(in oklab, hsl(15 55% 72%) 20%, transparent) !important; }
+.dark .bg-muted\/20 { background-color: color-mix(in oklab, hsl(40 5% 60%) 20%, transparent) !important; }
+.dark .bg-destructive\/5 { background-color: color-mix(in oklab, hsl(0 60% 65%) 5%, transparent) !important; }
+.dark .bg-destructive\/10 { background-color: color-mix(in oklab, hsl(0 60% 65%) 10%, transparent) !important; }
+.dark .bg-background\/90 { background-color: color-mix(in oklab, hsl(40 5% 12%) 90%, transparent) !important; }
 
 .dark .border-border { border-color: hsl(40 5% 22%) !important; }
 

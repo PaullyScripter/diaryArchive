@@ -1,4 +1,4 @@
-# Milestone 14 — Polish & Performance
+# Milestone 14 - Polish & Performance
 
 ## Overview
 
@@ -6,7 +6,7 @@
 
 **Purpose:** This milestone is the final quality gate before production deployment. It addresses technical debt, UX inconsistencies, accessibility gaps, and performance bottlenecks that accumulated across previous milestones. Every page, interaction, and screen size is reviewed and refined.
 
-**Dependencies:** Milestone 13 (Media System) — all feature work is complete; this milestone is purely refinement.
+**Dependencies:** Milestone 13 (Media System) - all feature work is complete; this milestone is purely refinement.
 
 ---
 
@@ -16,7 +16,7 @@
 - Redis caching layer for frequent queries (public feed, popular tags, user profiles)
 - N+1 query audit and optimization across all endpoints
 - Request logging middleware (structured logs with correlation IDs)
-- MongoDB query analysis — verify all queries use indexes via `explain()`
+- MongoDB query analysis - verify all queries use indexes via `explain()`
 - Rate limit tuning based on production-expected traffic patterns
 - Cursor-based pagination for deep page efficiency
 
@@ -33,7 +33,7 @@
 - Responsive design verification at 320px, 768px, 1024px, 1440px
 
 ### Database
-- Index audit — verify all queries use indexes (no COLLSCAN)
+- Index audit - verify all queries use indexes (no COLLSCAN)
 - Add missing indexes identified during explain() analysis
 - Cursor-based pagination index support for diary listings
 
@@ -52,7 +52,7 @@
 
 ## Features
 
-### F14.1 — Accessibility Audit and Remediation
+### F14.1 - Accessibility Audit and Remediation
 
 **Category: Accessibility**
 
@@ -63,7 +63,7 @@
 | Criterion | WCAG Ref | Check |
 |-----------|----------|-------|
 | Non-text content | 1.1.1 | All images have meaningful alt text |
-| Captions (multimedia) | 1.2.x | N/A — no video/audio |
+| Captions (multimedia) | 1.2.x | N/A - no video/audio |
 | Info and relationships | 1.3.1 | Semantic HTML: `<nav>`, `<main>`, `<article>`, `<aside>`, `<header>`, `<footer>` |
 | Meaningful sequence | 1.3.2 | Content order matches visual order |
 | Sensory characteristics | 1.3.3 | No instructions based on shape/size/location alone |
@@ -101,7 +101,7 @@
 | Name, role, value | 4.1.2 | All custom components have ARIA roles and names |
 | Status messages | 4.1.3 | Live regions for loading/error states |
 
-### F14.2 — Skip-to-Content Link (Frontend)
+### F14.2 - Skip-to-Content Link (Frontend)
 
 **File:** `frontend/src/components/layout/skip-link.tsx`
 
@@ -123,7 +123,7 @@ export function SkipLink() {
 - Scrolls to `<main id="main-content">` on click
 - All layout files updated: `(main)/layout.tsx`, `(auth)/layout.tsx`, `admin/layout.tsx`
 
-### F14.3 — Keyboard Navigation Audit (Frontend)
+### F14.3 - Keyboard Navigation Audit (Frontend)
 
 Ensure all interactive elements are keyboard-accessible:
 
@@ -136,11 +136,11 @@ Ensure all interactive elements are keyboard-accessible:
 - Focus order audit: Tab through every page, verify logical order
 - Visible focus `:focus-visible` ring on every interactive element
 
-### F14.4 — Screen Reader Testing (Frontend)
+### F14.4 - Screen Reader Testing (Frontend)
 
 Test all pages with:
-- **NVDA (Windows)**: Full workflow — register, create diary, read, comment, like, settings
-- **VoiceOver (macOS)**: Same workflow — verify announcements, navigation, form interactions
+- **NVDA (Windows)**: Full workflow - register, create diary, read, comment, like, settings
+- **VoiceOver (macOS)**: Same workflow - verify announcements, navigation, form interactions
 - **Issues to catch**: Missing ARIA labels, unannounced dynamic content, focus management gaps, incorrect heading hierarchy
 
 Fix all issues found during testing:
@@ -154,7 +154,7 @@ Fix all issues found during testing:
 | Dialog close | Return focus to trigger element |
 | Page navigation | Announce page title via `aria-live` |
 
-### F14.5 — Color Contrast Verification (Frontend)
+### F14.5 - Color Contrast Verification (Frontend)
 
 **File:** `frontend/src/app/globals.css`
 
@@ -177,7 +177,7 @@ Specific contrast checks:
 
 If `--text-tertiary` fails, increase contrast to meet 4.5:1 for body text usage, or restrict it to decorative-only.
 
-### F14.6 — Reduced Motion Preferences (Frontend)
+### F14.6 - Reduced Motion Preferences (Frontend)
 
 Respect `prefers-reduced-motion: reduce`:
 
@@ -198,7 +198,7 @@ Respect `prefers-reduced-motion: reduce`:
 - Hover effects (scale, shadow) applied without transition
 - Like button heart animation disabled
 
-### F14.7 — Lighthouse Performance Audit (Frontend)
+### F14.7 - Lighthouse Performance Audit (Frontend)
 
 **Target scores:** Performance ≥90, Accessibility ≥95, Best Practices ≥95, SEO ≥100
 
@@ -212,7 +212,7 @@ Respect `prefers-reduced-motion: reduce`:
 **Performance optimization checklist:**
 
 1. **Eliminate render-blocking resources**: Inline critical CSS, defer non-critical JS
-2. **Enable text compression**: gzip/brotli for all text responses (Nginx config — M15)
+2. **Enable text compression**: gzip/brotli for all text responses (Nginx config - M15)
 3. **Preload key resources**: Hero images, fonts via `<link rel="preload">`
 4. **Reduce unused CSS**: Purge Tailwind unused styles in production build
 5. **Optimize images**: All user-uploaded images → WebP, lazy load below-fold
@@ -222,7 +222,7 @@ Respect `prefers-reduced-motion: reduce`:
 9. **Reduce DOM size**: Target <500 DOM nodes, <30 depth
 10. **Use next/font with `display: swap`**: Already configured, verify
 
-### F14.8 — Bundle Analysis & Code Splitting (Frontend)
+### F14.8 - Bundle Analysis & Code Splitting (Frontend)
 
 **File:** `frontend/next.config.ts`
 
@@ -255,7 +255,7 @@ Run: `ANALYZE=true npm run build`
 - Admin charts: `const AdminCharts = dynamic(() => import("@/components/admin/Charts"))`
 - Image gallery: `const ImageGallery = dynamic(() => import("@/components/editor/ImageGallery"))`
 
-### F14.9 — Page Transitions (Frontend)
+### F14.9 - Page Transitions (Frontend)
 
 **File:** `frontend/src/app/layout.tsx` (CSS only, no JS animation library)
 
@@ -278,9 +278,9 @@ Run: `ANALYZE=true npm run build`
 - Respects `prefers-reduced-motion` (no animation when enabled)
 - Implementation: Add `animate-in` class on page mount via `useEffect` or Next.js layout animations
 
-No JavaScript animation library (framer-motion, GSAP) — CSS only. This keeps bundle size small and respects system preferences natively.
+No JavaScript animation library (framer-motion, GSAP) - CSS only. This keeps bundle size small and respects system preferences natively.
 
-### F14.10 — Empty / Error / Loading State Audit (Frontend)
+### F14.10 - Empty / Error / Loading State Audit (Frontend)
 
 Audit every data-driven component for all three states:
 
@@ -315,7 +315,7 @@ All loading states should:
 - Use `aria-hidden="true"` so screen readers don't announce skeleton text
 - Animate with pulse (respecting reduced motion)
 
-### F14.11 — Responsive Design Verification (Frontend)
+### F14.11 - Responsive Design Verification (Frontend)
 
 Test and fix at four breakpoints:
 
@@ -336,11 +336,11 @@ Test and fix at four breakpoints:
 - Tables (admin): horizontal scroll on small screens, or card layout
 - Font sizes: minimum 16px on mobile (prevents iOS zoom on input focus)
 
-### F14.12 — Device Testing (Frontend)
+### F14.12 - Device Testing (Frontend)
 
 Physical device testing:
-- **iPhone (Safari)**: 12 Pro Max, SE — test registration, diary creation, scrolling, image upload
-- **Android (Chrome)**: Pixel 6, Samsung Galaxy — same workflow
+- **iPhone (Safari)**: 12 Pro Max, SE - test registration, diary creation, scrolling, image upload
+- **Android (Chrome)**: Pixel 6, Samsung Galaxy - same workflow
 - **iPad / Tablet**: Verify landscape and portrait orientations
 
 Issues to catch:
@@ -350,7 +350,7 @@ Issues to catch:
 - Search bar auto-focus on mobile (don't open keyboard automatically)
 - Bottom sheet instead of dropdown on mobile for selects
 
-### F14.13 — N+1 Query Audit (Backend)
+### F14.13 - N+1 Query Audit (Backend)
 
 **Files:** All endpoint handlers and services
 
@@ -384,7 +384,7 @@ for diary in diaries:
     diary.author = {"username": author.username, "avatar_path": author.avatar_path}
 ```
 
-### F14.14 — Redis Caching (Backend)
+### F14.14 - Redis Caching (Backend)
 
 **File:** `backend/app/core/cache.py`
 
@@ -423,7 +423,7 @@ async def invalidate_pattern(pattern: str):
 | Admin stats | `admin:stats` | 120s | On admin action |
 | Year archive counts | `archive:year:{year}` | 3600s | On diary create with that year |
 
-### F14.15 — Rate Limit Review (Backend)
+### F14.15 - Rate Limit Review (Backend)
 
 **File:** `backend/app/core/security.py`
 
@@ -439,12 +439,12 @@ Review and finalize rate limit values:
 | POST /diaries | 30/min | 20/min | Diary creation is not time-critical |
 | PUT /diaries | 30/min | 30/min | Editing is normal |
 | POST /media/upload | 30/min | 15/min | Prevent storage DoS |
-| POST /api/v1/comments | — | 20/min | Prevent comment spam |
-| POST /api/v1/likes | — | 60/min | Like spam has limited impact |
-| POST /api/v1/follow | — | 30/min | Prevent follow spam |
-| GET /api/v1/search | — | 60/min | Prevent search scraping |
+| POST /api/v1/comments | - | 20/min | Prevent comment spam |
+| POST /api/v1/likes | - | 60/min | Like spam has limited impact |
+| POST /api/v1/follow | - | 30/min | Prevent follow spam |
+| GET /api/v1/search | - | 60/min | Prevent search scraping |
 
-### F14.16 — MongoDB Index Verification (Backend)
+### F14.16 - MongoDB Index Verification (Backend)
 
 Run `explain()` on every query path:
 
@@ -476,7 +476,7 @@ Add any missing indexes found:
 | `notifications` | `{ user_id: 1, created_at: -1 }` | Notification listing |
 | `notifications` | `{ user_id: 1, read_at: 1 }` | Unread notification count |
 
-### F14.17 — Request Logging (Backend)
+### F14.17 - Request Logging (Backend)
 
 **File:** `backend/app/middleware/logging_middleware.py`
 
@@ -516,12 +516,12 @@ async def logging_middleware(request, call_next):
 - Error logs at ERROR level, normal requests at INFO level
 - Slow requests (>500ms) logged at WARNING level
 
-### F14.18 — Security Review (Backend + Frontend)
+### F14.18 - Security Review (Backend + Frontend)
 
 **CSP Headers (verify):**
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' 'unsafe-eval' (verify need for 'unsafe-inline' — Next.js requires it)
+script-src 'self' 'unsafe-inline' 'unsafe-eval' (verify need for 'unsafe-inline' - Next.js requires it)
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob: https://*.minio.example.com;
 font-src 'self' data:;
@@ -673,9 +673,9 @@ No new endpoints. Existing endpoints get:
 
 ## Frontend
 
-### Pages (No new pages — all existing pages audited)
+### Pages (No new pages - all existing pages audited)
 
-### Components (No new components — existing components refined)
+### Components (No new components - existing components refined)
 
 ### Accessibility Map
 
@@ -818,9 +818,9 @@ No new endpoints. Existing endpoints get:
 | Skip link visible on focus | Unit | Tab to first element shows skip link |
 | Skip link scrolls to main | Unit | Click skip-link scrolls to #main-content |
 | All pages have unique titles | Unit | Check metadata.title on every page |
-| Keyboard nav — NavBar | Manual/Unit | Tab through nav items, Enter activates |
-| Keyboard nav — Dropdown | Manual | Arrow keys navigate items, Escape closes |
-| Keyboard nav — Dialog | Manual | Focus trap inside, Escape closes, focus returns |
+| Keyboard nav - NavBar | Manual/Unit | Tab through nav items, Enter activates |
+| Keyboard nav - Dropdown | Manual | Arrow keys navigate items, Escape closes |
+| Keyboard nav - Dialog | Manual | Focus trap inside, Escape closes, focus returns |
 | Tab order logical | Manual | Tab through full page, verify order |
 | Color contrast check | Automated | axe/Playwright contrast check on all pages |
 | Reduced motion disables animation | Manual | Enable prefers-reduced-motion, verify no animations |
@@ -829,11 +829,11 @@ No new endpoints. Existing endpoints get:
 | Empty states all pages | Manual | Check each page/component with no data |
 | Error states all pages | Manual | Simulate network error, verify Retry works |
 | Loading states all pages | Manual | Slow network throttle, verify skeletons |
-| Responsive — 320px | Manual | Verify no horizontal scroll, tap targets ≥44px |
-| Responsive — 768px | Manual | Verify layout adapts |
-| Responsive — 1440px | Manual | Verify max-width containment |
-| Mobile device — iOS Safari | Manual | Test full workflow on physical iPhone |
-| Mobile device — Android Chrome | Manual | Test full workflow on physical Android |
+| Responsive - 320px | Manual | Verify no horizontal scroll, tap targets ≥44px |
+| Responsive - 768px | Manual | Verify layout adapts |
+| Responsive - 1440px | Manual | Verify max-width containment |
+| Mobile device - iOS Safari | Manual | Test full workflow on physical iPhone |
+| Mobile device - Android Chrome | Manual | Test full workflow on physical Android |
 | Bundle size regression | Automated | CI check: main bundle < 200KB gzip |
 | Page transition animation | Manual | Verify fade-in on navigation |
 | Diary XSS rendering | Unit | Store XSS vector, render, verify no script execution |
@@ -842,15 +842,15 @@ No new endpoints. Existing endpoints get:
 
 ## Documentation
 
-- `docs/accessibility.md` — New document: accessibility features, testing results, conformance report
-- `docs/performance.md` — New document: optimization decisions, Lighthouse results, bundle analysis
-- `docs/architecture.md` — Update with caching strategy, logging architecture
-- `docs/api.md` — Update with caching headers documentation, rate limit values
-- `README.md` — Update with setup instructions, environment variables, deployment steps (see F14.19)
-- `docs/security.md` — Update with CSP configuration, XSS prevention
-- `docs/milestones/milestone-14.md` — This document
+- `docs/accessibility.md` - New document: accessibility features, testing results, conformance report
+- `docs/performance.md` - New document: optimization decisions, Lighthouse results, bundle analysis
+- `docs/architecture.md` - Update with caching strategy, logging architecture
+- `docs/api.md` - Update with caching headers documentation, rate limit values
+- `README.md` - Update with setup instructions, environment variables, deployment steps (see F14.19)
+- `docs/security.md` - Update with CSP configuration, XSS prevention
+- `docs/milestones/milestone-14.md` - This document
 
-### F14.19 — README and Documentation Update
+### F14.19 - README and Documentation Update
 
 Update `README.md` with:
 - Project overview and architecture
@@ -888,7 +888,7 @@ Create `docs/deployment.md`:
 11. All API endpoints have been audited for N+1 queries; no endpoint makes more than 2 queries per list item.
 12. Redis caching is active for feed, tags, emotions, random diary, profiles, and stats.
 13. Rate limits are finalized and correctly enforced for all endpoints.
-14. All MongoDB queries use indexes (verified by explain() — no COLLSCAN).
+14. All MongoDB queries use indexes (verified by explain() - no COLLSCAN).
 15. Request logging middleware is active with structured JSON logs and request IDs.
 16. CSP headers are correct; no secrets in client-side code; XSS vectors are blocked.
 17. Bundle size: main JS bundle <200KB gzip; dynamic imports for editor, gallery, charts.

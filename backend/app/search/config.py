@@ -45,4 +45,4 @@ async def initialize_search_indexes() -> None:
         await asyncio.to_thread(_setup)
         logger.info("Meilisearch index '%s' initialized", PUBLIC_DIARIES_INDEX)
     except Exception:
-        logger.warning("Meilisearch not available — search will be unavailable")
+        logger.warning("Meilisearch not available - search will be unavailable")

@@ -1,6 +1,6 @@
 # DiaryArchive Database Design
 
-> Status: Draft — v0.1
+> Status: Draft - v0.1
 > DB: MongoDB 7, Driver: Motor (async Python)
 > Last updated: 2026-06-25
 
@@ -50,8 +50,8 @@ Denormalize when:
 - The field is small and frequently needed.
 
 Denormalized fields:
-- `diaries.stats.{like_count, comment_count, bookmark_count}` — updated via `$inc` on each action.
-- `users.stats.{diary_count, follower_count, following_count}` — updated via `$inc`.
+- `diaries.stats.{like_count, comment_count, bookmark_count}` - updated via `$inc` on each action.
+- `users.stats.{diary_count, follower_count, following_count}` - updated via `$inc`.
 
 Do NOT denormalize when the write-to-read ratio is high or when consistency is critical.
 
@@ -199,7 +199,7 @@ last_login_at       date        Last successful login timestamp
 // unique: true
 // Purpose: Fast login and profile lookup by username.
 
-// 2. Email uniqueness (sparse — only users with email)
+// 2. Email uniqueness (sparse - only users with email)
 //    Covers: { email_hash: "..." } (where email_hash exists)
 { email_hash: 1 }
 // unique: true
@@ -266,10 +266,10 @@ last_login_at       date        Last successful login timestamp
 
 ### Query Considerations
 
-- **Login**: `findOne({ username: "moonwriter" })` — covered by unique index. Sub-millisecond.
+- **Login**: `findOne({ username: "moonwriter" })` - covered by unique index. Sub-millisecond.
 - **Profile**: Same as login.
-- **Admin search**: `find({ username: { $regex: "^moon" } }).sort({ created_at: -1 })` — uses the `username` index with regex prefix, then sorts in memory. For larger datasets, use a text index or Meilisearch instead.
-- **Stats updates**: `updateOne({ _id: userId }, { $inc: { "stats.diary_count": 1 } })` — atomic, no read needed.
+- **Admin search**: `find({ username: { $regex: "^moon" } }).sort({ created_at: -1 })` - uses the `username` index with regex prefix, then sorts in memory. For larger datasets, use a text index or Meilisearch instead.
+- **Stats updates**: `updateOne({ _id: userId }, { $inc: { "stats.diary_count": 1 } })` - atomic, no read needed.
 
 ---
 
@@ -277,7 +277,7 @@ last_login_at       date        Last successful login timestamp
 
 ### Purpose
 
-Store all diary entries — public, private, and drafts. This is the most complex collection with dual-purpose fields for public content and encrypted private content.
+Store all diary entries - public, private, and drafts. This is the most complex collection with dual-purpose fields for public content and encrypted private content.
 
 ### Fields
 
@@ -363,7 +363,7 @@ published_at            date|null   When published. null for drafts
 // 1. Public feed (latest diaries)
 //    Covers: { privacy: "public" } sort { created_at: -1 }
 { privacy: 1, created_at: -1 }
-// Purpose: Homepage and explore — "Latest Public Diaries".
+// Purpose: Homepage and explore - "Latest Public Diaries".
 
 // 2. Public feed (recently updated)
 //    Covers: { privacy: "public" } sort { updated_at: -1 }
@@ -405,7 +405,7 @@ published_at            date|null   When published. null for drafts
 { privacy: 1, "stats.like_count": -1 }
 // Purpose: "Most Liked" or popular diaries section.
 
-// 10. Admin view — all diaries by user (moderation)
+// 10. Admin view - all diaries by user (moderation)
 { user_id: 1, created_at: -1 }
 // Same as index 6.
 ```
@@ -578,7 +578,7 @@ if not diary:
 ```
 
 - Uses index `privacy: 1, _id: 1`.
-- O(log n) — leverages B-tree structure for near-uniform random selection.
+- O(log n) - leverages B-tree structure for near-uniform random selection.
 - Not perfectly uniform (ObjectId has temporal component), but "random enough" for a diary platform.
 - For production: cache the result in Redis for 5 minutes to avoid repeated queries.
 
@@ -598,7 +598,7 @@ pipeline = [
         ],
         "as": "following"
     }},
-    {"$unwind": "$following"},  // Not ideal — see notes below
+    {"$unwind": "$following"},  // Not ideal - see notes below
     ...
 ]
 ```
@@ -757,8 +757,8 @@ created_at      date
 ### Query Considerations
 
 - **Toggle like**: Use `findOneAndDelete` if exists, otherwise `insertOne`. The unique compound index prevents accidental double-likes from race conditions.
-- **Like count**: Updated via `$inc` on `diaries.stats.like_count` atomically alongside the like insert/delete. Use a `$session` for transactional consistency (optional — eventual consistency is acceptable for like counts).
-- **"Is diary liked by current user?"**: Check `findOne({ diary_id: did, user_id: uid })` — uses unique index, sub-millisecond.
+- **Like count**: Updated via `$inc` on `diaries.stats.like_count` atomically alongside the like insert/delete. Use a `$session` for transactional consistency (optional - eventual consistency is acceptable for like counts).
+- **"Is diary liked by current user?"**: Check `findOne({ diary_id: did, user_id: uid })` - uses unique index, sub-millisecond.
 
 ---
 
@@ -878,10 +878,10 @@ created_at      date
 
 ### Query Considerations
 
-- **Follow/unfollow toggle**: Use `findOneAndDelete` or `insertOne` — same pattern as likes.
+- **Follow/unfollow toggle**: Use `findOneAndDelete` or `insertOne` - same pattern as likes.
 - **Following feed (two-query approach)**:
-  1. `find({ follower_id: uid }, { following_id: 1 })` — uses index `follower_id: 1`.
-  2. `find({ user_id: { $in: following_ids }, privacy: "public" }).sort({ created_at: -1 }).limit(20)` — uses index `user_id: 1, privacy: 1, created_at: -1`.
+  1. `find({ follower_id: uid }, { following_id: 1 })` - uses index `follower_id: 1`.
+  2. `find({ user_id: { $in: following_ids }, privacy: "public" }).sort({ created_at: -1 }).limit(20)` - uses index `user_id: 1, privacy: 1, created_at: -1`.
 - **Following count**: Denormalized on `users.stats.following_count` and `users.stats.follower_count`, updated via `$inc`.
 
 ---
@@ -936,7 +936,7 @@ created_at      date        When the action occurred
 { user_id: 1, read: 1 }
 // Purpose: Fast count of unread notifications for the badge.
 // The index covers: scan user_id, count read=false docs.
-// Full scan avoided — only the user's range is examined.
+// Full scan avoided - only the user's range is examined.
 
 // 3. Cleanup old notifications (TTL)
 { created_at: 1 }
@@ -969,8 +969,8 @@ created_at      date        When the action occurred
 ### Query Considerations
 
 - **High write volume**: Every like, comment, follow, bookmark creates a notification. At 10k likes/day, that's ~15k notifications/day (aggregating all types). Ensure the `user_id, read, created_at` index fits in working set.
-- **Unread badge**: `countDocuments({ user_id: uid, read: false })` — uses index `user_id: 1, read: 1`. Fast even at scale.
-- **Batch mark-as-read**: `updateMany({ user_id: uid, read: false }, { $set: { read: true } })` — uses index to find unread notifications efficiently.
+- **Unread badge**: `countDocuments({ user_id: uid, read: false })` - uses index `user_id: 1, read: 1`. Fast even at scale.
+- **Batch mark-as-read**: `updateMany({ user_id: uid, read: false }, { $set: { read: true } })` - uses index to find unread notifications efficiently.
 - **No self-notifications**: The service layer skips creating notifications where `actor_id === user_id`.
 
 ---
@@ -1019,7 +1019,7 @@ updated_at      date
 ```javascript
 // 1. Report queue (pending first, oldest first)
 { status: 1, created_at: 1 }
-// Purpose: Admin dashboard — show pending reports sorted by age.
+// Purpose: Admin dashboard - show pending reports sorted by age.
 
 // 2. User's reports
 { reporter_id: 1, created_at: -1 }
@@ -1028,7 +1028,7 @@ updated_at      date
 // 3. Reports on a specific entity
 { target_type: 1, target_id: 1 }
 // Purpose: Check if a specific item has already been reported
-// (prevent duplicate reports from the same user — handled in service layer).
+// (prevent duplicate reports from the same user - handled in service layer).
 ```
 
 ### Relationships
@@ -1059,7 +1059,7 @@ updated_at      date
 
 ### Query Considerations
 
-- **Moderation queue**: `find({ status: "pending" }).sort({ created_at: 1 })` — uses index `status: 1, created_at: 1`. Returns oldest reports first.
+- **Moderation queue**: `find({ status: "pending" }).sort({ created_at: 1 })` - uses index `status: 1, created_at: 1`. Returns oldest reports first.
 - **Admin actions**: When an admin resolves a report, update `status`, `reviewed_by`, `reviewed_at`, `resolution`, and log the action in `audit_logs`. Use a session for transactional consistency.
 
 ---
@@ -1068,7 +1068,7 @@ updated_at      date
 
 ### Purpose
 
-Immutable audit trail for all administrative actions. Append-only — documents are never modified or deleted.
+Immutable audit trail for all administrative actions. Append-only - documents are never modified or deleted.
 
 ### Fields
 
@@ -1102,7 +1102,7 @@ created_at      date
 ```javascript
 // 1. Chronological listing (default view)
 { created_at: -1 }
-// Purpose: Admin dashboard — recent actions first.
+// Purpose: Admin dashboard - recent actions first.
 
 // 2. Actions by a specific admin
 { actor_id: 1, created_at: -1 }
@@ -1142,7 +1142,7 @@ created_at      date
 - **Append-only**: Use `insertOne` with `writeConcern: majority` for durability.
 - **No updates**: Immutable by design. If a mistake is made, log a corrective entry rather than modifying.
 - **Retention**: To be determined by policy (legal may require 1+ year retention).
-- **Query volume**: Low — only accessed by admins on the audit log page.
+- **Query volume**: Low - only accessed by admins on the audit log page.
 
 ---
 
@@ -1300,7 +1300,7 @@ created_at      date
 ### Query Considerations
 
 - **Token rotation**: On each refresh, delete the old token hash and insert a new one. This limits the window for token reuse.
-- **Bulk revocation on password change**: `deleteMany({ user_id: uid })` — uses index `user_id: 1`.
+- **Bulk revocation on password change**: `deleteMany({ user_id: uid })` - uses index `user_id: 1`.
 - **Bulk revocation on ban**: Same as password change.
 - **TTL index**: MongoDB automatically purges expired tokens. No cleanup job needed.
 
@@ -1552,9 +1552,9 @@ Total estimated index size: ~1.5 GB (comfortably fits in 8 GB RAM with room for 
 ### Aggregation Pipeline Optimization
 
 - **Use `$match` as early as possible** to reduce documents flowing through the pipeline.
-- **Avoid `$unwind` on large arrays** — if you need to unwind, filter before it.
-- **Use `$lookup` cautiously** — at our scale, two queries with `$in` often outperform `$lookup`.
-- **Prefer `$sample` over `$rand` + `$sort`** for random selection — `$sample` is optimized for this.
+- **Avoid `$unwind` on large arrays** - if you need to unwind, filter before it.
+- **Use `$lookup` cautiously** - at our scale, two queries with `$in` often outperform `$lookup`.
+- **Prefer `$sample` over `$rand` + `$sort`** for random selection - `$sample` is optimized for this.
 
 ### Write-Heavy Collections
 
@@ -1608,14 +1608,14 @@ O(log n) for each page. No skipping. Ideal for infinite-like "Load More" pattern
 | users | Registration | Profile, auth | Profile edits | Account deletion | Until deleted |
 | diaries | User writes | Feed, profile | Edit | User deletes | Until deleted |
 | comments | User comments | Diary page | Soft delete | Soft delete | Indefinite (soft) |
-| likes | User likes | Diary page | — | Unlike | Until unlike or diary deleted |
-| bookmarks | User bookmarks | Bookmarks page | — | Remove bookmark | Until removed |
-| follows | User follows | Profile | — | Unfollow | Until unfollowed |
+| likes | User likes | Diary page | - | Unlike | Until unlike or diary deleted |
+| bookmarks | User bookmarks | Bookmarks page | - | Remove bookmark | Until removed |
+| follows | User follows | Profile | - | Unfollow | Until unfollowed |
 | notifications | Action triggers | Bell icon | Mark read | TTL cleanup | 90 days |
 | reports | User reports | Admin queue | Admin resolution | Never | Indefinite |
 | audit_logs | Admin action | Admin audit | Never | Never | 1+ year (legal) |
-| media | Upload | Diary content | — | Diary delete | Until diary deleted |
-| refresh_tokens | Login | Token refresh | — | Logout/expire | 7 days (TTL) |
+| media | Upload | Diary content | - | Diary delete | Until diary deleted |
+| refresh_tokens | Login | Token refresh | - | Logout/expire | 7 days (TTL) |
 | password_reset_tokens | Reset request | Reset flow | Mark used | 1 hour (TTL) | 1 hour |
 
 ### Migration Strategy
@@ -1632,5 +1632,5 @@ Migration scripts are stored in `backend/scripts/migrations/` and run via a CLI 
 
 > **Next Steps:**
 > 1. Review this database design and provide feedback.
-> 2. I recommend we start implementation with the `users` and `diaries` collections first — all other features depend on them.
+> 2. I recommend we start implementation with the `users` and `diaries` collections first - all other features depend on them.
 > 3. The following ADR should be written: `docs/adr/002-mongodb-over-postgres.md` explaining the document model tradeoffs.

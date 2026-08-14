@@ -37,7 +37,7 @@ async def _do_reindex(max_retries: int) -> int:
                 logger.warning("Meilisearch not ready, retrying in 2s (%d/%d): %s", attempt + 1, max_retries, e)
                 await asyncio.sleep(2)
             else:
-                logger.warning("Meilisearch not available after %d attempts — reindex skipped: %s", max_retries, e)
+                logger.warning("Meilisearch not available after %d attempts - reindex skipped: %s", max_retries, e)
                 return 0
 
     indexer = DiaryIndexer()

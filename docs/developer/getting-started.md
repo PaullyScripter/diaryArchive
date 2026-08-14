@@ -110,7 +110,7 @@ docker info
 **Expected output:**
 
 ```
-  DiaryArchive — Setup
+  DiaryArchive - Setup
 
 Checking prerequisites...
   ✓ Python 3.13.x
@@ -157,7 +157,7 @@ You can start just the infrastructure to verify MongoDB and Redis:
 **Expected output:**
 
 ```
-  DiaryArchive — Starting Infrastructure
+  DiaryArchive - Starting Infrastructure
 
   → Starting MongoDB and Redis...
   → Waiting for MongoDB...
@@ -214,8 +214,8 @@ The single command to start everything:
 
 **What this does (in order):**
 
-1. Runs `setup.ps1` — installs dependencies if missing
-2. Runs `infra.ps1` — starts MongoDB and Redis via Docker
+1. Runs `setup.ps1` - installs dependencies if missing
+2. Runs `infra.ps1` - starts MongoDB and Redis via Docker
 3. Kills any leftover Python processes on port 8000
 4. Starts the **backend** (`uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`)
 5. Starts the **frontend** (`npm run dev` in `frontend/`)
@@ -227,11 +227,11 @@ The single command to start everything:
 **Expected output (first part):**
 
 ```
-  DiaryArchive — Setup
+  DiaryArchive - Setup
   ...
   ✓ Setup complete
 
-  DiaryArchive — Starting Infrastructure
+  DiaryArchive - Starting Infrastructure
   ...
   ✓ Infrastructure ready
 
@@ -247,7 +247,7 @@ The single command to start everything:
 
 ```
   ╔═══════════════════════════════════════════════════╗
-  ║        DiaryArchive — Development Mode           ║
+  ║        DiaryArchive - Development Mode           ║
   ╚═══════════════════════════════════════════════════╝
 
   Frontend    http://localhost:3000
@@ -275,9 +275,9 @@ While the dashboard is displayed:
 
 | Press | Action |
 |-------|--------|
-| `Q` | Quit — stops backend and frontend processes |
-| `L` | Tail backend logs — shows live stderr output (press Ctrl+C to return) |
-| `F` | Tail frontend logs — shows live stdout output (press Ctrl+C to return) |
+| `Q` | Quit - stops backend and frontend processes |
+| `L` | Tail backend logs - shows live stderr output (press Ctrl+C to return) |
+| `F` | Tail frontend logs - shows live stdout output (press Ctrl+C to return) |
 | `R` | Refresh dashboard with latest service status |
 
 ### If the Backend Fails to Start
@@ -345,7 +345,7 @@ After quitting the dashboard, run:
 **Expected output:**
 
 ```
-  DiaryArchive — Stop
+  DiaryArchive - Stop
 
   ✓ Backend stopped
   ✓ Frontend stopped
@@ -387,7 +387,7 @@ This stops backend, frontend, and Docker infrastructure without any prompts.
 **Expected output:**
 
 ```
-  DiaryArchive — Test Runner
+  DiaryArchive - Test Runner
 
 Running backend tests...
   ✓ Backend tests passed
@@ -514,7 +514,7 @@ docker compose -f docker-compose.infra.yml logs mongodb
 ```
 
 **Fixes:**
-- Port 27017 conflict: `Get-NetTCPConnection -LocalPort 27017` — stop the conflicting process
+- Port 27017 conflict: `Get-NetTCPConnection -LocalPort 27017` - stop the conflicting process
 - Docker image not pulled: `docker pull mongo:7`
 - Docker Desktop issue: restart Docker Desktop
 

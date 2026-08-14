@@ -546,7 +546,7 @@ async def _send_admin_notification(
     title = f'Your {target} "{diary_title or "Untitled"}" was {action}'
 
     if reason:
-        title += f" — {reason}"
+        title += f" - {reason}"
 
     body = (
         f"Hello,\n\n"

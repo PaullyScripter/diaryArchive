@@ -146,6 +146,12 @@ async def register(
 
     _validate_password(body.password)
 
+    if not body.accepted_terms:
+        raise ValidationException(
+            "You must read and agree to the Terms of Service and Privacy Policy "
+            "to create an account"
+        )
+
     if body.email and not body.email.strip():
         body.email = None
 
@@ -193,6 +199,7 @@ async def register(
         "stats": {"diary_count": 0, "follower_count": 0, "following_count": 0},
         "created_at": datetime.now(UTC),
         "last_login_at": None,
+        "accepted_terms_at": datetime.now(UTC),
     }
     if email_encrypted:
         user_doc["email_encrypted"] = email_encrypted

@@ -1,6 +1,6 @@
 # DiaryArchive Implementation Roadmap
 
-> Status: Draft — v0.1
+> Status: Draft - v0.1
 > Last updated: 2026-06-25
 
 ---
@@ -166,8 +166,8 @@ make test
 make dev
 open http://localhost:3000
 # NavBar renders, theme toggles between dark/light
-# Resize to mobile — layout collapses appropriately
-# Visit /nonexistent — 404 page renders
+# Resize to mobile - layout collapses appropriately
+# Visit /nonexistent - 404 page renders
 make test
 # Component snapshot tests pass
 # Responsive tests pass (Playwright)
@@ -240,7 +240,7 @@ curl -X POST localhost:8000/api/v1/auth/register \
 open http://localhost:3000/register
 # Register a user, get redirected to /
 # Log out, log back in
-# Refresh the page — session persists
+# Refresh the page - session persists
 
 make test
 # All auth tests pass
@@ -280,9 +280,9 @@ make test
 
 **Verification:**
 ```bash
-# Visit /profile/testuser — public profile page renders
-# Visit /settings — update profile fields, see changes on profile page
-# Change theme in settings — theme persists across page reload
+# Visit /profile/testuser - public profile page renders
+# Visit /settings - update profile fields, see changes on profile page
+# Change theme in settings - theme persists across page reload
 make test
 ```
 
@@ -327,8 +327,8 @@ make test
 ```bash
 # Create a public diary via the UI
 # View it on the diary reader page
-# Edit the diary — changes persist
-# Delete the diary — it disappears from listings
+# Edit the diary - changes persist
+# Delete the diary - it disappears from listings
 # Verify it appears on the homepage "Latest" section
 # Verify the random diary widget works
 make test
@@ -372,13 +372,13 @@ make test
 
 **Verification:**
 ```bash
-# Open /diary/new — editor renders
-# Write with formatting — bold, italic, headings all work
-# Type # at start of line — converts to heading
-# Type **bold** — converts to bold
-# Leave for 30 seconds — "Saved" indicator appears
-# Close the browser tab, reopen /diary/new — draft is restored
-# Publish the diary — appears on homepage
+# Open /diary/new - editor renders
+# Write with formatting - bold, italic, headings all work
+# Type # at start of line - converts to heading
+# Type **bold** - converts to bold
+# Leave for 30 seconds - "Saved" indicator appears
+# Close the browser tab, reopen /diary/new - draft is restored
+# Publish the diary - appears on homepage
 make test
 ```
 
@@ -418,13 +418,13 @@ make test
 
 **Verification:**
 ```bash
-# Create a private diary — it should not appear on homepage or search
-# Read the private diary — content is decrypted and displayed
+# Create a private diary - it should not appear on homepage or search
+# Read the private diary - content is decrypted and displayed
 # Verify server has no access:
-#   - Check MongoDB document — content is ciphertext
+#   - Check MongoDB document - content is ciphertext
 #   - Check that search doesn't index it
-# Change password — verify private diaries are still accessible
-# Log out, log back in — private diaries still readable
+# Change password - verify private diaries are still accessible
+# Log out, log back in - private diaries still readable
 make test
 ```
 
@@ -472,13 +472,13 @@ make test
 
 **Verification:**
 ```bash
-# Like a diary — heart fills, count increments
-# Unlike — heart unfills, count decrements
-# Comment on a diary — comment appears
-# Delete a comment — shows as "[deleted]"
-# Follow a user — appears in following list
-# View following feed — shows their public diaries
-# Bookmark a diary — appears in bookmarks page
+# Like a diary - heart fills, count increments
+# Unlike - heart unfills, count decrements
+# Comment on a diary - comment appears
+# Delete a comment - shows as "[deleted]"
+# Follow a user - appears in following list
+# View following feed - shows their public diaries
+# Bookmark a diary - appears in bookmarks page
 make test
 ```
 
@@ -519,11 +519,11 @@ make test
 
 **Verification:**
 ```bash
-# Publish a diary with specific tags — it appears in search for those tags
-# Search for a word in the diary — it appears in results with highlighting
-# Filter by tag — only matching diaries appear
-# Filter by emotion — only matching diaries appear
-# Browse by year/month — archive view works
+# Publish a diary with specific tags - it appears in search for those tags
+# Search for a word in the diary - it appears in results with highlighting
+# Filter by tag - only matching diaries appear
+# Filter by emotion - only matching diaries appear
+# Browse by year/month - archive view works
 # Verify private diaries NEVER appear in search
 make test
 ```
@@ -564,11 +564,11 @@ make test
 
 **Verification:**
 ```bash
-# Like someone's diary — they receive a notification
-# Comment on a diary — author receives a notification
-# Follow a user — they receive a notification
-# View notification center — list shows all notifications
-# Click "Mark all as read" — badge disappears
+# Like someone's diary - they receive a notification
+# Comment on a diary - author receives a notification
+# Follow a user - they receive a notification
+# View notification center - list shows all notifications
+# Click "Mark all as read" - badge disappears
 # Verify own actions don't create notifications
 make test
 ```
@@ -614,11 +614,11 @@ make test
 
 **Verification:**
 ```bash
-# Submit a report — appears in admin queue
-# As admin, review and resolve the report — status changes
-# Ban a user — they cannot log in
-# View audit logs — all admin actions are recorded
-# Check system health — all services show green
+# Submit a report - appears in admin queue
+# As admin, review and resolve the report - status changes
+# Ban a user - they cannot log in
+# View audit logs - all admin actions are recorded
+# Check system health - all services show green
 make test
 ```
 
@@ -655,11 +655,11 @@ make test
 
 **Verification:**
 ```bash
-# Upload an image — it appears in the editor
-# Drag-and-drop an image — uploads and inserts
-# Publish diary with image — image renders in reader
-# Create private diary with image — image has signed URL
-# Delete diary — associated media is cleaned up
+# Upload an image - it appears in the editor
+# Drag-and-drop an image - uploads and inserts
+# Publish diary with image - image renders in reader
+# Create private diary with image - image has signed URL
+# Delete diary - associated media is cleaned up
 make test
 ```
 
@@ -681,14 +681,14 @@ make test
 | **Accessibility** | Test with screen reader (VoiceOver/NVDA) |
 | **Accessibility** | Verify color contrast in both themes |
 | **Accessibility** | Ensure reduced-motion preferences are respected |
-| **Performance** | Lighthouse audit — target 90+ on all metrics |
-| **Performance** | Bundle analysis — identify and split large dependencies |
-| **Performance** | Image optimization — verify all images use WebP |
+| **Performance** | Lighthouse audit - target 90+ on all metrics |
+| **Performance** | Bundle analysis - identify and split large dependencies |
+| **Performance** | Image optimization - verify all images use WebP |
 | **Performance** | Implement lazy loading for below-fold content |
 | **Performance** | Add `next/font` optimization for Inter |
-| **UX** | Review all empty states — are they helpful? |
-| **UX** | Review all error states — are they clear? |
-| **UX** | Review all loading states — are they smooth? |
+| **UX** | Review all empty states - are they helpful? |
+| **UX** | Review all error states - are they clear? |
+| **UX** | Review all loading states - are they smooth? |
 | **UX** | Add page transitions (CSS only, no JS animation lib) |
 | **UX** | Verify responsive design at 320px, 768px, 1024px, 1440px |
 | **UX** | Test on actual mobile device (iOS Safari, Android Chrome) |
@@ -751,8 +751,8 @@ make test
 
 **Verification:**
 ```bash
-# Visit https://diaryarchive.com — loads correctly
-# Register, create diary, read diary — full flow works
+# Visit https://diaryarchive.com - loads correctly
+# Register, create diary, read diary - full flow works
 # SSL certificate is valid
 # Cloudflare is proxying traffic
 # Backups are running

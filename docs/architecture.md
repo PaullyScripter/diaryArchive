@@ -1,6 +1,6 @@
 # DiaryArchive Architecture
 
-> Status: Draft — v0.1
+> Status: Draft - v0.1
 > Authored: Architect-led, informed by diary-backend, diary-frontend, diary-database, diary-security, diary-encryption, diary-deployment, diary-search, diary-admin, diary-performance, diary-ui-system, diary-testing, diary-documentation skills.
 > Last updated: 2026-06-25
 
@@ -253,10 +253,10 @@ The project has only two independent codebases (frontend, backend) with no share
 - `.gitignore` at root with patterns for both Python and Node.js artifacts.
 - `.env.example` at root documents all environment variables.
 - `Makefile` at root with convenience targets:
-  - `make dev` — starts all services via docker-compose
-  - `make test` — runs both frontend and backend tests
-  - `make lint` — runs ruff + eslint + prettier
-  - `make build` — builds production Docker images
+  - `make dev` - starts all services via docker-compose
+  - `make test` - runs both frontend and backend tests
+  - `make lint` - runs ruff + eslint + prettier
+  - `make build` - builds production Docker images
 
 ---
 
@@ -280,7 +280,7 @@ The project has only two independent codebases (frontend, backend) with no share
 
 ```
 Root Layout (html, body, providers)
-├── Auth Layout (login, register) — minimal chrome
+├── Auth Layout (login, register) - minimal chrome
 │   ├── /login
 │   └── /register
 ├── Main Layout (navbar, sidebar, main content)
@@ -361,7 +361,7 @@ HTTP Request
 Middleware (CORS, CSP headers, rate limiting, request ID)
     │
     ▼
-API Router (v1/ endpoints — validation, routing)
+API Router (v1/ endpoints - validation, routing)
     │
     ▼
 Dependencies (auth check, permission check, DB session)
@@ -378,10 +378,10 @@ Database / Cache / Search
 
 ### Service Layer Guidelines
 
-- Services contain all business logic. Endpoints are thin — they validate input, call services, return responses.
+- Services contain all business logic. Endpoints are thin - they validate input, call services, return responses.
 - Services depend on repositories and external clients, not directly on FastAPI request objects.
 - Services raise typed exceptions that exception handlers convert to HTTP responses.
-- Services are stateless — all state is in the database or cache.
+- Services are stateless - all state is in the database or cache.
 
 ### Repository Layer Guidelines
 
@@ -472,9 +472,9 @@ Database / Cache / Search
 ```
 
 **Indexes:**
-- `{ username: 1 }` — unique
-- `{ email_hash: 1 }` — sparse unique (only for users with email)
-- `{ created_at: -1 }` — for user listing
+- `{ username: 1 }` - unique
+- `{ email_hash: 1 }` - sparse unique (only for users with email)
+- `{ created_at: -1 }` - for user listing
 
 ### diaries
 
@@ -521,14 +521,14 @@ Database / Cache / Search
 ```
 
 **Indexes:**
-- `{ user_id: 1, created_at: -1 }` — user's diary list
-- `{ privacy: 1, created_at: -1 }` — public feed
-- `{ privacy: 1, updated_at: -1 }` — recently updated
-- `{ privacy: 1, tags: 1, created_at: -1 }` — tag browsing
-- `{ privacy: 1, year: -1, month: -1 }` — archive browsing
-- `{ privacy: 1, emotion: 1, created_at: -1 }` — emotion browsing
-- `{ privacy: 1, stats.like_count: -1 }` — popular diaries
-- `{ user_id: 1, privacy: 1, created_at: -1 }` — user's public/private lists
+- `{ user_id: 1, created_at: -1 }` - user's diary list
+- `{ privacy: 1, created_at: -1 }` - public feed
+- `{ privacy: 1, updated_at: -1 }` - recently updated
+- `{ privacy: 1, tags: 1, created_at: -1 }` - tag browsing
+- `{ privacy: 1, year: -1, month: -1 }` - archive browsing
+- `{ privacy: 1, emotion: 1, created_at: -1 }` - emotion browsing
+- `{ privacy: 1, stats.like_count: -1 }` - popular diaries
+- `{ user_id: 1, privacy: 1, created_at: -1 }` - user's public/private lists
 
 ### comments
 
@@ -545,8 +545,8 @@ Database / Cache / Search
 ```
 
 **Indexes:**
-- `{ diary_id: 1, created_at: 1 }` — comments for a diary
-- `{ user_id: 1, created_at: -1 }` — user's comment history
+- `{ diary_id: 1, created_at: 1 }` - comments for a diary
+- `{ user_id: 1, created_at: -1 }` - user's comment history
 
 ### likes
 
@@ -560,9 +560,9 @@ Database / Cache / Search
 ```
 
 **Indexes:**
-- `{ diary_id: 1, user_id: 1 }` — unique compound (prevent duplicate likes)
-- `{ diary_id: 1 }` — count likes for a diary
-- `{ user_id: 1 }` — user's liked diaries
+- `{ diary_id: 1, user_id: 1 }` - unique compound (prevent duplicate likes)
+- `{ diary_id: 1 }` - count likes for a diary
+- `{ user_id: 1 }` - user's liked diaries
 
 ### bookmarks
 
@@ -580,9 +580,9 @@ Same structure as `likes` (replace `likes` semantics with `bookmarks`).
 ```
 
 **Indexes:**
-- `{ follower_id: 1, following_id: 1 }` — unique compound
-- `{ follower_id: 1 }` — who I follow
-- `{ following_id: 1 }` — who follows me
+- `{ follower_id: 1, following_id: 1 }` - unique compound
+- `{ follower_id: 1 }` - who I follow
+- `{ following_id: 1 }` - who follows me
 
 ### notifications
 
@@ -600,8 +600,8 @@ Same structure as `likes` (replace `likes` semantics with `bookmarks`).
 ```
 
 **Indexes:**
-- `{ user_id: 1, read: 1, created_at: -1 }` — unread notifications first
-- `{ user_id: 1, created_at: -1 }` — all notifications
+- `{ user_id: 1, read: 1, created_at: -1 }` - unread notifications first
+- `{ user_id: 1, created_at: -1 }` - all notifications
 
 ### reports
 
@@ -622,8 +622,8 @@ Same structure as `likes` (replace `likes` semantics with `bookmarks`).
 ```
 
 **Indexes:**
-- `{ status: 1, created_at: -1 }` — report queue
-- `{ reporter_id: 1 }` — user's reports
+- `{ status: 1, created_at: -1 }` - report queue
+- `{ reporter_id: 1 }` - user's reports
 
 ### audit_logs
 
@@ -641,9 +641,9 @@ Same structure as `likes` (replace `likes` semantics with `bookmarks`).
 ```
 
 **Indexes:**
-- `{ created_at: -1 }` — chronological listing
-- `{ actor_id: 1, created_at: -1 }` — admin action history
-- `{ target_type: 1, target_id: 1 }` — actions on a specific entity
+- `{ created_at: -1 }` - chronological listing
+- `{ actor_id: 1, created_at: -1 }` - admin action history
+- `{ target_type: 1, target_id: 1 }` - actions on a specific entity
 
 ### media
 
@@ -664,9 +664,9 @@ Same structure as `likes` (replace `likes` semantics with `bookmarks`).
 ```
 
 **Indexes:**
-- `{ user_id: 1 }` — user's uploads
-- `{ diary_id: 1 }` — diary's media
-- `{ created_at: -1 }` — chronological
+- `{ user_id: 1 }` - user's uploads
+- `{ diary_id: 1 }` - diary's media
+- `{ created_at: -1 }` - chronological
 
 ### refresh_tokens
 
@@ -681,9 +681,9 @@ Same structure as `likes` (replace `likes` semantics with `bookmarks`).
 ```
 
 **Indexes:**
-- `{ token_hash: 1 }` — unique
-- `{ expires_at: 1 }` — TTL index for automatic cleanup
-- `{ user_id: 1 }` — revoke all tokens for a user
+- `{ token_hash: 1 }` - unique
+- `{ expires_at: 1 }` - TTL index for automatic cleanup
+- `{ user_id: 1 }` - revoke all tokens for a user
 
 ---
 
@@ -1263,15 +1263,15 @@ This is an intentional tradeoff: **password reset = loss of private diaries**. T
 
 ### Tradeoffs and Notes
 
-1. **Password change without old password is impossible** — if someone forgets their password AND has no email, their private diaries are permanently lost. This is the stated design.
+1. **Password change without old password is impossible** - if someone forgets their password AND has no email, their private diaries are permanently lost. This is the stated design.
 
-2. **Password reset with email destroys private diaries** — the alternative would be storing a recovery key server-side, which breaks the E2E promise. We explicitly choose honesty over convenience.
+2. **Password reset with email destroys private diaries** - the alternative would be storing a recovery key server-side, which breaks the E2E promise. We explicitly choose honesty over convenience.
 
-3. **Per-diary keys vs. single key** — HKDF-derived per-diary keys limit the blast radius: if one diary key is somehow compromised, only that diary is exposed.
+3. **Per-diary keys vs. single key** - HKDF-derived per-diary keys limit the blast radius: if one diary key is somehow compromised, only that diary is exposed.
 
-4. **No key on server** — the encrypted master key is stored on the server, but it is useless without the password. A server breach does not expose private diary contents.
+4. **No key on server** - the encrypted master key is stored on the server, but it is useless without the password. A server breach does not expose private diary contents.
 
-5. **Web Crypto API** — all cryptographic operations happen in the browser using the Web Crypto API. No custom crypto implementations. No crypto libraries with potential supply chain issues.
+5. **Web Crypto API** - all cryptographic operations happen in the browser using the Web Crypto API. No custom crypto implementations. No crypto libraries with potential supply chain issues.
 
 ---
 
@@ -1486,7 +1486,7 @@ FastAPI Service
 - Private diaries (never indexed).
 - Drafts (never indexed).
 - Comments (not indexed).
-- User profiles (not indexed — we could add this later).
+- User profiles (not indexed - we could add this later).
 - Diaries by banned users (filtered in search service).
 
 ---
@@ -1525,7 +1525,7 @@ Client
 | Images | 10 MB | JPEG, PNG, WebP, GIF, AVIF |
 | Video | 50 MB | MP4, WebM |
 | Audio | 30 MB | MP3, OGG, WAV, M4A |
-| Other | Blocked | — |
+| Other | Blocked | - |
 
 ### Access Control
 
@@ -1905,7 +1905,7 @@ Each service is designed to scale independently:
 | Email | AES-256-GCM at rest |
 | Private diary content | AES-256-GCM client-side (E2E) |
 | Public diary content | No additional encryption (encrypted at rest by MongoDB) |
-| JWT tokens | Signed (not encrypted — payload is not sensitive) |
+| JWT tokens | Signed (not encrypted - payload is not sensitive) |
 | Database | MongoDB encryption at rest (enterprise) or full-disk encryption |
 | Backups | AES-256 encryption |
 
@@ -2012,12 +2012,12 @@ The following actions are always logged:
 
 The following ADRs should be written as separate documents in `docs/adr/`:
 
-1. `001-e2e-encryption.md` — Why client-side AES-256-GCM with per-diary keys.
-2. `002-mongodb-over-postgres.md` — Why MongoDB instead of PostgreSQL.
-3. `003-meilisearch-over-elasticsearch.md` — Why Meilisearch instead of Elasticsearch.
-4. `004-minio-over-local-filesystem.md` — Why object storage instead of local files.
-5. `005-no-email-requirement.md` — Why email is optional and the tradeoffs.
-6. `006-draft-system-design.md` — How drafts work for both public and private diaries.
+1. `001-e2e-encryption.md` - Why client-side AES-256-GCM with per-diary keys.
+2. `002-mongodb-over-postgres.md` - Why MongoDB instead of PostgreSQL.
+3. `003-meilisearch-over-elasticsearch.md` - Why Meilisearch instead of Elasticsearch.
+4. `004-minio-over-local-filesystem.md` - Why object storage instead of local files.
+5. `005-no-email-requirement.md` - Why email is optional and the tradeoffs.
+6. `006-draft-system-design.md` - How drafts work for both public and private diaries.
 
 ---
 

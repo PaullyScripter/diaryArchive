@@ -25,7 +25,7 @@ async def client():
 async def auth_user(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "profileuser", "password": "ValidPass123"},
+        json={"username": "profileuser", "password": "ValidPass123", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json()
@@ -209,11 +209,11 @@ class TestUpdateEmail:
 
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "otheruser", "password": "OtherPass123"},
+            json={"username": "otheruser", "password": "OtherPass123", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "otheruser", "password": "OtherPass123"},
+            json={"username": "otheruser", "password": "OtherPass123", "accepted_terms": True},
         )
         other_token = login_resp.json()["data"]["access_token"]
 
