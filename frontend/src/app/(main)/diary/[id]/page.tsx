@@ -276,7 +276,7 @@ export default function DiaryReaderPage() {
       )}
 
       {passwordPrompt && isPrivate && isOwner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           role="dialog"
           aria-modal="true"
           aria-labelledby="decrypt-dialog-title">
