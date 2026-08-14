@@ -27,7 +27,7 @@ async def client():
 async def _register(client: AsyncClient, username: str, password: str = "ValidPass1",
                      is_admin: bool = False) -> dict:
     resp = await client.post("/api/v1/auth/register",
-                             json={"username": username, "password": password})
+                             json={"username": username, "password": password, "accepted_terms": True})
     assert resp.status_code == 201
     body = resp.json()
     data = body.get("data", body)
@@ -302,7 +302,7 @@ class TestAdminUserManagement:
         user = await _register(client, "targetuser")
 
         login_resp = await client.post("/api/v1/auth/login",
-                                       json={"username": "targetuser", "password": "ValidPass1"})
+                                       json={"username": "targetuser", "password": "ValidPass1", "accepted_terms": True})
         assert login_resp.status_code == 200
 
         await client.put(f"/api/v1/admin/users/{user['id']}/ban",
