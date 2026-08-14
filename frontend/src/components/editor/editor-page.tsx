@@ -141,22 +141,6 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     }
   }, [draft, hasRecoveredDraft, isEditMode]);
 
-  const autoOpenedRef = useRef(false);
-  const hasRecoveredRef = useRef(hasRecoveredDraft);
-  hasRecoveredRef.current = hasRecoveredDraft;
-
-  useEffect(() => {
-    if (isEditMode) return;
-    const t = setTimeout(() => {
-      if (!autoOpenedRef.current && !hasRecoveredRef.current && !title.trim() && !contentHtml.trim()) {
-        autoOpenedRef.current = true;
-        setShowTemplatePicker(true);
-      }
-    }, 0);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const applyTemplate = (template: DiaryTemplate) => {
     if (contentHtml.trim() && !window.confirm("Replace current content with this template?")) {
       return;
@@ -370,6 +354,19 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           className="font-serif text-xl font-semibold border-none bg-transparent px-0 placeholder:text-muted/50 focus:ring-0"
           maxLength={200}
         />
+      </div>
+
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs text-subtle">
+          Writing in whole-diary mode — start a chapter with an H1 heading.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowTemplatePicker(true)}
+          className="text-xs text-link hover:underline cursor-pointer"
+        >
+          Need an idea?
+        </button>
       </div>
 
       <EditorToolbar
