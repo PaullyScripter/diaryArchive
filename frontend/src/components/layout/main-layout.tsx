@@ -13,7 +13,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       </main>
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 text-xs text-muted">
-          <span>DiaryArchive - Built with care</span>
+          <span>DiaryArchive - Privacy is a human right</span>
           <nav className="flex gap-4">
             <Link href="/policy" className="hover:text-foreground transition-colors">
               Privacy Policy
