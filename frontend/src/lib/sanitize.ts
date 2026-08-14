@@ -16,6 +16,7 @@ export function sanitizeHtml(html: string): string {
       "src", "alt", "width", "height",
     ],
     ALLOW_DATA_ATTR: false,
+    FORCE_BODY: true,
   });
 }
 
