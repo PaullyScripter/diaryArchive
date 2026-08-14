@@ -39,6 +39,15 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("<li>one</li>");
   });
 
+  it("preserves style blocks for custom CSS", () => {
+    const input =
+      '<style>.diary-entry{color:red}</style><div class="diary-entry">hi</div>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("<style>");
+    expect(result).toContain(".diary-entry{color:red}");
+    expect(result).toContain('<div class="diary-entry">');
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });
