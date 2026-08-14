@@ -489,6 +489,18 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               </Button>
             </div>
           </div>
+          <div className="shrink-0 border-b border-border">
+            <EditorToolbar
+              editor={editor}
+              sourceMode={sourceMode}
+              onToggleSource={() => setSourceMode(!sourceMode)}
+              onImageUpload={(file) => {
+                if (editor) handleImageUpload(file, editor);
+              }}
+              onOpenGallery={() => setShowGallery(true)}
+              onOpenTemplates={() => setShowTemplatePicker(true)}
+            />
+          </div>
           <div className="flex-1 min-h-0 flex flex-col p-4 gap-4">
             <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border">
               <FloatingToolbar editor={editor} />
