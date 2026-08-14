@@ -204,7 +204,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           privacy: finalPrivacy,
           title: title.trim() || null,
           content_html: customCss
-            ? `<style>${customCss}</style>${contentHtml}`
+            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
             : contentHtml,
           content_text: contentText,
           tags,
