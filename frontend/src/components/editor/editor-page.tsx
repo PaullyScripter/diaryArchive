@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Eye, Lock, Shield } from "lucide-react";
+import { Eye, Lock, Shield, Maximize2, Minimize2 } from "lucide-react";
 
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
@@ -81,6 +81,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [showKeySetup, setShowKeySetup] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
@@ -169,6 +170,56 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     setIsDirty(true);
   }, []);
 
+  const handleSourceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContentHtml(e.target.value);
+    setContentText(e.target.value.replace(/<[^>]*>/g, ""));
+    setIsDirty(true);
+  };
+
+  const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== "Tab" || e.shiftKey) return;
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      setSourceMode(false);
+      return;
+    }
+    const el = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = el;
+    const next =
+      value.slice(0, selectionStart) + "\t" + value.slice(selectionEnd);
+    setContentHtml(next);
+    setContentText(next.replace(/<[^>]*>/g, ""));
+    setIsDirty(true);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = selectionStart + 1;
+    });
+  };
+
+  const renderSourceEditor = (fullscreen: boolean) => (
+    <textarea
+      value={contentHtml}
+      onChange={handleSourceChange}
+      onKeyDown={handleSourceKeyDown}
+      className={
+        fullscreen
+          ? "w-full h-full font-mono text-sm bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-0 resize-none"
+          : "w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+      }
+      placeholder="Write HTML directly..."
+    />
+  );
+
+  const renderRichEditor = () => (
+    <TiptapEditor
+      content={contentHtml}
+      onChange={onContentChange}
+      onEditorReady={setEditor}
+      onImageDrop={(file, editor) => handleImageUpload(file, editor)}
+      onImagePaste={(file, editor) => handleImageUpload(file, editor)}
+      onToggleAdvanced={() => setSourceMode(true)}
+    />
+  );
+
   const words = contentText.trim() ? contentText.trim().split(/\s+/).length : 0;
   const characters = contentText.length;
 
@@ -251,6 +302,15 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsExpanded(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isExpanded]);
 
   const dirtyRef = useRef(isDirty);
   const titleRef = useRef(title);
@@ -383,50 +443,76 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       <div className="flex flex-col lg:flex-row gap-4 items-start">
         <div className="flex-1 min-w-0">
           <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              title="Expand editor to fill your screen"
+              aria-label="Expand editor to full screen"
+              className="absolute top-2 right-2 z-10 flex items-center gap-1.5 text-xs text-muted hover:text-foreground bg-background/90 border border-border rounded-md px-2.5 py-1.5 cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              Expand
+            </button>
             <FloatingToolbar editor={editor} />
-            {sourceMode ? (
-              <textarea
-                value={contentHtml}
-                onChange={(e) => {
-                  setContentHtml(e.target.value);
-                  setContentText(e.target.value.replace(/<[^>]*>/g, ""));
-                  setIsDirty(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== "Tab" || e.shiftKey) return;
-                  e.preventDefault();
-                  if (e.ctrlKey || e.metaKey) {
-                    setSourceMode(false);
-                    return;
-                  }
-                  const el = e.currentTarget;
-                  const { selectionStart, selectionEnd, value } = el;
-                  const next =
-                    value.slice(0, selectionStart) + "\t" + value.slice(selectionEnd);
-                  setContentHtml(next);
-                  setContentText(next.replace(/<[^>]*>/g, ""));
-                  setIsDirty(true);
-                  requestAnimationFrame(() => {
-                    el.selectionStart = el.selectionEnd = selectionStart + 1;
-                  });
-                }}
-                className="w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-                placeholder="Write HTML directly..."
-              />
-            ) : (
-              <TiptapEditor
-                content={contentHtml}
-                onChange={onContentChange}
-                onEditorReady={setEditor}
-                onImageDrop={(file, editor) => handleImageUpload(file, editor)}
-                onImagePaste={(file, editor) => handleImageUpload(file, editor)}
-                onToggleAdvanced={() => setSourceMode(true)}
-              />
-            )}
+            {sourceMode ? renderSourceEditor(false) : renderRichEditor()}
           </div>
         </div>
         {!sourceMode && <ChapterManager editor={editor} />}
       </div>
+
+      {isExpanded && (
+        <div
+          className="fixed inset-0 z-40 flex flex-col bg-background"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fullscreen editor"
+        >
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
+            <p className="text-xs font-medium text-muted uppercase tracking-wider">
+              {sourceMode ? "HTML Source" : "Writing"} - Fullscreen
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSourceMode(!sourceMode)}
+                className="text-xs text-link hover:underline cursor-pointer"
+              >
+                {sourceMode ? "Switch to Visual" : "Switch to HTML"}
+              </button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsExpanded(false)}
+              >
+                <Minimize2 className="w-3.5 h-3.5 mr-1" />
+                Exit Fullscreen
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 flex flex-col p-4 gap-4">
+            <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border">
+              <FloatingToolbar editor={editor} />
+              {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
+            </div>
+            {sourceMode && (
+              <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                  <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
+                    Custom CSS{" "}
+                    <span className="text-subtle font-normal">(advanced)</span>
+                  </h3>
+                </div>
+                <textarea
+                  value={customCss}
+                  onChange={(e) => setCustomCss(e.target.value)}
+                  placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
+                  className="flex-1 min-h-0 font-mono text-xs bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-0 resize-none"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <EditorStats
         words={words}
@@ -461,9 +547,19 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             <textarea
               value={customCss}
               onChange={(e) => setCustomCss(e.target.value)}
-              placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
-              className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+              disabled={!sourceMode}
+              placeholder={sourceMode
+                ? "/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
+                : "Enable HTML mode (</>) to edit custom CSS"}
+              aria-disabled={!sourceMode}
+              className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-50 disabled:cursor-not-allowed"
             />
+            {!sourceMode && (
+              <p className="mt-1 text-xs text-subtle">
+                Custom CSS is an HTML-mode feature. Switch to HTML source ({"</>"})
+                to enable editing.
+              </p>
+            )}
             <details className="mt-2 text-xs">
               <summary className="text-subtle cursor-pointer hover:text-muted">
                 Available CSS variables
@@ -528,7 +624,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </Button>
               </div>
             </div>
-            <div className="px-6 py-6">
+            <div className="px-6 py-6 overflow-hidden">
               <h1 className="font-serif text-2xl font-bold text-foreground mb-2">
                 {title || "Untitled"}
               </h1>
