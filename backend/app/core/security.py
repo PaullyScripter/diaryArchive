@@ -73,8 +73,6 @@ def create_email_verification_token(email: str) -> str:
 _fallback_lock = threading.Lock()
 _fallback_hits: dict[str, deque[int]] = defaultdict(deque)
 
-_FALLBACK_INTERVAL_MS = 2500
-
 
 def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple[bool, int]:
     """In-process fail-closed limiter used when Redis is unreachable."""
@@ -86,22 +84,72 @@ def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple
             hits.popleft()
         if len(hits) >= max_attempts:
             return True, 0
-        top = hits[-1] if hits else 0
         hits.append(now_ms)
-        # Prune empty keys to avoid unbounded growth.
-        if hits and now_ms - top > _FALLBACK_INTERVAL_MS:
+        # Prune the entry only once all its hits have fallen outside the window
+        # (avoids unbounded growth). An empty-but-present deque is harmless.
+        if not hits:
             del _fallback_hits[key]
         return False, max(0, max_attempts - len(hits))
 
 
 def get_client_ip(request) -> str:
+    """Return a client IP that is safe to use for security decisions (rate limits).
+
+    The proxy (nginx) is configured to overwrite X-Real-IP with the real
+    remote address, so it is authoritative. X-Forwarded-For is attacker
+    controllable, so never trust its leftmost entry; when used as a fallback
+    only the rightmost (proxy-appended) value is taken.
+    """
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip and real_ip.strip():
+        return real_ip.strip()
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
     client = getattr(request, "client", None)
     if client is not None and client.host:
         return client.host
     return "unknown"
+
+
+async def record_failed_attempt(key: str, max_attempts: int, window_seconds: int) -> bool:
+    """Increment a failure counter; returns True once the account is locked out."""
+    try:
+        redis: Redis = DatabaseManager.get_redis()
+    except RuntimeError:
+        limited, _ = _fallback_consume(f"lockout:{key}", max_attempts, window_seconds)
+        return limited
+    try:
+        pipe = redis.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, window_seconds)
+        count, _ = await pipe.execute()
+        return count >= max_attempts
+    except Exception:
+        return False
+
+
+async def is_locked_out(key: str, max_attempts: int) -> bool:
+    """Check (without consuming) whether a failure counter has reached the limit."""
+    try:
+        redis: Redis = DatabaseManager.get_redis()
+    except RuntimeError:
+        return False
+    try:
+        count = await redis.get(key)
+        return count is not None and int(count) >= max_attempts
+    except Exception:
+        return False
+
+
+async def clear_attempts(key: str) -> None:
+    try:
+        redis: Redis = DatabaseManager.get_redis()
+        await redis.delete(key)
+    except Exception:
+        pass
 
 
 async def check_rate_limit(

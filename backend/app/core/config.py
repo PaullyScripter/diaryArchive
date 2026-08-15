@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "diaryarchive"
     minio_region: str = "us-east-1"
+    # Publicly reachable base URL for public media (e.g. a MinIO/nginx route that
+    # serves the bucket over HTTPS). When unset, public media is served via
+    # short-lived signed URLs rather than leaking the internal MinIO host.
+    public_media_base_url: str | None = None
 
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = ""
@@ -66,6 +70,9 @@ class Settings(BaseSettings):
         "appeal_status": (12, 300),
         "appeal_submit": (3, 3600),
         "appeal_reply": (5, 3600),
+        "appeal_status_lockout": (8, 900),
+        "appeal_submit_lockout": (5, 3600),
+        "appeal_reply_lockout": (8, 3600),
         # admin
         "admin_ticket_reply": (30, 60),
         "admin_ticket_close": (30, 60),

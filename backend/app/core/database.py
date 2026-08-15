@@ -39,7 +39,24 @@ class DatabaseManager:
     def get_db(cls) -> AsyncIOMotorDatabase:
         if cls._client is None:
             raise RuntimeError("MongoDB not connected. Call connect_mongo() first.")
-        return cls._client.diaryarchive
+        name = cls._db_name_from_uri()
+        if name:
+            return cls._client[name]
+        return cls._client.get_default_database()
+
+    @classmethod
+    def _db_name_from_uri(cls) -> str | None:
+        try:
+            uri = settings.mongodb_uri
+            if "://" not in uri:
+                return None
+            path = uri.split("://", 1)[1].split("/", 1)[1] if "/" in uri.split("://", 1)[1] else ""
+            if not path:
+                return None
+            db_name = path.split("?", 1)[0].split("/", 1)[0]
+            return db_name or None
+        except Exception:
+            return None
 
     @classmethod
     def get_redis(cls) -> Redis:
