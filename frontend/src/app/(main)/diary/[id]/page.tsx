@@ -24,6 +24,7 @@ import { BookmarkButton } from "@/components/social/bookmark-button";
 import { ReportButton } from "@/components/social/report-button";
 import { CommentSection } from "@/components/social/comment-section";
 import { ResizableDiaryWindow } from "@/components/diary/resizable-diary-window";
+import { IsolatedDiary } from "@/components/diary/isolated-diary";
 
 export default function DiaryReaderPage() {
   const params = useParams();
@@ -333,7 +334,7 @@ export default function DiaryReaderPage() {
         </div>
       )}
 
-      <div className={`mx-auto py-8 px-4 ${hasCustomCss ? "max-w-6xl" : "max-w-2xl"}`}>
+      <div className={`mx-auto py-8 px-4 ${hasCustomCss ? "max-w-7xl" : "max-w-2xl"}`}>
       <Link
         href="/"
         className="text-xs text-muted hover:text-foreground no-underline hover:underline block mb-3"
@@ -418,10 +419,17 @@ export default function DiaryReaderPage() {
 
       {(!isPrivate || (isPrivate && isOwner && decrypted)) && (
         <ResizableDiaryWindow>
-          <article
-            className={`mt-6 font-serif text-base leading-relaxed text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_hr]:border-border [&_hr]:my-4 [&_style]:hidden ${hasCustomCss ? "" : "max-w-prose"}`}
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayHtml) }}
-          />
+          {hasCustomCss ? (
+            <IsolatedDiary
+              html={sanitizeHtml(displayHtml)}
+              className="mt-6"
+            />
+          ) : (
+            <article
+              className="mt-6 font-serif text-base leading-relaxed text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_hr]:border-border [&_hr]:my-4 max-w-prose"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayHtml) }}
+            />
+          )}
         </ResizableDiaryWindow>
       )}
 
