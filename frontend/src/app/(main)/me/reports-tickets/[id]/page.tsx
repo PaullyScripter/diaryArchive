@@ -164,6 +164,21 @@ export default function TicketDetailPage() {
     [reply, pendingMedia, ticketId, queryClient],
   );
 
+  const closeMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.put(`/tickets/${ticketId}/close`);
+    },
+    onSuccess: () => {
+      showToast("Ticket closed");
+      queryClient.invalidateQueries({ queryKey: ["my-ticket", ticketId] });
+      queryClient.invalidateQueries({ queryKey: ["my-tickets"] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || "Failed to close ticket";
+      showToast(msg);
+    },
+  });
+
   if (isLoading) {
     return (
       <ProtectedRoute>
@@ -193,21 +208,6 @@ export default function TicketDetailPage() {
   }
 
   const isOpen = ticket.status === "open";
-
-  const closeMutation = useMutation({
-    mutationFn: async () => {
-      await apiClient.put(`/tickets/${ticketId}/close`);
-    },
-    onSuccess: () => {
-      showToast("Ticket closed");
-      queryClient.invalidateQueries({ queryKey: ["my-ticket", ticketId] });
-      queryClient.invalidateQueries({ queryKey: ["my-tickets"] });
-    },
-    onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || "Failed to close ticket";
-      showToast(msg);
-    },
-  });
 
   return (
     <ProtectedRoute>

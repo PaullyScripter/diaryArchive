@@ -8,7 +8,9 @@ from app.core.security import check_rate_limit
 from app.core.utils import fmt_dt
 from app.models.user import EmailUpdate, EncryptionKeyUpdate, UserUpdate
 from app.repositories.diary_repo import DiaryRepository
+from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
 from app.repositories.user_repo import UserRepository
+from app.services.auth_email_service import send_email_verification
 from app.services.user_service import (
     get_user_profile,
     update_encryption_key,
@@ -56,6 +58,15 @@ async def update_my_email(
     if is_limited:
         raise RateLimitException("Too many email update attempts")
     result = await update_user_email(str(current_user["_id"]), body.email)
+
+    if result.get("has_email") and not result.get("email_verified"):
+        from app.core.security import create_email_verification_token, hash_token
+        verification_token_raw = create_email_verification_token("")
+        verification_token_hash = hash_token(verification_token_raw)
+        verify_repo = EmailVerificationTokenRepository()
+        await verify_repo.create_token(str(current_user["_id"]), verification_token_hash)
+        await send_email_verification(current_user, verification_token_raw)
+
     return {"data": result}
 
 
