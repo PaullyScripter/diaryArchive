@@ -79,10 +79,10 @@ class TestGetProfile:
         await repo.update(str(user["_id"]), {"is_banned": True})
 
         response = await client.get(f"/api/v1/users/{auth_user['username']}")
-        assert response.status_code == 403
+        assert response.status_code == 404
         body = response.json()
         error = body.get("error", body)
-        assert "suspended" in error.get("message", "").lower()
+        assert "not found" in error.get("message", "").lower()
 
     async def test_get_profile_is_following_flag_when_authenticated(
         self, client: AsyncClient, auth_token: str, auth_user: dict

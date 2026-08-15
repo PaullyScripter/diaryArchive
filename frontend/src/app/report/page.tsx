@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ function useCurrentUrl() {
   }, [searchParams]);
 }
 
-export default function ReportPage() {
+function ReportPageContent() {
   const router = useRouter();
   const currentUrl = useCurrentUrl();
   const [reportType, setReportType] = useState<ReportType>(null);
@@ -443,5 +443,13 @@ export default function ReportPage() {
         )}
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReportPageContent />
+    </Suspense>
   );
 }

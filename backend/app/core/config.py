@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "diaryarchive"
     minio_region: str = "us-east-1"
+    # Publicly reachable base URL for public media (e.g. a MinIO/nginx route that
+    # serves the bucket over HTTPS). When unset, public media is served via
+    # short-lived signed URLs rather than leaking the internal MinIO host.
+    public_media_base_url: str | None = None
 
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = ""
@@ -26,6 +30,20 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     email_encryption_key: str = ""
+
+    # Outbound transactional email (password reset / email verification).
+    # Leave SMTP settings empty to disable delivery entirely; the service then
+    # logs the would-be email (still keeps auth flows working in dev).
+    email_provider: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True
+    email_from: str = "DiaryArchive <no-reply@diaryarchive.local>"
+    # Public origin used to build reset/verify links inside emails. Must be the
+    # origin the user's browser actually talks to (NOT an internal docker host).
+    public_app_url: str = "http://localhost:3000"
 
     cors_origins: list[str] = ["http://localhost:3000"]
 
@@ -46,10 +64,15 @@ class Settings(BaseSettings):
         "refresh": (20, 60),
         "password_reset_request": (3, 3600),
         "password_reset_submit": (10, 3600),
+        "verify_email": (10, 3600),
+        "request_email_verification": (3, 3600),
         # appeals
         "appeal_status": (12, 300),
         "appeal_submit": (3, 3600),
         "appeal_reply": (5, 3600),
+        "appeal_status_lockout": (8, 900),
+        "appeal_submit_lockout": (5, 3600),
+        "appeal_reply_lockout": (8, 3600),
         # admin
         "admin_ticket_reply": (30, 60),
         "admin_ticket_close": (30, 60),

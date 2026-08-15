@@ -1,7 +1,7 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_admin, get_current_user
 from app.core.database import DatabaseManager
@@ -191,8 +191,8 @@ async def issue_username_warning(
 
 @router.get("")
 async def list_warned_users(
-    page: int = 1,
-    per_page: int = 20,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):
     skip = (page - 1) * per_page
