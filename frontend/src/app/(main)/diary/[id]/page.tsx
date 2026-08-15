@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { BadgeDisplay } from "@/components/shared/badge-display";
 import { Share2, Pencil, Trash2, Lock, Shield, Star } from "lucide-react";
@@ -178,6 +178,9 @@ export default function DiaryReaderPage() {
   }, [isPrivate, isOwner, decrypted, diary]);
 
   const hasCustomCss = displayHtml.includes("<style>");
+
+  const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
+  const handleContentWidth = useCallback((w: number) => setNaturalWidth(w), []);
 
   const displayTags = useMemo(() => {
     if (isPrivate && isOwner) return decrypted?.tags ?? diary?.tags ?? [];
@@ -418,11 +421,12 @@ export default function DiaryReaderPage() {
       )}
 
       {(!isPrivate || (isPrivate && isOwner && decrypted)) && (
-        <ResizableDiaryWindow>
+        <ResizableDiaryWindow naturalWidth={naturalWidth}>
           {hasCustomCss ? (
             <IsolatedDiary
               html={sanitizeHtml(displayHtml)}
               className="mt-6"
+              onContentWidth={handleContentWidth}
             />
           ) : (
             <article

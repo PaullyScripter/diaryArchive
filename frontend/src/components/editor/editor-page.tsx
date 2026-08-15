@@ -88,6 +88,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
+  // A diary is "HTML/CSS" when it ships its own <style> block — either via the
+  // separate Custom CSS box or inline in the HTML source. Such diaries must be
+  // rendered isolated (Shadow DOM) and get wider preview surfaces.
+  const isHtmlCss = customCss.trim() !== "" || /<style[\s>]/i.test(contentHtml);
+
   const handleImageUpload = useCallback(
     async (file: File, editorInstance: Editor) => {
       const validation = validateImageFile(file);
@@ -526,7 +531,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               )}
             </div>
             {sourceMode && (
-              <div className={`${customCss.trim() ? "w-[60%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
+              <div className={`${isHtmlCss ? "w-[65%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                     Live Preview
@@ -534,7 +539,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                   <span className="text-[10px] text-subtle">updates as you type</span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto">
-                  {customCss.trim() ? (
+                  {isHtmlCss ? (
                     <IsolatedDiary
                       html={sanitizeHtml(
                         customCss
@@ -646,7 +651,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="preview-dialog-title">
-          <div className={`w-full ${customCss.trim() ? "max-w-6xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg`}>
+          <div className={`w-full ${isHtmlCss ? "max-w-7xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg`}>
             <div className="sticky top-0 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
               <h2 id="preview-dialog-title" className="text-sm font-medium text-foreground">
                 Preview
@@ -698,7 +703,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </div>
               )}
 
-              {customCss.trim() ? (
+              {isHtmlCss ? (
                 <IsolatedDiary
                   html={sanitizeHtml(
                     customCss
