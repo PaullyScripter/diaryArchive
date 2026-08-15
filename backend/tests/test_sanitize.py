@@ -159,6 +159,26 @@ def test_style_block_drops_css_escape_obfuscated_url():
     assert "color:red" in result
 
 
+def test_escaped_parenthesis_url_blocked():
+    # "url\28(...)\29" - escaped parens survive tinycss2 serialization as
+    # "url\(...\)" but the browser decodes them back to url(...). Must drop.
+    html = r"<style>.a{background:url\28https://evil.example/x.png\29}</style>"
+    out = sanitize_html(html)
+    assert "url" not in out
+    assert "https://evil.example" not in out
+
+
+def test_style_breakout_escaped_angle_brackets_neutralized():
+    # Escaped "</style><script>..." must not survive as literal HTML after
+    # the sanitizer rebuilds the <style> block.
+    html = r'<style>.a{content:"\3c/style\3e\3cscript\3ealert(1)\3c/script\3e"}</style>'
+    out = sanitize_html(html)
+    assert out.count("</style>") == 1  # only the real closing tag
+    assert "<script" not in out
+    assert "<script>" not in out
+    assert "</style><" not in out
+
+
 def test_disallowed_tags_stripped():
     html = "<script>alert(1)</script><form>Hello</form><div class=\"x\">body</div>"
     result = sanitize_html(html)

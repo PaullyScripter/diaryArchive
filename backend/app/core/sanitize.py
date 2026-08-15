@@ -93,6 +93,52 @@ _DANGEROUS_URI_PREFIXES = ("javascript:", "vbscript:", "data:", "file:", "about:
 _MAX_RULE_DEPTH = 12
 
 
+def _decode_css_escapes(css: str) -> str:
+    """Decode CSS escape sequences ("\72", "\0072", "\72(", "\3c") to their
+    real characters so the value blocklist sees "url(", "javascript:", etc.
+    even when the author wrote them escaped. tinycss2 normalizes some escapes
+    but not all (e.g. "\28" for "(" survives), which previously let
+    "url\28(...)" slip past the regex.
+    """
+    out = []
+    i, n = 0, len(css)
+    while i < n:
+        ch = css[i]
+        if ch != "\\" or i + 1 >= n:
+            out.append(ch)
+            i += 1
+            continue
+        nxt = css[i + 1]
+        if nxt in "\r\n":
+            # line continuation: drop the backslash and the newline(s)
+            i += 2 if (nxt == "\r" and i + 2 < n and css[i + 2] == "\n") else 1
+            continue
+        if nxt in "0123456789abcdefABCDEF":
+            j = i + 1
+            while j < n and j < i + 7 and css[j] in "0123456789abcdefABCDEF":
+                j += 1
+            cp = int(css[i + 1 : j], 16)
+            if cp == 0 or cp > 0x10FFFF or 0xD800 <= cp <= 0xDFFF:
+                out.append("\ufffd")
+            else:
+                out.append(chr(cp))
+            # an optional single whitespace after a hex escape is consumed
+            if j < n and css[j] in " \t\r\n\f":
+                j += 1
+            i = j
+            continue
+        # escaped single character: the backslash is dropped
+        out.append(nxt)
+        i += 2
+    return "".join(out)
+
+
+def _escape_angle_brackets(css: str) -> str:
+    """Re-encode '<' and '>' as CSS escapes so decoded content cannot break
+    out of the <style> element or form an HTML tag. Semantics-preserving."""
+    return css.replace("<", "\\3c ").replace(">", "\\3e ")
+
+
 class _CustomPropertyAwareCSSSanitizer(CSSSanitizer):
     """Bleach css_sanitizer that preserves CSS custom properties (--*).
 
@@ -128,7 +174,9 @@ def _sanitize_declarations(content) -> list:
         is_custom_prop = prop.startswith("--")
         if not is_custom_prop and prop not in ALLOWED_CSS_PROPERTIES:
             continue
-        if _CSS_VALUE_RE.search(serialize(declaration.value)):
+        # Decode CSS escapes first so "url\28(...)" is seen as "url(...)".
+        serialized_value = serialize(declaration.value)
+        if _CSS_VALUE_RE.search(_decode_css_escapes(serialized_value)):
             continue
         kept.append(declaration)
     return kept
@@ -170,7 +218,9 @@ def _sanitize_css_stylesheet(css: str) -> str:
     except Exception:
         return ""
     rules = _process_rules(tokens)
-    return " ".join(rules) if rules else ""
+    # Re-encode any '<' / '>' so decoded content (e.g. "\3c/style\3e") cannot
+    # break out of the <style> element or form an HTML tag.
+    return _escape_angle_brackets(" ".join(rules)) if rules else ""
 
 
 def _sanitize_style_attr(value: str):
