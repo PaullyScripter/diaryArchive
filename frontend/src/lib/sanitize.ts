@@ -3,14 +3,24 @@ import DOMPurify from "dompurify";
 const ALLOWED_TAGS = [
   "p", "h1", "h2", "h3", "h4", "h5", "h6",
   "ul", "ol", "li", "blockquote", "pre", "code",
-  "em", "strong", "a", "img", "table", "thead",
-  "tbody", "tr", "th", "td", "hr", "br", "span",
-  "div", "style",
+  "em", "strong", "a", "img", "br", "span", "small",
+  "sub", "sup", "mark", "abbr", "cite", "q", "s", "u",
+  "article", "section", "header", "footer", "aside",
+  "nav", "main", "figure", "figcaption", "div",
+  "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+  "caption", "colgroup", "col",
+  "dl", "dt", "dd", "hr", "details", "summary",
+  "label", "input", "fieldset", "legend",
+  "style",
 ];
 
 const ALLOWED_ATTR = [
-  "class", "style", "href", "target", "rel",
+  "class", "style", "title",
+  "href", "target", "rel",
   "src", "alt", "width", "height",
+  "type", "checked", "disabled", "value", "name",
+  "for",
+  "span", "colspan", "rowspan", "scope", "align", "valign",
 ];
 
 // Constructs that must never survive inside a CSS value or <style> block.

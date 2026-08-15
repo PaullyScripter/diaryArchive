@@ -73,6 +73,42 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("max-width:700px");
   });
 
+  it("preserves new semantic tags used by advanced diaries", () => {
+    const input =
+      '<article><header><h1>Title</h1></header><section><label for="c"><input type="checkbox" checked> <small>small</small></label></section><footer>footer</footer><aside>aside</aside></article>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("<article>");
+    expect(result).toContain("<header>");
+    expect(result).toContain("<section>");
+    expect(result).toContain("<label");
+    expect(result).toContain("<input");
+    expect(result).toContain("checked");
+    expect(result).toContain("<small>");
+    expect(result).toContain("<footer>");
+    expect(result).toContain("<aside>");
+  });
+
+  it("keeps CSS custom properties and var() in style attributes", () => {
+    const input =
+      '<p style="--value: 81%; width: var(--value)">hi</p>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("--value");
+    expect(result).toContain("var(--value)");
+    expect(result).toContain("width");
+  });
+
+  it("keeps CSS custom properties inside style blocks", () => {
+    const input =
+      '<style>:root{--accent:#9b7657}.bar{width:var(--value);backdrop-filter:blur(8px);box-sizing:border-box;inset:0;place-items:center}</style><p class="bar">x</p>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("--accent:#9b7657");
+    expect(result).toContain("var(--value)");
+    expect(result).toContain("backdrop-filter");
+    expect(result).toContain("box-sizing");
+    expect(result).toContain("inset:0");
+    expect(result).toContain("place-items");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });

@@ -6,42 +6,70 @@ from tinycss2 import parse_declaration_list, parse_stylesheet, serialize
 from tinycss2.ast import AtRule, Declaration, QualifiedRule
 
 ALLOWED_TAGS = {
+    # core text
     "p", "h1", "h2", "h3", "h4", "h5", "h6",
     "ul", "ol", "li", "blockquote", "pre", "code",
-    "em", "strong", "a", "img", "table", "thead",
-    "tbody", "tr", "th", "td", "hr", "br", "span",
-    "div", "style",
+    "em", "strong", "a", "img", "br", "span", "small",
+    "sub", "sup", "mark", "abbr", "cite", "q", "s", "u",
+    # semantic layout (commonly used in custom HTML/CSS diaries)
+    "article", "section", "header", "footer", "aside",
+    "nav", "main", "figure", "figcaption", "div",
+    # tables
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+    "caption", "colgroup", "col",
+    # lists / structure
+    "dl", "dt", "dd", "hr", "details", "summary",
+    # forms (interactive but inert without JS; used for checklists/toggles)
+    "label", "input", "fieldset", "legend",
+    # style
+    "style",
 }
 
 ALLOWED_ATTRIBUTES = {
-    "*": ["class", "style"],
+    "*": ["class", "style", "title"],
     "a": ["href", "target", "rel"],
     "img": ["src", "alt", "width", "height"],
+    "input": ["type", "checked", "disabled", "value", "name"],
+    "label": ["for"],
+    "col": ["span"],
+    "colgroup": ["span"],
+    "td": ["colspan", "rowspan", "align", "valign"],
+    "th": ["colspan", "rowspan", "scope", "align", "valign"],
 }
 
 # Benign layout/typography properties. CSS properties are inert on their own;
 # the danger lives in VALUES (url(), expression(), behavior, ...) which are
-# rejected by _CSS_VALUE_RE below.
+# rejected by _CSS_VALUE_RE below. Custom properties (--*) are allowed so
+# writers can define their own design tokens.
 ALLOWED_CSS_PROPERTIES = frozenset({
     # typography
     "font-family", "font-size", "font-weight", "font-style",
     "color", "background-color", "background", "background-image",
     "text-align", "text-decoration", "text-indent", "text-transform",
     "line-height", "letter-spacing", "white-space", "word-wrap",
-    "vertical-align",
+    "vertical-align", "text-shadow", "word-break", "overflow-wrap",
     # box model
     "margin", "margin-left", "margin-right", "margin-top", "margin-bottom",
     "padding", "padding-left", "padding-right", "padding-top", "padding-bottom",
     "border", "border-left", "border-right", "border-top", "border-bottom",
-    "border-radius", "box-shadow",
+    "border-radius", "box-shadow", "border-collapse", "border-spacing",
     # sizing / layout
     "width", "height", "min-width", "min-height", "max-width", "max-height",
     "display", "float", "overflow", "overflow-x", "overflow-y",
-    "position", "top", "right", "bottom", "left", "z-index",
-    "flex", "flex-direction", "flex-wrap", "gap",
-    "align-items", "align-self", "justify-content",
-    "grid-template-columns", "grid-gap",
-    "opacity", "transform", "transition",
+    "position", "top", "right", "bottom", "left", "inset", "z-index",
+    "flex", "flex-direction", "flex-wrap", "flex-grow", "flex-shrink",
+    "flex-basis", "gap", "row-gap", "column-gap",
+    "align-items", "align-self", "align-content", "justify-content",
+    "justify-items", "justify-self", "place-items", "place-content", "place-self",
+    "grid", "grid-template", "grid-template-columns", "grid-template-rows",
+    "grid-template-areas", "grid-column", "grid-column-start", "grid-column-end",
+    "grid-row", "grid-row-start", "grid-row-end", "grid-area",
+    "grid-auto-flow", "grid-auto-rows", "grid-auto-columns", "grid-gap",
+    "box-sizing", "aspect-ratio", "object-fit", "object-position",
+    "opacity", "transform", "transform-origin", "transition",
+    "content", "filter", "backdrop-filter", "cursor", "user-select",
+    "visibility", "overflow-wrap", "text-overflow",
+    "columns", "column-count", "column-gap",
 })
 
 # Constructs that must never survive in a CSS value or stylesheet.
@@ -64,7 +92,23 @@ _DANGEROUS_URI_PREFIXES = ("javascript:", "vbscript:", "data:", "file:", "about:
 
 _MAX_RULE_DEPTH = 12
 
-css_sanitizer = CSSSanitizer(allowed_css_properties=ALLOWED_CSS_PROPERTIES)
+
+class _CustomPropertyAwareCSSSanitizer(CSSSanitizer):
+    """Bleach css_sanitizer that preserves CSS custom properties (--*).
+
+    Delegates to _sanitize_declarations (same allowlist + value regex used
+    for <style> blocks) so inline style attributes and <style> blocks behave
+    identically, including support for author-defined design tokens.
+    """
+
+    def sanitize_css(self, css_text: str) -> str:
+        declarations = _sanitize_declarations(css_text)
+        return serialize(declarations) if declarations else ""
+
+
+css_sanitizer = _CustomPropertyAwareCSSSanitizer(
+    allowed_css_properties=ALLOWED_CSS_PROPERTIES
+)
 
 
 def _sanitize_declarations(content) -> list:
@@ -80,7 +124,9 @@ def _sanitize_declarations(content) -> list:
         if not isinstance(declaration, Declaration):
             continue
         prop = declaration.name.strip().lower()
-        if prop not in ALLOWED_CSS_PROPERTIES:
+        # Allow custom properties (design tokens) the author defines themselves.
+        is_custom_prop = prop.startswith("--")
+        if not is_custom_prop and prop not in ALLOWED_CSS_PROPERTIES:
             continue
         if _CSS_VALUE_RE.search(serialize(declaration.value)):
             continue
