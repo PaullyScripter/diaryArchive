@@ -14,6 +14,7 @@ import { useMediaUpload } from "@/hooks/use-media";
 import { showToast } from "@/components/shared/toast";
 import { validateImageFile } from "@/lib/media-validator";
 import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
+import { IsolatedDiary } from "@/components/diary/isolated-diary";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -525,7 +526,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               )}
             </div>
             {sourceMode && (
-              <div className="w-1/2 min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background">
+              <div className={`${customCss.trim() ? "w-[60%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                     Live Preview
@@ -533,16 +534,26 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                   <span className="text-[10px] text-subtle">updates as you type</span>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto">
-                  <article
-                    className="font-serif text-base leading-relaxed text-foreground [&_style]:hidden [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizeHtml(
+                  {customCss.trim() ? (
+                    <IsolatedDiary
+                      html={sanitizeHtml(
                         customCss
                           ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                           : contentHtml
-                      ),
-                    }}
-                  />
+                      )}
+                    />
+                  ) : (
+                    <article
+                      className="font-serif text-base leading-relaxed text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(
+                          customCss
+                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                            : contentHtml
+                        ),
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -635,7 +646,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="preview-dialog-title">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg">
+          <div className={`w-full ${customCss.trim() ? "max-w-6xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg`}>
             <div className="sticky top-0 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
               <h2 id="preview-dialog-title" className="text-sm font-medium text-foreground">
                 Preview
@@ -687,16 +698,26 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </div>
               )}
 
-              <article
-                className="font-serif text-base leading-relaxed text-foreground max-w-none overflow-x-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(
+              {customCss.trim() ? (
+                <IsolatedDiary
+                  html={sanitizeHtml(
                     customCss
                       ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                       : contentHtml
-                  ),
-                }}
-              />
+                  )}
+                />
+              ) : (
+                <article
+                  className="font-serif text-base leading-relaxed text-foreground max-w-none overflow-x-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHtml(
+                      customCss
+                        ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                        : contentHtml
+                    ),
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
