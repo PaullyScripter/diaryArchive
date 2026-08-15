@@ -56,5 +56,11 @@ export function IsolatedDiary({
     return () => ro.disconnect();
   }, [html]);
 
-  return <div ref={hostRef} className={className} style={style} />;
+  return (
+    <div
+      ref={hostRef}
+      className={`${className ?? ""} [isolation:isolate] [transform:translateZ(0)]`}
+      style={style}
+    />
+  );
 }
