@@ -15,6 +15,7 @@ import { showToast } from "@/components/shared/toast";
 import { validateImageFile } from "@/lib/media-validator";
 import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
 import { IsolatedDiary } from "@/components/diary/isolated-diary";
+import { splitHtmlCss } from "@/lib/html-css";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -121,8 +122,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
   useEffect(() => {
     if (isEditMode && existingDiary) {
+      const { css, html: bodyHtml } = splitHtmlCss(existingDiary.content_html ?? "");
       setTitle(existingDiary.title ?? "");
-      setContentHtml(existingDiary.content_html ?? "");
+      setCustomCss(css);
+      setContentHtml(bodyHtml);
       setContentText(existingDiary.content_text ?? "");
       setPrivacy(existingDiary.privacy);
       setTags(existingDiary.tags ?? []);
@@ -137,8 +140,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
   useEffect(() => {
     if (!isEditMode && draft && hasRecoveredDraft) {
+      const { css, html: bodyHtml } = splitHtmlCss(draft.contentHtml);
       setTitle(draft.title);
-      setContentHtml(draft.contentHtml);
+      setCustomCss(css);
+      setContentHtml(bodyHtml);
       setContentText(draft.contentText || "");
       setPrivacy(draft.privacy);
       setTags(draft.tags);
@@ -153,7 +158,9 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       return;
     }
     setTitle(template.title);
-    setContentHtml(template.contentHtml);
+    const { css, html: bodyHtml } = splitHtmlCss(template.contentHtml);
+    setCustomCss(css);
+    setContentHtml(bodyHtml);
     setContentText(template.contentHtml.replace(/<[^>]*>/g, ""));
     setTags(template.tags);
     if (template.emotion) setEmotion(template.emotion);
@@ -532,7 +539,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             </div>
             {sourceMode && (
               <div className={`${isHtmlCss ? "w-[65%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
-                <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                     Live Preview
                   </h3>
@@ -652,7 +659,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           aria-modal="true"
           aria-labelledby="preview-dialog-title">
           <div className={`w-full ${isHtmlCss ? "max-w-7xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg`}>
-            <div className="sticky top-0 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+            <div className="sticky top-0 relative z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
               <h2 id="preview-dialog-title" className="text-sm font-medium text-foreground">
                 Preview
               </h2>
