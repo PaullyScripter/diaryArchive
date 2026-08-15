@@ -128,6 +128,14 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("DISABLED-data:");
   });
 
+  it("catches url() with escaped parentheses", () => {
+    const input = String.raw`<style>.a{background:url\28https://evil.example/x.png\29}</style>`;
+    const result = sanitizeHtml(input);
+    // "\28" decodes to "(" so "url(" is recognized and neutralized in place.
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain(String.raw`url\28`);
+  });
+
   it("prevents style-block breakout via decoded closing tag", () => {
     const input = String.raw`<style>.a{content:"\3c/style\3e"}</style><script>alert(1)</script>`;
     const result = sanitizeHtml(input);
