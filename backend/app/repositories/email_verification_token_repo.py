@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 from app.repositories.base import BaseRepository
 
 
-class PasswordResetTokenRepository(BaseRepository):
-    collection_name = "password_reset_tokens"
+class EmailVerificationTokenRepository(BaseRepository):
+    collection_name = "email_verification_tokens"
 
     async def create_token(self, user_id: str, token_hash: str) -> str:
         doc = {
@@ -15,9 +15,6 @@ class PasswordResetTokenRepository(BaseRepository):
             "created_at": datetime.now(UTC),
         }
         return str(await self.create(doc))
-
-    async def find_by_hash(self, token_hash: str) -> dict | None:
-        return await self.find_one({"token_hash": token_hash, "used": False})
 
     async def find_and_consume(self, token_hash: str) -> dict | None:
         """Atomically claim an unused, non-expired token (single use)."""
@@ -31,8 +28,6 @@ class PasswordResetTokenRepository(BaseRepository):
             return_document=True,
         )
 
-    async def mark_used(self, token_hash: str) -> bool:
-        result = await self._collection.update_one(
-            {"token_hash": token_hash}, {"$set": {"used": True}}
-        )
-        return result.modified_count > 0
+    async def delete_for_user(self, user_id: str) -> int:
+        result = await self._collection.delete_many({"user_id": user_id})
+        return result.deleted_count

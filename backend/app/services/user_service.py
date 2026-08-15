@@ -118,7 +118,7 @@ async def update_user_email(user_id: str, email: str | None) -> dict:
         return {
             "has_email": True,
             "email_verified": False,
-            "message": "Email updated. Verification email will be sent when SMTP is configured.",
+            "message": "Email updated. A verification email has been sent to your new address.",
         }
     else:
         await user_repo.update(user_id, {

@@ -27,10 +27,12 @@ from app.core.security import (
 )
 from app.models.token import AuthResponse, RegisterResponse, TokenResponse
 from app.models.user import UserCreate, UserLogin
+from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
 from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 from app.repositories.audit_log_repo import AuditLogRepository
 from app.repositories.user_repo import UserRepository
+from app.services.auth_email_service import send_email_verification, send_password_reset_email
 from app.services.encryption_service import encrypt_email, hash_email
 
 logger = logging.getLogger(__name__)
@@ -451,6 +453,8 @@ async def request_password_reset(
         reset_repo = PasswordResetTokenRepository()
         await reset_repo.create_token(str(user["_id"]), reset_token_hash)
 
+        await send_password_reset_email(user, reset_token_raw)
+
         logger.info(
             "Password reset requested for %s (token hash: %s)",
             username,
@@ -485,13 +489,10 @@ async def reset_password(
 
     token_hash = hash_token(token)
     reset_repo = PasswordResetTokenRepository()
-    stored = await reset_repo.find_by_hash(token_hash)
+    stored = await reset_repo.find_and_consume(token_hash)
 
     if stored is None:
         raise AuthenticationException("Invalid or expired reset token")
-
-    if stored["expires_at"].replace(tzinfo=UTC) < datetime.now(UTC):
-        raise AuthenticationException("Reset token has expired")
 
     user_repo = UserRepository()
     user = await user_repo.get_by_id(stored["user_id"])
@@ -506,8 +507,6 @@ async def reset_password(
         "master_key_iv": None,
     })
 
-    await reset_repo.mark_used(token_hash)
-
     refresh_repo = RefreshTokenRepository()
     await refresh_repo.delete_all_for_user(str(user["_id"]))
 
@@ -521,6 +520,81 @@ async def reset_password(
 
     return {
         "data": {"message": "Password reset successfully. Please log in with your new password."}
+    }
+
+
+@router.post("/verify-email")
+async def verify_email(
+    body: dict,
+    request: Request,
+):
+    token = body.get("token", "")
+    if not token:
+        raise ValidationException("Token is required")
+
+    client_ip = get_client_ip(request)
+    is_limited, _ = await check_rate_limit(
+        "rate_limit:verify_email:" + client_ip,
+        *settings.get_rate_limit("verify_email"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many email verification attempts")
+
+    token_hash = hash_token(token)
+    verify_repo = EmailVerificationTokenRepository()
+    stored = await verify_repo.find_and_consume(token_hash)
+
+    if stored is None:
+        raise AuthenticationException("Invalid or expired verification token")
+
+    user_repo = UserRepository()
+    user = await user_repo.get_by_id(stored["user_id"])
+    if user is None:
+        raise AuthenticationException("User not found")
+
+    await user_repo.update(str(user["_id"]), {
+        "email_verified": True,
+        "email_verified_at": datetime.now(UTC),
+    })
+
+    await _write_auth_audit(
+        actor=user["username"],
+        action="email_verified",
+        target_type="user",
+        target_id=str(user["_id"]),
+        ip_address=client_ip,
+    )
+
+    return {"data": {"message": "Email verified successfully."}}
+
+
+@router.post("/request-email-verification")
+async def request_email_verification(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:request_email_verification:{current_user['_id']}",
+        *settings.get_rate_limit("request_email_verification"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many verification email requests")
+
+    if not current_user.get("email_encrypted"):
+        raise ValidationException("No email is set on this account")
+
+    if current_user.get("email_verified"):
+        return {"data": {"message": "This email is already verified."}}
+
+    verification_token_raw = create_email_verification_token("")
+    verification_token_hash = hash_token(verification_token_raw)
+    verify_repo = EmailVerificationTokenRepository()
+    await verify_repo.create_token(str(current_user["_id"]), verification_token_hash)
+
+    await send_email_verification(current_user, verification_token_raw)
+
+    return {
+        "data": {"message": "A verification email has been sent to the address on your account."}
     }
 
 

@@ -27,6 +27,20 @@ class Settings(BaseSettings):
 
     email_encryption_key: str = ""
 
+    # Outbound transactional email (password reset / email verification).
+    # Leave SMTP settings empty to disable delivery entirely; the service then
+    # logs the would-be email (still keeps auth flows working in dev).
+    email_provider: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True
+    email_from: str = "DiaryArchive <no-reply@diaryarchive.local>"
+    # Public origin used to build reset/verify links inside emails. Must be the
+    # origin the user's browser actually talks to (NOT an internal docker host).
+    public_app_url: str = "http://localhost:3000"
+
     cors_origins: list[str] = ["http://localhost:3000"]
 
     max_media_per_user: int = 500
@@ -46,6 +60,8 @@ class Settings(BaseSettings):
         "refresh": (20, 60),
         "password_reset_request": (3, 3600),
         "password_reset_submit": (10, 3600),
+        "verify_email": (10, 3600),
+        "request_email_verification": (3, 3600),
         # appeals
         "appeal_status": (12, 300),
         "appeal_submit": (3, 3600),

@@ -131,6 +131,12 @@ function LoginForm() {
           {loading ? "Logging in..." : "Log in"}
         </Button>
 
+        <p className="text-xs text-muted text-center">
+          <Link href="/forgot-password" className="text-link hover:text-link-hover underline underline-offset-2">
+            Forgot your password?
+          </Link>
+        </p>
+
         <p className="text-xs text-muted">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="text-link hover:text-link-hover underline underline-offset-2">
