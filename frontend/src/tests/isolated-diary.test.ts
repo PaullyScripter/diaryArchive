@@ -1,0 +1,35 @@
+import { describe, it, expect } from "vitest";
+import { scopeAuthorCss } from "@/lib/scope-css";
+
+describe("scopeAuthorCss", () => {
+  it("remaps leading :root/body/html selectors to :host", () => {
+    const css = "body { background: #111 } :root { --accent: #e93 } html { margin: 0 }";
+    const out = scopeAuthorCss(css);
+    expect(out).not.toContain("body {");
+    expect(out).not.toContain(":root {");
+    expect(out).not.toContain("html {");
+    expect(out).toContain(":host { background: #111 }");
+    expect(out).toContain(":host { --accent: #e93 }");
+    expect(out).toContain(":host { margin: 0 }");
+  });
+
+  it("remaps body in a comma-separated selector list", () => {
+    const out = scopeAuthorCss("body, .hero { color: red }");
+    expect(out).toContain(":host, .hero { color: red }");
+  });
+
+  it("does not touch selectors where body/:root are not leading", () => {
+    const css = ".card body span { color: red } div > p { margin: 0 } a:root { color: x }";
+    const out = scopeAuthorCss(css);
+    expect(out).toContain(".card body span { color: red }");
+    expect(out).toContain("a:root { color: x }");
+    expect(out).toContain("div > p { margin: 0 }");
+  });
+
+  it("does not rewrite declaration values or strings", () => {
+    const css = '.x { content: "body { " } .y { font-family: body }';
+    const out = scopeAuthorCss(css);
+    expect(out).toContain('content: "body { "');
+    expect(out).toContain("font-family: body");
+  });
+});

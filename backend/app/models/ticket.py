@@ -19,7 +19,7 @@ class TicketCreate(BaseModel):
 
 
 class TicketReply(BaseModel):
-    message: str = Field(default="", max_length=2000)
+    message: str = Field(..., min_length=1, max_length=2000)
     media_id: str | None = Field(None, min_length=1)
 
 

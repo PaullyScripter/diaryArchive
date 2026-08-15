@@ -1,10 +1,14 @@
 from datetime import UTC, datetime
 
-from app.core.exceptions import ConflictException, PermissionDeniedException
+from app.core.exceptions import ConflictException
 from app.core.security import hash_token
 from app.core.utils import fmt_dt
 from app.repositories.user_repo import UserRepository
-from app.services.encryption_service import encrypt_email, hash_email
+from app.services.encryption_service import (
+    encrypt_email,
+    hash_email,
+    legacy_email_hash,
+)
 
 
 def build_public_profile(user: dict, is_following: bool = False) -> dict:
@@ -37,7 +41,8 @@ async def get_user_profile(username: str, current_user: dict | None = None) -> d
         raise NotFoundException("User not found")
 
     if user.get("is_banned"):
-        raise PermissionDeniedException("This account has been suspended")
+        from app.core.exceptions import NotFoundException
+        raise NotFoundException("User not found")
 
     is_following = False
     if current_user and str(current_user["_id"]) != str(user["_id"]):
@@ -104,7 +109,7 @@ async def update_user_email(user_id: str, email: str | None) -> dict:
         encrypted = encrypt_email(email)
         hashed = hash_email(email)
 
-        existing = await user_repo.get_by_email_hash(hashed)
+        existing = await user_repo.get_by_email_hashes([hashed, legacy_email_hash(email)])
         if existing and str(existing["_id"]) != user_id:
             raise ConflictException("Email is already associated with another account")
 
@@ -118,7 +123,7 @@ async def update_user_email(user_id: str, email: str | None) -> dict:
         return {
             "has_email": True,
             "email_verified": False,
-            "message": "Email updated. Verification email will be sent when SMTP is configured.",
+            "message": "Email updated. A verification email has been sent to your new address.",
         }
     else:
         await user_repo.update(user_id, {

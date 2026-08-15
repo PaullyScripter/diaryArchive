@@ -14,6 +14,8 @@ import { useMediaUpload } from "@/hooks/use-media";
 import { showToast } from "@/components/shared/toast";
 import { validateImageFile } from "@/lib/media-validator";
 import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
+import { IsolatedDiary } from "@/components/diary/isolated-diary";
+import { splitHtmlCss } from "@/lib/html-css";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -87,6 +89,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
+  // A diary is "HTML/CSS" when it ships its own <style> block — either via the
+  // separate Custom CSS box or inline in the HTML source. Such diaries must be
+  // rendered isolated (Shadow DOM) and get wider preview surfaces.
+  const isHtmlCss = customCss.trim() !== "" || /<style[\s>]/i.test(contentHtml);
+
   const handleImageUpload = useCallback(
     async (file: File, editorInstance: Editor) => {
       const validation = validateImageFile(file);
@@ -115,8 +122,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
   useEffect(() => {
     if (isEditMode && existingDiary) {
+      const { css, html: bodyHtml } = splitHtmlCss(existingDiary.content_html ?? "");
       setTitle(existingDiary.title ?? "");
-      setContentHtml(existingDiary.content_html ?? "");
+      setCustomCss(css);
+      setContentHtml(bodyHtml);
       setContentText(existingDiary.content_text ?? "");
       setPrivacy(existingDiary.privacy);
       setTags(existingDiary.tags ?? []);
@@ -131,8 +140,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
   useEffect(() => {
     if (!isEditMode && draft && hasRecoveredDraft) {
+      const { css, html: bodyHtml } = splitHtmlCss(draft.contentHtml);
       setTitle(draft.title);
-      setContentHtml(draft.contentHtml);
+      setCustomCss(css);
+      setContentHtml(bodyHtml);
       setContentText(draft.contentText || "");
       setPrivacy(draft.privacy);
       setTags(draft.tags);
@@ -147,7 +158,9 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       return;
     }
     setTitle(template.title);
-    setContentHtml(template.contentHtml);
+    const { css, html: bodyHtml } = splitHtmlCss(template.contentHtml);
+    setCustomCss(css);
+    setContentHtml(bodyHtml);
     setContentText(template.contentHtml.replace(/<[^>]*>/g, ""));
     setTags(template.tags);
     if (template.emotion) setEmotion(template.emotion);
@@ -501,25 +514,59 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               onOpenTemplates={() => setShowTemplatePicker(true)}
             />
           </div>
-          <div className="flex-1 min-h-0 flex flex-col p-4 gap-4">
-            <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border">
-              <FloatingToolbar editor={editor} />
-              {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
+          <div className={`flex-1 min-h-0 flex p-4 gap-4 ${sourceMode ? "flex-row" : "flex-col"}`}>
+            <div className="flex flex-col gap-4 flex-1 min-w-0">
+              <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border">
+                <FloatingToolbar editor={editor} />
+                {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
+              </div>
+              {sourceMode && (
+                <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                    <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
+                      Custom CSS{" "}
+                      <span className="text-subtle font-normal">(advanced)</span>
+                    </h3>
+                  </div>
+                  <textarea
+                    value={customCss}
+                    onChange={(e) => setCustomCss(e.target.value)}
+                    placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
+                    className="flex-1 min-h-0 font-mono text-xs bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-0 resize-none"
+                  />
+                </div>
+              )}
             </div>
             {sourceMode && (
-              <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+              <div className={`${isHtmlCss ? "w-[65%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
+                <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
-                    Custom CSS{" "}
-                    <span className="text-subtle font-normal">(advanced)</span>
+                    Live Preview
                   </h3>
+                  <span className="text-[10px] text-subtle">updates as you type</span>
                 </div>
-                <textarea
-                  value={customCss}
-                  onChange={(e) => setCustomCss(e.target.value)}
-                  placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
-                  className="flex-1 min-h-0 font-mono text-xs bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-0 resize-none"
-                />
+                <div className="flex-1 min-h-0 overflow-auto">
+                  {isHtmlCss ? (
+                    <IsolatedDiary
+                      html={sanitizeHtml(
+                        customCss
+                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                          : contentHtml
+                      )}
+                    />
+                  ) : (
+                    <article
+                      className="font-serif text-base leading-relaxed text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(
+                          customCss
+                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                            : contentHtml
+                        ),
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -611,8 +658,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="preview-dialog-title">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg">
-            <div className="sticky top-0 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+          <div className={`w-full ${isHtmlCss ? "max-w-7xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto mx-4 bg-background border border-border rounded-lg shadow-lg`}>
+            <div className="sticky top-0 relative z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
               <h2 id="preview-dialog-title" className="text-sm font-medium text-foreground">
                 Preview
               </h2>
@@ -663,16 +710,26 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </div>
               )}
 
-              <article
-                className="font-serif text-base leading-relaxed text-foreground max-w-none overflow-x-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(
+              {isHtmlCss ? (
+                <IsolatedDiary
+                  html={sanitizeHtml(
                     customCss
                       ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                       : contentHtml
-                  ),
-                }}
-              />
+                  )}
+                />
+              ) : (
+                <article
+                  className="font-serif text-base leading-relaxed text-foreground max-w-none overflow-x-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeHtml(
+                      customCss
+                        ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                        : contentHtml
+                    ),
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>

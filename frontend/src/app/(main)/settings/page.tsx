@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { BadgeSelector } from "@/components/settings/badge-selector";
+import { apiClient } from "@/lib/api/client";
 
 function SettingsContent() {
   const user = useAuthStore((s) => s.user);
@@ -34,6 +35,7 @@ function SettingsContent() {
   const [emailInput, setEmailInput] = useState("");
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -109,6 +111,24 @@ function SettingsContent() {
       const message =
         err instanceof Error ? err.message : "Failed to remove email";
       setEmailError(message);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setEmailError(null);
+    setEmailMessage(null);
+    setResendingVerification(true);
+    try {
+      const { data } = await apiClient.post("/auth/request-email-verification");
+      const result = (data?.data || data) as { message?: string };
+      setEmailMessage(result.message || "Verification email sent.");
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message || "Failed to send verification email";
+      setEmailError(message);
+    } finally {
+      setResendingVerification(false);
     }
   };
 
@@ -301,6 +321,16 @@ function SettingsContent() {
                       disabled={updateEmail.isPending}
                     >
                       Remove
+                    </Button>
+                  )}
+                  {user.has_email && !user.email_verified && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleResendVerification}
+                      disabled={resendingVerification}
+                    >
+                      {resendingVerification ? "..." : "Resend verification"}
                     </Button>
                   )}
                 </div>

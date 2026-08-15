@@ -73,6 +73,80 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("max-width:700px");
   });
 
+  it("preserves new semantic tags used by advanced diaries", () => {
+    const input =
+      '<article><header><h1>Title</h1></header><section><label for="c"><input type="checkbox" checked> <small>small</small></label></section><footer>footer</footer><aside>aside</aside></article>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("<article>");
+    expect(result).toContain("<header>");
+    expect(result).toContain("<section>");
+    expect(result).toContain("<label");
+    expect(result).toContain("<input");
+    expect(result).toContain("checked");
+    expect(result).toContain("<small>");
+    expect(result).toContain("<footer>");
+    expect(result).toContain("<aside>");
+  });
+
+  it("keeps CSS custom properties and var() in style attributes", () => {
+    const input =
+      '<p style="--value: 81%; width: var(--value)">hi</p>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("--value");
+    expect(result).toContain("var(--value)");
+    expect(result).toContain("width");
+  });
+
+  it("keeps CSS custom properties inside style blocks", () => {
+    const input =
+      '<style>:root{--accent:#9b7657}.bar{width:var(--value);backdrop-filter:blur(8px);box-sizing:border-box;inset:0;place-items:center}</style><p class="bar">x</p>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("--accent:#9b7657");
+    expect(result).toContain("var(--value)");
+    expect(result).toContain("backdrop-filter");
+    expect(result).toContain("box-sizing");
+    expect(result).toContain("inset:0");
+    expect(result).toContain("place-items");
+  });
+
+  it("catches CSS escape-sequence obfuscated url() in style blocks", () => {
+    const input =
+      String.raw`<style>.a{background:u\72l(https://evil.example/x.png);color:red}</style>`;
+    const result = sanitizeHtml(input);
+    // The escaped "u\72l(" was decoded to "url(" and neutralized.
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain(String.raw`u\72l(`);
+    expect(result).toContain("color:red");
+  });
+
+  it("catches escaped javascript: and data: in style blocks", () => {
+    const input =
+      String.raw`<style>.a{background:j\61vascript:alert(1)}.b{content:\64\61\74\61\3a x}</style>`;
+    const result = sanitizeHtml(input);
+    expect(result).toContain("DISABLED-javascript:");
+    expect(result).not.toContain(String.raw`j\61vascript:`);
+    expect(result).toContain("DISABLED-data:");
+  });
+
+  it("catches url() with escaped parentheses", () => {
+    const input = String.raw`<style>.a{background:url\28https://evil.example/x.png\29}</style>`;
+    const result = sanitizeHtml(input);
+    // "\28" decodes to "(" so "url(" is recognized and neutralized in place.
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain(String.raw`url\28`);
+  });
+
+  it("prevents style-block breakout via decoded closing tag", () => {
+    const input = String.raw`<style>.a{content:"\3c/style\3e"}</style><script>alert(1)</script>`;
+    const result = sanitizeHtml(input);
+    // The decoded "</style>" inside the value is re-encoded to "\3c /style\3e "
+    // so it cannot close the <style> element; the <script> is stripped.
+    expect(result).toContain(String.raw`content:"\3c /style\3e "`);
+    expect(result).not.toContain(String.raw`content:"</style>"`);
+    expect(result).not.toContain("<script>");
+    expect(result).not.toContain("alert");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });

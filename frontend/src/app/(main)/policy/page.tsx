@@ -234,7 +234,7 @@ export default function PolicyPage() {
           ]}
         />
         <p className="text-xs text-subtle mt-3">
-          Your theme preference (light/dark) is stored in your browser's
+          Your theme preference (light/dark) is stored in your browser&apos;s
           localStorage and is never sent to the server.
         </p>
       </Section>
@@ -334,7 +334,7 @@ export default function PolicyPage() {
             Outside of these specific categories, we default to
             <strong className="text-foreground"> leaving content alone</strong>.
             Controversial opinions, unpopular ideas, and personal expression
-            that don't violate the above are not removed. Our philosophy is
+            that don&apos;t violate the above are not removed. Our philosophy is
             that a diary platform should protect free expression - moderation
             exists only to keep the community safe, not to police thought.
           </p>
@@ -383,7 +383,7 @@ export default function PolicyPage() {
             github.com/PaullyScripter/diaryArchive
           </a>
           <p className="text-xs text-subtle mt-3">
-            Don't trust our claims. Read the source. Run it yourself.
+            Don&apos;t trust our claims. Read the source. Run it yourself.
             Every line of code that handles your data is public.
           </p>
         </InfoCard>

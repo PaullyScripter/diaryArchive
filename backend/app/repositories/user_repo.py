@@ -22,6 +22,11 @@ class UserRepository(BaseRepository):
     async def get_by_email_hash(self, email_hash: str) -> dict | None:
         return await self.find_one({"email_hash": email_hash})
 
+    async def get_by_email_hashes(self, email_hashes: list[str]) -> dict | None:
+        if not email_hashes:
+            return None
+        return await self.find_one({"email_hash": {"$in": email_hashes}})
+
     async def find_by_ids(self, ids: list[str]) -> list[dict]:
         if not ids:
             return []

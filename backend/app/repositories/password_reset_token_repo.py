@@ -19,6 +19,18 @@ class PasswordResetTokenRepository(BaseRepository):
     async def find_by_hash(self, token_hash: str) -> dict | None:
         return await self.find_one({"token_hash": token_hash, "used": False})
 
+    async def find_and_consume(self, token_hash: str) -> dict | None:
+        """Atomically claim an unused, non-expired token (single use)."""
+        return await self._collection.find_one_and_update(
+            {
+                "token_hash": token_hash,
+                "used": False,
+                "expires_at": {"$gt": datetime.now(UTC)},
+            },
+            {"$set": {"used": True}},
+            return_document=True,
+        )
+
     async def mark_used(self, token_hash: str) -> bool:
         result = await self._collection.update_one(
             {"token_hash": token_hash}, {"$set": {"used": True}}

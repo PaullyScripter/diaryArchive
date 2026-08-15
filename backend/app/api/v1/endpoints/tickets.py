@@ -74,8 +74,16 @@ async def get_ticket_detail(
 async def reply_to_ticket(
     ticket_id: str,
     body: TicketReply,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:ticket_reply:{current_user['_id']}:{get_client_ip(request)}",
+        10, 300,
+    )
+    if is_limited:
+        raise RateLimitException("Too many replies. Please try again later.")
+
     return await add_message(
         ticket_id=ticket_id,
         sender_id=str(current_user["_id"]),
