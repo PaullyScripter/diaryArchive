@@ -144,6 +144,21 @@ def test_dangerous_uris_stripped():
     assert 'href="https://ok.example"' in result
 
 
+def test_style_block_drops_css_escape_obfuscated_url():
+    # tinycss2 normalizes escape sequences, so "u\72l(" serializes as "url("
+    # and is caught by the value blocklist.
+    html = (
+        r"<style>.a{background:u\72l(https://evil.example/x.png);color:red}"
+        r".b{background:j\61vascript:alert(1)}"
+        r"</style><p>x</p>"
+    )
+    result = sanitize_html(html)
+    assert "url(" not in result
+    assert "javascript:" not in result
+    assert "https://evil.example" not in result
+    assert "color:red" in result
+
+
 def test_disallowed_tags_stripped():
     html = "<script>alert(1)</script><form>Hello</form><div class=\"x\">body</div>"
     result = sanitize_html(html)
