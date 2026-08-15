@@ -6,7 +6,10 @@ from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import (
     check_rate_limit,
+    clear_attempts,
     get_client_ip,
+    is_locked_out,
+    record_failed_attempt,
     verify_password_async,
 )
 from app.repositories.ticket_repo import TicketRepository
@@ -32,6 +35,47 @@ def _build_message_list(messages: list[dict], user_id: str) -> list[dict]:
     return result
 
 
+async def _verify_credentials(
+    username: str, password: str, client_ip: str, action: str
+) -> dict:
+    """Authenticate a banned user by username/password with per-account lockout.
+
+    Every appeal endpoint shares this path so no account becomes a password
+    oracle: the rate limit is keyed by username+IP (not IP alone) and repeated
+    failures trigger an exponential-style per-account lockout.
+    """
+    limit_key = f"rate_limit:appeal:{action}:{username}:{client_ip}"
+    lock_key = f"appeal_lockout:{username}"
+    max_attempts, window = settings.get_rate_limit(f"appeal_{action}_lockout")
+
+    if await is_locked_out(lock_key, max_attempts):
+        raise RateLimitException(
+            "Too many attempts. The account is temporarily locked. Please try again later."
+        )
+
+    is_limited, _ = await check_rate_limit(
+        limit_key,
+        *settings.get_rate_limit(f"appeal_{action}"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many attempts. Please try again later.")
+
+    user_repo = UserRepository()
+    user = await user_repo.get_by_username(username)
+
+    if user is None or not await verify_password_async(password, user["password_hash"]):
+        locked = await record_failed_attempt(lock_key, max_attempts, window)
+        if locked:
+            raise RateLimitException(
+                "Too many failed attempts. The account is temporarily locked. "
+                "Please try again later."
+            )
+        raise ValidationException("Invalid username or password")
+
+    await clear_attempts(lock_key)
+    return user
+
+
 @router.post("/appeal/status")
 async def get_appeal_status(body: dict, request: Request):
     username = body.get("username", "").lower().strip()
@@ -40,18 +84,7 @@ async def get_appeal_status(body: dict, request: Request):
     if not username or not password:
         raise ValidationException("username and password are required")
 
-    is_limited, _ = await check_rate_limit(
-        "rate_limit:appeal_status:" + get_client_ip(request),
-        *settings.get_rate_limit("appeal_status"),
-    )
-    if is_limited:
-        raise RateLimitException("Too many appeal status checks. Please try again later.")
-
-    user_repo = UserRepository()
-    user = await user_repo.get_by_username(username)
-
-    if user is None or not await verify_password_async(password, user["password_hash"]):
-        raise ValidationException("Invalid username or password")
+    user = await _verify_credentials(username, password, get_client_ip(request), "status")
 
     if not user.get("is_banned"):
         return {"data": {"has_appeal": False, "reason": "Account is not banned"}}
@@ -92,18 +125,7 @@ async def reply_to_appeal(
     if not message or len(message) < 5:
         raise ValidationException("Message must be at least 5 characters")
 
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:appeal_reply:{username}:{get_client_ip(request)}",
-        *settings.get_rate_limit("appeal_reply"),
-    )
-    if is_limited:
-        raise RateLimitException("Too many replies. Please try again later.")
-
-    user_repo = UserRepository()
-    user = await user_repo.get_by_username(username)
-
-    if user is None or not await verify_password_async(password, user["password_hash"]):
-        raise ValidationException("Invalid username or password")
+    user = await _verify_credentials(username, password, get_client_ip(request), "reply")
 
     ticket_repo = TicketRepository()
     existing = await ticket_repo.find_pending_appeal(str(user["_id"]))
@@ -139,18 +161,7 @@ async def submit_appeal(
     if not message or len(message) < 10:
         raise ValidationException("Appeal message must be at least 10 characters")
 
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:appeal_submit:{username}:{get_client_ip(request)}",
-        *settings.get_rate_limit("appeal_submit"),
-    )
-    if is_limited:
-        raise RateLimitException("Too many appeal attempts. Please try again later.")
-
-    user_repo = UserRepository()
-    user = await user_repo.get_by_username(username)
-
-    if user is None or not await verify_password_async(password, user["password_hash"]):
-        raise ValidationException("Invalid username or password")
+    user = await _verify_credentials(username, password, get_client_ip(request), "submit")
 
     if not user.get("is_banned"):
         raise ValidationException("Your account is not banned and cannot appeal")

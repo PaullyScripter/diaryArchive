@@ -86,6 +86,19 @@ async def _delete_object_async(stored_path: str) -> bool:
     return await asyncio.to_thread(_delete_object_sync, stored_path)
 
 
+def _public_url(stored_path: str) -> str:
+    """Return a browser-resolvable URL for public media.
+
+    Prefer the configured public base URL; never expose the internal MinIO host.
+    Falls back to a short-lived signed URL so public media remains reachable.
+    """
+    base = settings.public_media_base_url
+    if base:
+        base = base.rstrip("/")
+        return f"{base}/{settings.minio_bucket}/{stored_path}"
+    return _generate_signed_url(stored_path)
+
+
 def _build_media_response(media: dict, include_signed_url: bool = False) -> dict:
     result = {
         "id": str(media["_id"]),
@@ -103,25 +116,21 @@ def _build_media_response(media: dict, include_signed_url: bool = False) -> dict
     if include_signed_url or media.get("is_private"):
         result["url"] = _generate_signed_url(stored_path)
     else:
-        result["url"] = f"{settings.minio_endpoint}/{settings.minio_bucket}/{stored_path}"
+        result["url"] = _public_url(stored_path)
 
     thumbnail_path = media.get("thumbnail_path")
     if thumbnail_path:
         if include_signed_url or media.get("is_private"):
             result["thumbnail_url"] = _generate_signed_url(thumbnail_path)
         else:
-            result["thumbnail_url"] = (
-                f"{settings.minio_endpoint}/{settings.minio_bucket}/{thumbnail_path}"
-            )
+            result["thumbnail_url"] = _public_url(thumbnail_path)
 
     standard_path = media.get("standard_path")
     if standard_path:
         if include_signed_url or media.get("is_private"):
             result["standard_url"] = _generate_signed_url(standard_path)
         else:
-            result["standard_url"] = (
-                f"{settings.minio_endpoint}/{settings.minio_bucket}/{standard_path}"
-            )
+            result["standard_url"] = _public_url(standard_path)
 
     return result
 

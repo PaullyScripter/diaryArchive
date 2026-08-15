@@ -33,7 +33,7 @@ from app.repositories.refresh_token_repo import RefreshTokenRepository
 from app.repositories.audit_log_repo import AuditLogRepository
 from app.repositories.user_repo import UserRepository
 from app.services.auth_email_service import send_email_verification, send_password_reset_email
-from app.services.encryption_service import encrypt_email, hash_email
+from app.services.encryption_service import encrypt_email, hash_email, legacy_email_hash
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,9 @@ async def register(
         try:
             email_encrypted = encrypt_email(body.email)
             email_hash = hash_email(body.email)
-            existing_email = await user_repo.get_by_email_hash(email_hash)
+            existing_email = await user_repo.get_by_email_hashes(
+                [email_hash, legacy_email_hash(body.email)]
+            )
             if existing_email:
                 raise ConflictException("Email is already associated with another account")
         except ConflictException:
