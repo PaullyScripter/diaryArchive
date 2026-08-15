@@ -109,6 +109,36 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("place-items");
   });
 
+  it("catches CSS escape-sequence obfuscated url() in style blocks", () => {
+    const input =
+      String.raw`<style>.a{background:u\72l(https://evil.example/x.png);color:red}</style>`;
+    const result = sanitizeHtml(input);
+    // The escaped "u\72l(" was decoded to "url(" and neutralized.
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain(String.raw`u\72l(`);
+    expect(result).toContain("color:red");
+  });
+
+  it("catches escaped javascript: and data: in style blocks", () => {
+    const input =
+      String.raw`<style>.a{background:j\61vascript:alert(1)}.b{content:\64\61\74\61\3a x}</style>`;
+    const result = sanitizeHtml(input);
+    expect(result).toContain("DISABLED-javascript:");
+    expect(result).not.toContain(String.raw`j\61vascript:`);
+    expect(result).toContain("DISABLED-data:");
+  });
+
+  it("prevents style-block breakout via decoded closing tag", () => {
+    const input = String.raw`<style>.a{content:"\3c/style\3e"}</style><script>alert(1)</script>`;
+    const result = sanitizeHtml(input);
+    // The decoded "</style>" inside the value is re-encoded to "\3c /style\3e "
+    // so it cannot close the <style> element; the <script> is stripped.
+    expect(result).toContain(String.raw`content:"\3c /style\3e "`);
+    expect(result).not.toContain(String.raw`content:"</style>"`);
+    expect(result).not.toContain("<script>");
+    expect(result).not.toContain("alert");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });
