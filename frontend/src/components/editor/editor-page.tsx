@@ -19,6 +19,7 @@ import { splitHtmlCss } from "@/lib/html-css";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { previewThemeStyle } from "@/lib/preview-theme";
+import { resolveMediaUrl, resolveMediaUrlsInHtml } from "@/lib/media-url";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { useTheme } from "@/components/providers/theme-provider";
 import { encryptDiary } from "@/lib/crypto";
@@ -100,7 +101,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
-  // A diary is "HTML/CSS" when it ships its own <style> block — either via the
+  // A diary is "HTML/CSS" when it ships its own <style> block (either via the
   // separate Custom CSS box or inline in the HTML source. Such diaries must be
   // rendered isolated (Shadow DOM) and get wider preview surfaces.
   const isHtmlCss = customCss.trim() !== "" || /<style[\s>]/i.test(contentHtml);
@@ -120,7 +121,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editorInstance
           .chain()
           .focus()
-          .setResizableImage({ src: result.url })
+          .setResizableImage({ src: resolveMediaUrl(result.url) ?? result.url })
           .run();
       } catch {
         // toast already shown by hook
@@ -213,7 +214,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     const raw = customCss
       ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
       : contentHtml;
-    const t = window.setTimeout(() => setLivePreviewHtml(sanitizeHtml(raw)), 160);
+    const t = window.setTimeout(() => setLivePreviewHtml(sanitizeHtml(resolveMediaUrlsInHtml(raw))), 160);
     return () => window.clearTimeout(t);
   }, [contentHtml, customCss]);
 
@@ -222,7 +223,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       className={
         fullscreen
           ? "w-full h-full"
-          : "w-full min-h-[360px] border border-border rounded-md bg-background overflow-hidden"
+          : "w-full h-[360px] border border-border rounded-md bg-background"
       }
     >
       <CodeEditor
@@ -587,7 +588,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 <div className="flex-1 min-h-0 overflow-auto">
                   <div
                     style={previewThemeStyle(previewTheme)}
-                    className={`min-h-full p-2 ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
+                    className={`min-h-full p-2 bg-background ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
                   >
                     <div
                       style={{ width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : "100%" }}
@@ -751,7 +752,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               </div>
             </div>
             <div
-              className={`px-6 py-6 overflow-hidden ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
+              className={`px-6 py-6 overflow-hidden bg-background ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
               style={previewThemeStyle(previewTheme)}
             >
               <h1 className="font-serif text-2xl font-bold text-foreground mb-2">
@@ -784,9 +785,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 {isHtmlCss ? (
                   <IsolatedDiary
                     html={sanitizeHtml(
-                      customCss
-                        ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                        : contentHtml
+                      resolveMediaUrlsInHtml(
+                        customCss
+                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                          : contentHtml
+                      )
                     )}
                   />
                 ) : (
@@ -794,9 +797,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                     className={`${PROSE_CLASSES} max-w-none overflow-x-auto`}
                     dangerouslySetInnerHTML={{
                       __html: sanitizeHtml(
-                        customCss
-                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                          : contentHtml
+                        resolveMediaUrlsInHtml(
+                          customCss
+                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                            : contentHtml
+                        )
                       ),
                     }}
                   />
