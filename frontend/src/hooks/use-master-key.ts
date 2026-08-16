@@ -149,9 +149,24 @@ export function useMasterKey(): MasterKeyState & {
       currentPassword: string,
       newPassword: string
     ): Promise<{ newEncryptedMasterKey: string; newMasterKeySalt: string; newMasterKeyIv: string } | null> => {
-      if (!hasMasterKey || !state.masterKey) return null;
+      if (!hasMasterKey) return null;
+      let key = state.masterKey ?? (userId ? getMasterKey(userId) : undefined);
+      if (!key) {
+        if (!currentPassword) return null;
+        try {
+          await loadMasterKey(currentPassword);
+          key = userId ? getMasterKey(userId) : undefined;
+        } catch {
+          throw new Error(
+            "Could not unlock your master key with your current password. " +
+              "Changing the password now would permanently destroy your private diaries. " +
+              "Enter the correct current password, or keep your password unchanged."
+          );
+        }
+      }
+      if (!key) return null;
       const { encryptedMasterKey, salt, iv } = await encryptMasterKey(
-        state.masterKey,
+        key,
         newPassword
       );
       await decryptMasterKey(
@@ -162,7 +177,7 @@ export function useMasterKey(): MasterKeyState & {
       );
       return { newEncryptedMasterKey: encryptedMasterKey, newMasterKeySalt: salt, newMasterKeyIv: iv };
     },
-    [hasMasterKey, state.masterKey]
+    [hasMasterKey, state.masterKey, userId, loadMasterKey]
   );
 
   const clearMasterKey = useCallback(() => {

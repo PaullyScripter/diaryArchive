@@ -86,17 +86,18 @@ async def _delete_object_async(stored_path: str) -> bool:
     return await asyncio.to_thread(_delete_object_sync, stored_path)
 
 
-def _public_url(stored_path: str) -> str:
-    """Return a browser-resolvable URL for public media.
+def _permanent_media_url(media_id: str, stored_path: str, variant: str) -> str:
+    """Return a non-expiring, browser-resolvable URL for public media.
 
-    Prefer the configured public base URL; never expose the internal MinIO host.
-    Falls back to a short-lived signed URL so public media remains reachable.
+    Prefers a configured public/CDN base URL. When none is configured, falls
+    back to the app's own media proxy endpoint, which streams the object on
+    demand and never expires (unlike short-lived signed URLs that get baked
+    into diary HTML and then break).
     """
     base = settings.public_media_base_url
     if base:
-        base = base.rstrip("/")
-        return f"{base}/{settings.minio_bucket}/{stored_path}"
-    return _generate_signed_url(stored_path)
+        return f"{base.rstrip('/')}/{settings.minio_bucket}/{stored_path}"
+    return f"/api/v1/media/file/{media_id}?v={variant}"
 
 
 def _build_media_response(media: dict, include_signed_url: bool = False) -> dict:
@@ -112,27 +113,70 @@ def _build_media_response(media: dict, include_signed_url: bool = False) -> dict
         "is_private": media.get("is_private", False),
         "created_at": fmt_dt(media.get("created_at")),
     }
+    media_id = str(media["_id"])
     stored_path = media["stored_path"]
     if include_signed_url or media.get("is_private"):
         result["url"] = _generate_signed_url(stored_path)
     else:
-        result["url"] = _public_url(stored_path)
+        result["url"] = _permanent_media_url(media_id, stored_path, "original")
 
     thumbnail_path = media.get("thumbnail_path")
     if thumbnail_path:
         if include_signed_url or media.get("is_private"):
             result["thumbnail_url"] = _generate_signed_url(thumbnail_path)
         else:
-            result["thumbnail_url"] = _public_url(thumbnail_path)
+            result["thumbnail_url"] = _permanent_media_url(media_id, thumbnail_path, "thumb")
 
     standard_path = media.get("standard_path")
     if standard_path:
         if include_signed_url or media.get("is_private"):
             result["standard_url"] = _generate_signed_url(standard_path)
         else:
-            result["standard_url"] = _public_url(standard_path)
+            result["standard_url"] = _permanent_media_url(media_id, standard_path, "standard")
 
     return result
+
+
+async def resolve_media_file(
+    media_id: str, variant: str, current_user: dict | None
+) -> tuple[dict, str]:
+    """Resolve a media record + object path for the streaming proxy endpoint.
+
+    Private media is only served to its owner or an admin; public media is
+    served to anyone (required so public diary images render without auth).
+    """
+    repo = MediaRepository()
+    media = await repo.get_by_id(media_id)
+    if media is None:
+        raise NotFoundException("Media not found")
+
+    if media.get("is_private"):
+        is_owner = bool(current_user) and str(media["user_id"]) == str(current_user["_id"])
+        is_admin = bool(current_user and current_user.get("is_admin"))
+        if not is_owner and not is_admin:
+            raise NotFoundException("Media not found")
+
+    path_key = {
+        "original": "stored_path",
+        "standard": "standard_path",
+        "thumb": "thumbnail_path",
+    }.get(variant, "stored_path")
+    path = media.get(path_key)
+    if not path:
+        raise NotFoundException("Media variant not found")
+
+    return media, path
+
+
+async def fetch_media_object(path: str):
+    """Open the stored object for streaming, or raise 404 if it is gone."""
+    client = get_minio_client()
+    try:
+        return await asyncio.to_thread(
+            client.get_object, settings.minio_bucket, path
+        )
+    except Exception:
+        raise NotFoundException("Media not found")
 
 
 async def upload_media(

@@ -76,8 +76,14 @@ export function ResizableDiaryWindow({
         onPointerMove={onPointerMove}
         onPointerUp={stopDragging}
         onPointerCancel={stopDragging}
-        className="absolute right-0 inset-y-0 w-2 cursor-ew-resize touch-none bg-transparent hover:bg-border/60 active:bg-accent/40 focus:outline-none focus-visible:bg-border/60"
-      />
+        className="group absolute right-0 inset-y-0 w-5 cursor-ew-resize touch-none bg-transparent focus:outline-none"
+      >
+        <span className="pointer-events-none absolute top-1/2 right-0.5 -translate-y-1/2 flex h-16 flex-col items-center justify-center gap-[3px] rounded-full bg-border/70 px-[3px] transition-colors group-hover:bg-accent group-active:bg-accent">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className="block h-2.5 w-0.5 rounded-full bg-foreground/40" />
+          ))}
+        </span>
+      </button>
     </div>
   );
 }

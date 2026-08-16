@@ -26,7 +26,7 @@ function SettingsContent() {
 
   const updateProfile = useUpdateProfile();
   const updateEmail = useUpdateEmail();
-  const { reEncryptMasterKey, isAvailable: hasMasterKey } = useMasterKey();
+  const { reEncryptMasterKey } = useMasterKey();
 
   const [about, setAbout] = useState(user?.about ?? "");
   const [quote, setQuote] = useState(user?.favorite_quote ?? "");
@@ -156,12 +156,17 @@ function SettingsContent() {
         new_password: newPassword,
       };
 
-      if (hasMasterKey && currentPassword) {
+      if (user?.has_master_key) {
         const reEncrypted = await reEncryptMasterKey(currentPassword, newPassword);
         if (reEncrypted) {
           payload.new_encrypted_master_key = reEncrypted.newEncryptedMasterKey;
           payload.new_master_key_salt = reEncrypted.newMasterKeySalt;
           payload.new_master_key_iv = reEncrypted.newMasterKeyIv;
+        } else {
+          setPasswordError(
+            "Could not re-encrypt your master key. Changing your password now would permanently destroy your private diaries. Please try again.",
+          );
+          return;
         }
       }
 
@@ -346,6 +351,16 @@ function SettingsContent() {
                 <label className="block text-sm font-medium text-foreground mb-1">
                   Change Password
                 </label>
+                {user?.has_master_key && (
+                  <p className="text-xs leading-relaxed text-destructive mb-3">
+                    <strong>Warning:</strong> your private diaries are protected by a
+                    master key that must be re-encrypted with your current password
+                    when you change it. If the key cannot be re-encrypted, changing
+                    your password will{" "}
+                    <strong>permanently destroy all your private diaries</strong>. The
+                    change is blocked if your master key cannot be unlocked.
+                  </p>
+                )}
                 <div className="space-y-3">
                   <Input
                     type="password"

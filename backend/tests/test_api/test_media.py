@@ -345,6 +345,70 @@ class TestMediaGet:
         assert "expires_in_seconds" in data["data"]
 
 
+class TestMediaFileStream:
+    def _stub_stream(self):
+        from unittest.mock import MagicMock
+        import app.services.media_service as msvc
+
+        fake = MagicMock()
+        fake.stream.return_value = iter([_webp_data()])
+        fake.close = MagicMock()
+        fake.release_conn = MagicMock()
+        msvc.get_minio_client().get_object.return_value = fake
+        return fake
+
+    async def test_public_media_streams_without_auth(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+
+        files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        upload_resp = await client.post(
+            "/api/v1/media/upload",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        media_id = upload_resp.json()["data"]["id"]
+
+        # Public media URL is a permanent, non-expiring proxy URL.
+        url = upload_resp.json()["data"]["url"]
+        assert url.startswith("/api/v1/media/file/")
+        assert media_id in url
+
+        self._stub_stream()
+
+        # Streamable anonymously.
+        resp = await client.get(f"/api/v1/media/file/{media_id}")
+        assert resp.status_code == 200
+        assert resp.content.startswith(b"\x52\x49\x46\x46")  # RIFF (webp) header
+        assert "image/webp" in resp.headers["content-type"]
+
+    async def test_private_media_requires_owner(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+
+        files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        upload_resp = await client.post(
+            "/api/v1/media/upload?is_private=true",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert upload_resp.status_code == 201
+        media_id = upload_resp.json()["data"]["id"]
+
+        # Anonymous access denied.
+        anon = await client.get(f"/api/v1/media/file/{media_id}")
+        assert anon.status_code == 404
+
+        self._stub_stream()
+
+        # Owner can stream.
+        owner = await client.get(
+            f"/api/v1/media/file/{media_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert owner.status_code == 200
+
+
 class TestCascadeDelete:
     async def test_media_deleted_with_diary(self, client: AsyncClient):
         user = await _register_user(client)
