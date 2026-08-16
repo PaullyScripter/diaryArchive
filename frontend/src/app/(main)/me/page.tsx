@@ -59,7 +59,8 @@ function MyDiariesContent() {
     if (diary.privacy === "private" && decryptedTitles[diary.id] !== undefined) {
       return {
         ...diary,
-        title: decryptedTitles[diary.id] ?? "Unable to decrypt",
+        title: decryptedTitles[diary.id] ?? "Burned Diary,",
+        burned: decryptedTitles[diary.id] === null,
       };
     }
     if (diary.privacy === "private" && !decryptedTitles[diary.id] && masterKeyAvailable) {

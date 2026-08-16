@@ -37,6 +37,7 @@ export interface DiaryCardData {
   updated_at?: string;
   published_at?: string | null;
   highlight?: boolean;
+  burned?: boolean;
 }
 
 export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; selectedTags?: string[] }) {
@@ -50,7 +51,11 @@ export function DiaryCard({ diary, selectedTags = [] }: { diary: DiaryCardData; 
           href={`/diary/${diary.id}`}
           className="text-lg font-serif font-semibold text-foreground leading-snug no-underline hover:underline"
         >
-          {titleIsHighlighted ? (
+          {diary.burned ? (
+            <span className="bg-yellow-300/80 text-yellow-900 dark:text-yellow-950 px-1 rounded-sm">
+              Burned Diary,
+            </span>
+          ) : titleIsHighlighted ? (
             <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(titleContent) }} />
           ) : (
             titleContent
