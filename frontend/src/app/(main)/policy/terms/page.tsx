@@ -183,6 +183,7 @@ export default function TermsPage() {
             "Initiating a password reset permanently destroys the keys protecting your private diaries, thereby rendering that content unrecoverable, even though the ciphertext may remain in our database.",
             "An encrypted master key is stored on the server, but it is unwrap-able only with your password-derived key. We cannot use it to decrypt your data without your password.",
             "BY USING PRIVATE DIARIES, YOU ACKNOWLEDGE AND ACCEPT THAT LOSS OF YOUR PASSWORD WITHOUT A RECOVERY EMAIL RESULTS IN PERMANENT, IRREVERSIBLE LOSS OF YOUR PRIVATE DIARY CONTENT, AND YOU RELEASE US FROM ANY LIABILITY ARISING FROM SUCH LOSS.",
+            "If you change your password in Settings, your master key must be re-encrypted with your current password at that moment. If the key cannot be re-encrypted, changing your password permanently destroys all previously encrypted (private) diaries, even though their ciphertext may remain in our database.",
             "Public diaries and drafts are not protected by this encryption and can be restored more readily, but you remain responsible for keeping your account secure.",
           ].map((item) => (
             <li key={item} className="flex gap-2">

@@ -82,6 +82,29 @@
 
 .dark .border-border { border-color: hsl(40 5% 22%) !important; }
 
+/* Scoped preview themes for the editor "preview as reader" toggle. Defined
+   after the .dark rules so equal-specificity selectors here win, letting a
+   forced light/dark preview override the site's current theme. */
+.preview-dark .text-foreground { color: hsl(40 5% 82%) !important; }
+.preview-dark .text-muted { color: hsl(40 5% 60%) !important; }
+.preview-dark .text-subtle { color: hsl(40 5% 45%) !important; }
+.preview-dark .text-accent { color: hsl(15 55% 72%) !important; }
+.preview-dark .bg-background { background-color: hsl(40 5% 12%) !important; }
+.preview-dark .bg-tag-bg { background-color: hsl(40 5% 20%) !important; }
+.preview-dark .bg-accent-soft { background-color: hsl(15 25% 26%) !important; }
+.preview-dark .border-border { border-color: hsl(40 5% 22%) !important; }
+.preview-dark code, .preview-dark pre { color: hsl(40 5% 82%) !important; }
+
+.preview-light .text-foreground { color: hsl(0 0% 13%) !important; }
+.preview-light .text-muted { color: hsl(40 5% 45%) !important; }
+.preview-light .text-subtle { color: hsl(40 5% 60%) !important; }
+.preview-light .text-accent { color: hsl(15 40% 54%) !important; }
+.preview-light .bg-background { background-color: hsl(40 20% 96%) !important; }
+.preview-light .bg-tag-bg { background-color: hsl(40 10% 90%) !important; }
+.preview-light .bg-accent-soft { background-color: hsl(15 30% 92%) !important; }
+.preview-light .border-border { border-color: hsl(40 10% 84%) !important; }
+.preview-light code, .preview-light pre { color: hsl(0 0% 13%) !important; }
+
 * {
   border-color: var(--color-border);
 }

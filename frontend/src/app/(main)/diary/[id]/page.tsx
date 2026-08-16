@@ -10,6 +10,7 @@ import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
 import { useMasterKey } from "@/hooks/use-master-key";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { resolveMediaUrlsInHtml } from "@/lib/media-url";
 import { decryptDiary, type DiaryEncryptedPayload } from "@/lib/crypto";
 import { Avatar } from "@/components/shared/avatar";
 import { TagBadge } from "@/components/shared/tag-badge";
@@ -25,6 +26,9 @@ import { ReportButton } from "@/components/social/report-button";
 import { CommentSection } from "@/components/social/comment-section";
 import { ResizableDiaryWindow } from "@/components/diary/resizable-diary-window";
 import { IsolatedDiary } from "@/components/diary/isolated-diary";
+import { PROSE_CLASSES } from "@/lib/prose";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import { showToast } from "@/components/shared/toast";
 
 export default function DiaryReaderPage() {
   const params = useParams();
@@ -59,6 +63,22 @@ export default function DiaryReaderPage() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doneRef = useRef(false);
+  const [readingProgress, setReadingProgress] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const el = document.documentElement;
+      const max = el.scrollHeight - el.clientHeight;
+      setReadingProgress(max > 0 ? (el.scrollTop / max) * 100 : 0);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
 
   useEffect(() => {
     function handleScroll() {
@@ -173,8 +193,8 @@ export default function DiaryReaderPage() {
   }, [isPrivate, isOwner, decrypted, diary]);
 
   const displayHtml = useMemo(() => {
-    if (isPrivate && isOwner) return decrypted?.contentHtml ?? "";
-    return diary?.content_html ?? "";
+    if (isPrivate && isOwner) return resolveMediaUrlsInHtml(decrypted?.contentHtml ?? "");
+    return resolveMediaUrlsInHtml(diary?.content_html ?? "");
   }, [isPrivate, isOwner, decrypted, diary]);
 
   const hasCustomCss = displayHtml.includes("<style>");
@@ -222,7 +242,13 @@ export default function DiaryReaderPage() {
       setShowAdminDeleteDialog(true);
       return;
     }
-    if (!confirm("Delete this diary permanently? This cannot be undone.")) return;
+    const ok = await confirmDialog({
+      title: "Delete this diary permanently?",
+      description: "This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       await deleteDiary.mutateAsync({ id });
       router.push("/me");
@@ -275,6 +301,16 @@ export default function DiaryReaderPage() {
 
   return (
     <>
+      <div
+        className="fixed top-0 left-0 right-0 z-[60] h-0.5 bg-transparent"
+        aria-hidden
+      >
+        <div
+          className="h-full bg-accent transition-[width] duration-100 ease-out"
+          style={{ width: `${readingProgress}%` }}
+        />
+      </div>
+
       {showWarning && diary.content_warnings && (
         <WarningOverlay
           warnings={diary.content_warnings}
@@ -430,7 +466,7 @@ export default function DiaryReaderPage() {
             />
           ) : (
             <article
-              className="mt-6 font-serif text-base leading-relaxed text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono [&_hr]:border-border [&_hr]:my-4 max-w-prose"
+              className={`mt-6 ${PROSE_CLASSES} [&_hr]:border-border [&_hr]:my-4 max-w-prose`}
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayHtml) }}
             />
           )}
@@ -459,8 +495,14 @@ export default function DiaryReaderPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
+            title="Copy link"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href);
+                showToast("Link copied to clipboard");
+              } catch {
+                showToast("Could not copy link");
+              }
             }}
           >
             <Share2 className="w-4 h-4" />

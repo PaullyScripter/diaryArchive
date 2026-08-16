@@ -12,9 +12,37 @@ declare module "@tiptap/core" {
 function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
   const { src, alt, title, width, height } = node.attrs;
 
+  const onHandleDown = (e: React.PointerEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const imgEl = e.currentTarget.parentElement?.querySelector("img") as HTMLImageElement;
+    const startWidth = width || imgEl?.naturalWidth || 300;
+    const naturalWidth = imgEl?.naturalWidth || 300;
+    const naturalHeight = imgEl?.naturalHeight || 200;
+
+    const onMove = (ev: PointerEvent) => {
+      const delta = ev.clientX - startX;
+      const newWidth = Math.max(50, Math.min(startWidth + delta, 1200));
+      updateAttributes({
+        width: Math.round(newWidth),
+        height: Math.round((newWidth / naturalWidth) * naturalHeight),
+      });
+    };
+
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
   return (
     <NodeViewWrapper className="resizable-image-wrapper" as="span">
       <span
+        className="group"
         style={{
           display: "inline-block",
           position: "relative",
@@ -37,47 +65,23 @@ function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
             width: width ? `${width}px` : undefined,
           }}
         />
-        {(selected || node.attrs.width) && (
-          <span
-            className="resize-handle"
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 14,
-              height: 14,
-              background: "var(--color-accent, #b8735a)",
-              borderRadius: "0 0 0.375rem 0",
-              cursor: "nwse-resize",
-            }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const startX = e.clientX;
-              const imgEl = e.currentTarget.parentElement?.querySelector("img") as HTMLImageElement;
-              const startWidth = width || imgEl?.naturalWidth || 300;
-              const naturalWidth = imgEl?.naturalWidth || 300;
-              const naturalHeight = imgEl?.naturalHeight || 200;
-
-              const onMove = (ev: MouseEvent) => {
-                const delta = ev.clientX - startX;
-                const newWidth = Math.max(50, Math.min(startWidth + delta, 1200));
-                updateAttributes({
-                  width: Math.round(newWidth),
-                  height: Math.round((newWidth / naturalWidth) * naturalHeight),
-                });
-              };
-
-              const onUp = () => {
-                document.removeEventListener("mousemove", onMove);
-                document.removeEventListener("mouseup", onUp);
-              };
-
-              document.addEventListener("mousemove", onMove);
-              document.addEventListener("mouseup", onUp);
-            }}
-          />
-        )}
+        <span
+          className={`resize-handle group-hover:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            right: 0,
+            width: 18,
+            height: 18,
+            background: "var(--color-accent, #b8735a)",
+            border: "2px solid var(--color-background, #fff)",
+            borderRadius: "2px",
+            cursor: "nwse-resize",
+            transition: "opacity 0.15s ease",
+          }}
+          onPointerDown={onHandleDown}
+          title="Drag to resize"
+        />
       </span>
     </NodeViewWrapper>
   );

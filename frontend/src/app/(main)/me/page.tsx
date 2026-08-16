@@ -34,7 +34,7 @@ function MyDiariesContent() {
   useEffect(() => {
     if (!masterKey) return;
     const privateDiaries = allDiaries.filter(
-      (d) => d.privacy === "private" && d.encrypted_data && !decryptedTitles[d.id]
+      (d) => d.privacy === "private" && d.encrypted_data && decryptedTitles[d.id] === undefined
     );
     if (privateDiaries.length === 0) return;
 
@@ -59,7 +59,8 @@ function MyDiariesContent() {
     if (diary.privacy === "private" && decryptedTitles[diary.id] !== undefined) {
       return {
         ...diary,
-        title: decryptedTitles[diary.id] ?? "Unable to decrypt",
+        title: decryptedTitles[diary.id] ?? "Burned Diary,",
+        burned: decryptedTitles[diary.id] === null,
       };
     }
     if (diary.privacy === "private" && !decryptedTitles[diary.id] && masterKeyAvailable) {
