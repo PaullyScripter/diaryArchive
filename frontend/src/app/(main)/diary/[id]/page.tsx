@@ -10,6 +10,7 @@ import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
 import { useMasterKey } from "@/hooks/use-master-key";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { resolveMediaUrlsInHtml } from "@/lib/media-url";
 import { decryptDiary, type DiaryEncryptedPayload } from "@/lib/crypto";
 import { Avatar } from "@/components/shared/avatar";
 import { TagBadge } from "@/components/shared/tag-badge";
@@ -192,8 +193,8 @@ export default function DiaryReaderPage() {
   }, [isPrivate, isOwner, decrypted, diary]);
 
   const displayHtml = useMemo(() => {
-    if (isPrivate && isOwner) return decrypted?.contentHtml ?? "";
-    return diary?.content_html ?? "";
+    if (isPrivate && isOwner) return resolveMediaUrlsInHtml(decrypted?.contentHtml ?? "");
+    return resolveMediaUrlsInHtml(diary?.content_html ?? "");
   }, [isPrivate, isOwner, decrypted, diary]);
 
   const hasCustomCss = displayHtml.includes("<style>");

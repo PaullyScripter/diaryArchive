@@ -250,7 +250,7 @@ export default function RegisterPage() {
         {started && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4" role="note">
             <p className="text-xs leading-relaxed text-destructive">
-              <strong>IMPORTANT — remember your password.</strong> Your password is the
+              <strong>IMPORTANT: remember your password.</strong> Your password is the
               only key to your encrypted private diaries. A recovery email is optional
               but very helpful: without one, if you forget your password, your account
               and its content are permanently and irreversibly lost. There is no backdoor.

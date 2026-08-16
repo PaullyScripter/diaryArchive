@@ -64,51 +64,58 @@ export function CodeEditor({
   }
 
   return (
-    <MonacoEditor
-      language={language}
-      value={value}
-      theme={dark ? "vs-dark" : "light"}
-      onChange={(v) => {
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => onChange(v ?? ""), 150);
-      }}
-      options={{
-        minimap: { enabled: false },
-        fontSize: 13,
-        fontFamily:
-          '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace',
-        lineHeight: 20,
-        tabSize: 2,
-        insertSpaces: true,
-        wordWrap: "on",
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        renderWhitespace: "selection",
-        roundedSelection: false,
-        smoothScrolling: true,
-        folding: true,
-        foldingHighlight: true,
-        showFoldingControls: "always",
-        bracketPairColorization: { enabled: true },
-        guides: { indentation: true, bracketPairs: true },
-        matchBrackets: "always",
-        autoClosingBrackets: "languageDefined",
-        autoClosingQuotes: "languageDefined",
-        autoIndent: "full",
-        formatOnPaste: false,
-        formatOnType: false,
-        links: true,
-        quickSuggestions: true,
-        suggestOnTriggerCharacters: true,
-        wordBasedSuggestions: "currentDocument",
-        selectionHighlight: true,
-        occurrencesHighlight: "singleFile",
-        cursorBlinking: "smooth",
-        cursorSmoothCaretAnimation: "on",
-        padding: { top: 8, bottom: 8 },
-        contextmenu: true,
-        ariaLabel: ariaLabel ?? "code editor",
-      }}
-    />
+    <div
+      style={{ width: "100%", height: height === "100%" ? "100%" : height }}
+      className="overflow-hidden"
+    >
+      <MonacoEditor
+        language={language}
+        value={value}
+        height="100%"
+        width="100%"
+        theme={dark ? "vs-dark" : "light"}
+        onChange={(v) => {
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => onChange(v ?? ""), 150);
+        }}
+        options={{
+          minimap: { enabled: false },
+          fontSize: 13,
+          fontFamily:
+            '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace',
+          lineHeight: 20,
+          tabSize: 2,
+          insertSpaces: true,
+          wordWrap: "on",
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          renderWhitespace: "selection",
+          roundedSelection: false,
+          smoothScrolling: true,
+          folding: true,
+          foldingHighlight: true,
+          showFoldingControls: "always",
+          bracketPairColorization: { enabled: true },
+          guides: { indentation: true, bracketPairs: true },
+          matchBrackets: "always",
+          autoClosingBrackets: "languageDefined",
+          autoClosingQuotes: "languageDefined",
+          autoIndent: "full",
+          formatOnPaste: false,
+          formatOnType: false,
+          links: true,
+          quickSuggestions: true,
+          suggestOnTriggerCharacters: true,
+          wordBasedSuggestions: "currentDocument",
+          selectionHighlight: true,
+          occurrencesHighlight: "singleFile",
+          cursorBlinking: "smooth",
+          cursorSmoothCaretAnimation: "on",
+          padding: { top: 8, bottom: 8 },
+          contextmenu: true,
+          ariaLabel: ariaLabel ?? "code editor",
+        }}
+      />
+    </div>
   );
 }

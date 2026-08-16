@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, ChevronLeft, ChevronRight, Trash2, Image as ImageIcon } from "lucide-react";
 import { useMediaGallery, useDeleteMedia, type MediaItem } from "@/hooks/use-media";
 import { Button } from "@/components/ui/button";
+import { resolveMediaUrl } from "@/lib/media-url";
 import type { Editor } from "@tiptap/react";
 
 interface MediaGalleryModalProps {
@@ -51,7 +52,7 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
 
   const handleInsert = (item: MediaItem) => {
     if (editor) {
-      editor.chain().focus().setResizableImage({ src: item.url }).run();
+      editor.chain().focus().setResizableImage({ src: resolveMediaUrl(item.url) ?? item.url }).run();
       onClose();
     }
   };
@@ -127,7 +128,7 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
                   >
                     {item.mime_type.startsWith("image/") ? (
                       <img
-                        src={item.thumbnail_url || item.url}
+                        src={resolveMediaUrl(item.thumbnail_url || item.url)}
                         alt={item.filename}
                         className="w-full h-full object-cover"
                         loading="lazy"
