@@ -38,6 +38,15 @@ async def get_redis():
     return DatabaseManager.get_redis()
 
 
+async def get_optional_current_user(
+    authorization: str = Header(None, alias="Authorization"),
+) -> dict | None:
+    """Like get_current_user but returns None instead of raising when the
+    request is unauthenticated. Useful for endpoints that serve public media
+    while still restricting private resources."""
+    return await _optional_user(authorization)
+
+
 async def get_current_user(
     authorization: str = Header(None, alias="Authorization"),
     db: AsyncIOMotorDatabase = Depends(get_db),

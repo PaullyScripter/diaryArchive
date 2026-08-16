@@ -6,16 +6,21 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
 import { useAuthStore } from "@/store/auth-store";
+
+type Step = "credentials" | "confirmPassword" | "email";
 
 export default function RegisterPage() {
   const router = useRouter();
   const register = useAuthStore((s) => s.register);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
+  const [step, setStep] = useState<Step>("credentials");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
@@ -26,29 +31,47 @@ export default function RegisterPage() {
       e.preventDefault();
       setError("");
 
-      if (!username.trim()) {
-        setError("Username is required");
+      if (step === "credentials") {
+        if (!username.trim()) {
+          setError("Username is required");
+          return;
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(username.trim())) {
+          setError("Username can only contain letters, numbers, underscores, and hyphens");
+          return;
+        }
+        if (username.trim().length < 3 || username.trim().length > 20) {
+          setError("Username must be between 3 and 20 characters");
+          return;
+        }
+        if (password.length < 8) {
+          setError("Password must be at least 8 characters");
+          return;
+        }
+        if (!acceptedTerms) {
+          setError("You must read and agree to the Terms of Service and Privacy Policy to create an account");
+          return;
+        }
+        setConfirmPassword("");
+        setStep("confirmPassword");
         return;
       }
 
-      if (!/^[a-zA-Z0-9_-]+$/.test(username.trim())) {
-        setError("Username can only contain letters, numbers, underscores, and hyphens");
+      if (step === "confirmPassword") {
+        if (confirmPassword !== password) {
+          setError("Passwords don't match. Please check the password you entered at the start.");
+          return;
+        }
+        setError("");
+        setStep("email");
         return;
       }
 
-      if (username.trim().length < 3 || username.trim().length > 20) {
-        setError("Username must be between 3 and 20 characters");
-        return;
-      }
-
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters");
-        return;
-      }
-
-      if (!acceptedTerms) {
-        setError("You must read and agree to the Terms of Service and Privacy Policy to create an account");
-        return;
+      if (step === "email") {
+        if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          setError("Please enter a valid email address, or leave it empty");
+          return;
+        }
       }
 
       setLoading(true);
@@ -66,7 +89,7 @@ export default function RegisterPage() {
         setLoading(false);
       }
     },
-    [username, password, email, acceptedTerms, register, router],
+    [step, username, password, confirmPassword, email, acceptedTerms, register, router],
   );
 
   useEffect(() => {
@@ -78,6 +101,8 @@ export default function RegisterPage() {
   if (isAuthenticated) {
     return null;
   }
+
+  const started = step !== "credentials";
 
   return (
     <div className="mx-auto max-w-sm pt-16">
@@ -104,9 +129,8 @@ export default function RegisterPage() {
           <label htmlFor="password" className="text-xs text-muted">
             Password
           </label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="Choose a password (min 8 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -118,20 +142,47 @@ export default function RegisterPage() {
           <PasswordStrength password={password} />
         </div>
 
-        <div>
-          <label htmlFor="email" className="text-xs text-muted">
-            Email <span className="text-subtle">(optional)</span>
-          </label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="For account recovery"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            autoComplete="email"
-          />
-        </div>
+        {step === "confirmPassword" && (
+          <div>
+            <label htmlFor="confirmPassword" className="text-xs text-muted">
+              Confirm password
+            </label>
+            <PasswordInput
+              id="confirmPassword"
+              placeholder="Re-enter the password you chose above"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={loading}
+              aria-invalid={!!error}
+              aria-describedby={error ? "register-error" : undefined}
+              autoComplete="new-password"
+            />
+            <p className="mt-1 text-xs text-subtle">
+              Re-enter your password to confirm it before continuing.
+            </p>
+          </div>
+        )}
+
+        {step === "email" && (
+          <div>
+            <label htmlFor="email" className="text-xs text-muted">
+              Email <span className="text-subtle">(optional)</span>
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="For account recovery"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoComplete="email"
+            />
+            <p className="mt-1 text-xs text-subtle">
+              Optional, but strongly recommended. If you forget your password, only an
+              email you provide here lets you recover your account.
+            </p>
+          </div>
+        )}
 
         <div className="rounded-lg border border-border bg-overlay/5 p-4">
           <label className="flex items-start gap-3 cursor-pointer">
@@ -182,12 +233,29 @@ export default function RegisterPage() {
           aria-disabled={!acceptedTerms}
           className="w-full disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {loading ? "Creating account..." : "Create account"}
+          {loading
+            ? "Creating account..."
+            : step === "credentials"
+              ? "Create account"
+              : step === "confirmPassword"
+                ? "Confirm password"
+                : "Create account"}
         </Button>
         {!acceptedTerms && (
           <p className="text-xs text-subtle text-center">
             Agree to the Terms of Service and Privacy Policy to continue.
           </p>
+        )}
+
+        {started && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4" role="note">
+            <p className="text-xs leading-relaxed text-destructive">
+              <strong>IMPORTANT — remember your password.</strong> Your password is the
+              only key to your encrypted private diaries. A recovery email is optional
+              but very helpful: without one, if you forget your password, your account
+              and its content are permanently and irreversibly lost. There is no backdoor.
+            </p>
+          </div>
         )}
 
         <p className="text-xs text-muted">
