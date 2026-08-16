@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MenuIcon, XIcon } from "@/components/shared/icons";
 import { ToastContainer } from "@/components/shared/toast";
+import { ConfirmDialogContainer } from "@/components/ui/confirm-dialog";
 
 const adminNav = [
   { href: "/admin", label: "Overview" },
@@ -111,6 +112,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <ToastContainer />
+      <ConfirmDialogContainer />
     </div>
   );
 }

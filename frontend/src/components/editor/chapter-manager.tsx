@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/react";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ListPlus, Pencil, Trash2 } from "lucide-react";
 
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import {
   addChapter,
   deleteChapter,
@@ -129,12 +130,15 @@ export function ChapterManager({ editor }: ChapterManagerProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (
-                        chapters.length > 1 &&
-                        !window.confirm(`Delete chapter "${chapter.title}" and its content?`)
-                      ) {
-                        return;
+                    onClick={async () => {
+                      if (chapters.length > 1) {
+                        const ok = await confirmDialog({
+                          title: `Delete chapter "${chapter.title}"?`,
+                          description: "Its content will be removed.",
+                          confirmLabel: "Delete",
+                          variant: "destructive",
+                        });
+                        if (!ok) return;
                       }
                       deleteChapter(editor, i);
                     }}
