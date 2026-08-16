@@ -19,7 +19,8 @@ import { splitHtmlCss } from "@/lib/html-css";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { previewThemeStyle } from "@/lib/preview-theme";
-import { HighlightedCssTextarea } from "@/components/editor/highlighted-css-textarea";
+import { CodeEditor } from "@/components/editor/code-editor";
+import { useTheme } from "@/components/providers/theme-provider";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,8 @@ interface EditorPageProps {
 function EditorPageContent({ diaryId }: EditorPageProps) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const { resolvedTheme } = useTheme();
+  const editorDark = resolvedTheme === "dark";
   const createDiary = useCreateDiary();
   const updateDiary = useUpdateDiary();
   const deleteDiary = useDeleteDiary();
@@ -199,9 +202,9 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     setIsDirty(true);
   }, []);
 
-  const handleSourceChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContentHtml(e.target.value);
-    setContentText(e.target.value.replace(/<[^>]*>/g, ""));
+  const handleSourceChange = (value: string) => {
+    setContentHtml(value);
+    setContentText(value.replace(/<[^>]*>/g, ""));
     setIsDirty(true);
   };
 
@@ -214,37 +217,23 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     return () => window.clearTimeout(t);
   }, [contentHtml, customCss]);
 
-  const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key !== "Tab" || e.shiftKey) return;
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
-      setSourceMode(false);
-      return;
-    }
-    const el = e.currentTarget;
-    const { selectionStart, selectionEnd, value } = el;
-    const next =
-      value.slice(0, selectionStart) + "\t" + value.slice(selectionEnd);
-    setContentHtml(next);
-    setContentText(next.replace(/<[^>]*>/g, ""));
-    setIsDirty(true);
-    requestAnimationFrame(() => {
-      el.selectionStart = el.selectionEnd = selectionStart + 1;
-    });
-  };
-
   const renderSourceEditor = (fullscreen: boolean) => (
-    <textarea
-      value={contentHtml}
-      onChange={handleSourceChange}
-      onKeyDown={handleSourceKeyDown}
+    <div
       className={
         fullscreen
-          ? "w-full h-full font-mono text-sm bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-0 resize-none"
-          : "w-full min-h-[300px] font-mono text-sm border border-border rounded-md bg-background text-foreground px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+          ? "w-full h-full"
+          : "w-full min-h-[360px] border border-border rounded-md bg-background overflow-hidden"
       }
-      placeholder="Write HTML directly..."
-    />
+    >
+      <CodeEditor
+        language="html"
+        value={contentHtml}
+        onChange={handleSourceChange}
+        height={fullscreen ? "100%" : 360}
+        dark={editorDark}
+        ariaLabel="HTML source editor"
+      />
+    </div>
   );
 
   const renderRichEditor = () => (
@@ -547,7 +536,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           </div>
           <div className={`flex-1 min-h-0 flex p-4 gap-4 ${sourceMode ? "flex-row" : "flex-col"}`}>
             <div className="flex flex-col gap-4 flex-1 min-w-0">
-              <div className="relative flex-1 min-h-0 overflow-hidden rounded-md border border-border">
+              <div className="relative flex-1 min-h-0 overflow-auto rounded-md border border-border">
                 <FloatingToolbar editor={editor} />
                 {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
               </div>
@@ -559,13 +548,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                       <span className="text-subtle font-normal">(advanced)</span>
                     </h3>
                   </div>
-                  <HighlightedCssTextarea
-                    value={customCss}
-                    onChange={setCustomCss}
-                    placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
-                    containerClassName="flex-1 min-h-0"
-                    textareaClassName="w-full h-full px-3 py-2 resize-none"
-                  />
+                  <div className="flex-1 min-h-0">
+                    <CodeEditor
+                      language="css"
+                      value={customCss}
+                      onChange={setCustomCss}
+                      height="100%"
+                      dark={editorDark}
+                      ariaLabel="Custom CSS editor"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -595,7 +587,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 <div className="flex-1 min-h-0 overflow-auto">
                   <div
                     style={previewThemeStyle(previewTheme)}
-                    className="min-h-full p-2"
+                    className={`min-h-full p-2 ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
                   >
                     <div
                       style={{ width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : "100%" }}
@@ -648,16 +640,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
               Custom CSS <span className="text-subtle font-normal">(advanced)</span>
             </h3>
-            <HighlightedCssTextarea
-              value={customCss}
-              onChange={setCustomCss}
-              disabled={!sourceMode}
-              placeholder={sourceMode
-                ? "/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
-                : "Enable HTML mode (</>) to edit custom CSS"}
-              containerClassName="w-full rounded-md border border-border bg-background"
-              textareaClassName="w-full min-h-[100px] px-3 py-2 focus:ring-2 focus:ring-ring"
-            />
+            <div className="w-full overflow-hidden rounded-md border border-border bg-background">
+              <CodeEditor
+                language="css"
+                value={customCss}
+                onChange={setCustomCss}
+                height={140}
+                dark={editorDark}
+                ariaLabel="Custom CSS editor"
+              />
+            </div>
             {sourceMode && customCss.trim() === "" && (
               <p className="mt-1 text-xs text-subtle">
                 Tip: use the <span className="text-muted">var(--color-*)</span>{" "}
@@ -759,7 +751,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               </div>
             </div>
             <div
-              className="px-6 py-6 overflow-hidden"
+              className={`px-6 py-6 overflow-hidden ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
               style={previewThemeStyle(previewTheme)}
             >
               <h1 className="font-serif text-2xl font-bold text-foreground mb-2">

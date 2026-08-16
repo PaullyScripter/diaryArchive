@@ -1,14 +1,17 @@
 from fastapi import APIRouter, Depends, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_optional_current_user
 from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import check_rate_limit
 from app.services.media_service import (
     delete_media,
+    fetch_media_object,
     get_media_detail,
     get_media_gallery,
     get_media_signed_url,
+    resolve_media_file,
     upload_media,
 )
 
@@ -70,6 +73,35 @@ async def gallery(
         diary_id=diary_id,
     )
     return result
+
+
+@router.get("/file/{media_id}")
+async def get_media_file(
+    media_id: str,
+    variant: str = Query("original"),
+    current_user: dict | None = Depends(get_optional_current_user),
+):
+    """Permanent, non-expiring media endpoint. Streams the stored object for
+    public media (and private media for its owner/admin). Returned URLs are
+    baked into diary HTML, so unlike signed URLs they never expire."""
+    media, path = await resolve_media_file(media_id, variant, current_user)
+    obj = await fetch_media_object(path)
+
+    content_type = media.get("mime_type") or "application/octet-stream"
+
+    def iter_chunks():
+        try:
+            for chunk in obj.stream(64 * 1024):
+                yield chunk
+        finally:
+            obj.close()
+            obj.release_conn()
+
+    return StreamingResponse(
+        iter_chunks(),
+        media_type=content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.get("/{media_id}")

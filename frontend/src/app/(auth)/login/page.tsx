@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useAuthStore } from "@/store/auth-store";
 
 function LoginForm() {
@@ -108,9 +109,8 @@ function LoginForm() {
           <label htmlFor="password" className="text-xs text-muted">
             Password
           </label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="Your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
