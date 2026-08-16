@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { NavBar } from "@/components/layout/navbar";
 import { ToastContainer } from "@/components/shared/toast";
+import { ConfirmDialogContainer } from "@/components/ui/confirm-dialog";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
       <ToastContainer />
+      <ConfirmDialogContainer />
     </div>
   );
 }

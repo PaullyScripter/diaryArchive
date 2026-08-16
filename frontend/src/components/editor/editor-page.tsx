@@ -16,6 +16,10 @@ import { validateImageFile } from "@/lib/media-validator";
 import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
 import { IsolatedDiary } from "@/components/diary/isolated-diary";
 import { splitHtmlCss } from "@/lib/html-css";
+import { PROSE_CLASSES } from "@/lib/prose";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
+import { previewThemeStyle } from "@/lib/preview-theme";
+import { HighlightedCssTextarea } from "@/components/editor/highlighted-css-textarea";
 import { encryptDiary } from "@/lib/crypto";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
@@ -87,6 +91,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
+  const [previewWidth, setPreviewWidth] = useState<"mobile" | "tablet" | "full">("full");
+  const [previewZoom, setPreviewZoom] = useState(100);
+  const [previewTheme, setPreviewTheme] = useState<"system" | "light" | "dark">("system");
+  const [livePreviewHtml, setLivePreviewHtml] = useState("");
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
   // A diary is "HTML/CSS" when it ships its own <style> block — either via the
@@ -153,8 +161,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     }
   }, [draft, hasRecoveredDraft, isEditMode]);
 
-  const applyTemplate = (template: DiaryTemplate) => {
-    if (contentHtml.trim() && !window.confirm("Replace current content with this template?")) {
+  const applyTemplate = async (template: DiaryTemplate) => {
+    if (
+      contentHtml.trim() &&
+      !(await confirmDialog({
+        title: "Replace current content?",
+        description: `This will replace your current content with the "${template.name}" template.`,
+        confirmLabel: "Replace",
+        variant: "destructive",
+      }))
+    ) {
       return;
     }
     setTitle(template.title);
@@ -188,6 +204,15 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     setContentText(e.target.value.replace(/<[^>]*>/g, ""));
     setIsDirty(true);
   };
+
+  // Debounce the live preview so sanitize doesn't re-run on every keystroke.
+  useEffect(() => {
+    const raw = customCss
+      ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+      : contentHtml;
+    const t = window.setTimeout(() => setLivePreviewHtml(sanitizeHtml(raw)), 160);
+    return () => window.clearTimeout(t);
+  }, [contentHtml, customCss]);
 
   const handleSourceKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "Tab" || e.shiftKey) return;
@@ -345,7 +370,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
   const handleDelete = async () => {
     if (!diaryId) return;
-    if (!confirm("Delete this diary permanently?")) return;
+    const ok = await confirmDialog({
+      title: "Delete this diary permanently?",
+      description: "This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     await deleteDiary.mutateAsync({ id: diaryId });
     router.push("/me");
   };
@@ -528,44 +559,58 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                       <span className="text-subtle font-normal">(advanced)</span>
                     </h3>
                   </div>
-                  <textarea
+                  <HighlightedCssTextarea
                     value={customCss}
-                    onChange={(e) => setCustomCss(e.target.value)}
+                    onChange={setCustomCss}
                     placeholder="/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
-                    className="flex-1 min-h-0 font-mono text-xs bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-0 resize-none"
+                    containerClassName="flex-1 min-h-0"
+                    textareaClassName="w-full h-full px-3 py-2 resize-none"
                   />
                 </div>
               )}
             </div>
             {sourceMode && (
               <div className={`${isHtmlCss ? "w-[65%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
-                <div className="relative z-10 flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                <div className="relative z-10 flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                     Live Preview
                   </h3>
-                  <span className="text-[10px] text-subtle">updates as you type</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-0.5 text-[10px]">
+                      {(["mobile", "tablet", "full"] as const).map((w) => (
+                        <button
+                          key={w}
+                          type="button"
+                          onClick={() => setPreviewWidth(w)}
+                          title={`Preview at ${w === "mobile" ? "mobile" : w === "tablet" ? "tablet" : "full"} width`}
+                          className={`px-1.5 py-0.5 rounded cursor-pointer ${previewWidth === w ? "bg-tag-bg text-foreground" : "text-muted hover:text-foreground"}`}
+                        >
+                          {w === "mobile" ? "Mobile" : w === "tablet" ? "Tablet" : "Full"}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-subtle">updates as you type</span>
+                  </div>
                 </div>
                 <div className="flex-1 min-h-0 overflow-auto">
-                  {isHtmlCss ? (
-                    <IsolatedDiary
-                      html={sanitizeHtml(
-                        customCss
-                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                          : contentHtml
+                  <div
+                    style={previewThemeStyle(previewTheme)}
+                    className="min-h-full p-2"
+                  >
+                    <div
+                      style={{ width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : "100%" }}
+                      className="mx-auto"
+                    >
+                      {isHtmlCss ? (
+                        <IsolatedDiary html={livePreviewHtml} />
+                      ) : (
+                        <article
+                          className={PROSE_CLASSES}
+                          dangerouslySetInnerHTML={{ __html: livePreviewHtml }}
+                        />
                       )}
-                    />
-                  ) : (
-                    <article
-                      className="font-serif text-base leading-relaxed text-foreground [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeHtml(
-                          customCss
-                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                            : contentHtml
-                        ),
-                      }}
-                    />
-                  )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -603,16 +648,22 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             <h3 className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
               Custom CSS <span className="text-subtle font-normal">(advanced)</span>
             </h3>
-            <textarea
+            <HighlightedCssTextarea
               value={customCss}
-              onChange={(e) => setCustomCss(e.target.value)}
+              onChange={setCustomCss}
               disabled={!sourceMode}
               placeholder={sourceMode
                 ? "/* Style your diary with custom CSS. Will be wrapped in a style tag. */"
                 : "Enable HTML mode (</>) to edit custom CSS"}
-              aria-disabled={!sourceMode}
-              className="w-full min-h-[100px] font-mono text-xs border border-border rounded-md bg-background text-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y disabled:opacity-50 disabled:cursor-not-allowed"
+              containerClassName="w-full rounded-md border border-border bg-background"
+              textareaClassName="w-full min-h-[100px] px-3 py-2 focus:ring-2 focus:ring-ring"
             />
+            {sourceMode && customCss.trim() === "" && (
+              <p className="mt-1 text-xs text-subtle">
+                Tip: use the <span className="text-muted">var(--color-*)</span>{" "}
+                variables below so your styles adapt to light/dark mode.
+              </p>
+            )}
             {!sourceMode && (
               <p className="mt-1 text-xs text-subtle">
                 Custom CSS is an HTML-mode feature. Switch to HTML source ({"</>"})
@@ -664,6 +715,30 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 Preview
               </h2>
               <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5 text-[10px]" role="group" aria-label="Preview theme">
+                  {(["system", "light", "dark"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setPreviewTheme(t)}
+                      className={`px-1.5 py-0.5 rounded cursor-pointer ${previewTheme === t ? "bg-tag-bg text-foreground" : "text-muted hover:text-foreground"}`}
+                    >
+                      {t === "system" ? "System" : t === "light" ? "Light" : "Dark"}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-0.5 text-[10px]" role="group" aria-label="Preview zoom">
+                  {[50, 75, 100].map((z) => (
+                    <button
+                      key={z}
+                      type="button"
+                      onClick={() => setPreviewZoom(z)}
+                      className={`px-1.5 py-0.5 rounded cursor-pointer ${previewZoom === z ? "bg-tag-bg text-foreground" : "text-muted hover:text-foreground"}`}
+                    >
+                      {z}%
+                    </button>
+                  ))}
+                </div>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -683,7 +758,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </Button>
               </div>
             </div>
-            <div className="px-6 py-6 overflow-hidden">
+            <div
+              className="px-6 py-6 overflow-hidden"
+              style={previewThemeStyle(previewTheme)}
+            >
               <h1 className="font-serif text-2xl font-bold text-foreground mb-2">
                 {title || "Untitled"}
               </h1>
@@ -710,26 +788,28 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 </div>
               )}
 
-              {isHtmlCss ? (
-                <IsolatedDiary
-                  html={sanitizeHtml(
-                    customCss
-                      ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                      : contentHtml
-                  )}
-                />
-              ) : (
-                <article
-                  className="font-serif text-base leading-relaxed text-foreground max-w-none overflow-x-auto [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-1 [&_h3]:text-lg [&_h3]:font-medium [&_h3]:mt-4 [&_h3]:mb-1 [&_p]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:text-muted [&_blockquote]:italic [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_pre]:bg-tag-bg [&_pre]:text-foreground [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_pre]:overflow-x-auto [&_code]:bg-tag-bg [&_code]:text-foreground [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeHtml(
+              <div style={{ zoom: previewZoom / 100 } as React.CSSProperties}>
+                {isHtmlCss ? (
+                  <IsolatedDiary
+                    html={sanitizeHtml(
                       customCss
                         ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                         : contentHtml
-                    ),
-                  }}
-                />
-              )}
+                    )}
+                  />
+                ) : (
+                  <article
+                    className={`${PROSE_CLASSES} max-w-none overflow-x-auto`}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeHtml(
+                        customCss
+                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                          : contentHtml
+                      ),
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
