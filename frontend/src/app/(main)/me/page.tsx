@@ -34,7 +34,7 @@ function MyDiariesContent() {
   useEffect(() => {
     if (!masterKey) return;
     const privateDiaries = allDiaries.filter(
-      (d) => d.privacy === "private" && d.encrypted_data && !decryptedTitles[d.id]
+      (d) => d.privacy === "private" && d.encrypted_data && decryptedTitles[d.id] === undefined
     );
     if (privateDiaries.length === 0) return;
 
