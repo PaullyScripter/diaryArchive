@@ -42,6 +42,7 @@ function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
   return (
     <NodeViewWrapper className="resizable-image-wrapper" as="span">
       <span
+        className="group"
         style={{
           display: "inline-block",
           position: "relative",
@@ -65,17 +66,18 @@ function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
           }}
         />
         <span
-          className="resize-handle"
+          className={`resize-handle group-hover:opacity-100 ${selected ? "opacity-100" : "opacity-0"}`}
           style={{
             position: "absolute",
             bottom: 0,
             right: 0,
-            width: 14,
-            height: 14,
+            width: 18,
+            height: 18,
             background: "var(--color-accent, #b8735a)",
-            borderRadius: "0 0 0.375rem 0",
+            border: "2px solid var(--color-background, #fff)",
+            borderRadius: "2px",
             cursor: "nwse-resize",
-            opacity: selected ? 1 : 0,
+            transition: "opacity 0.15s ease",
           }}
           onPointerDown={onHandleDown}
           title="Drag to resize"

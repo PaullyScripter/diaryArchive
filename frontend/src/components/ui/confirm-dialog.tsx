@@ -78,19 +78,22 @@ export function ConfirmDialogContainer() {
         if (!open) settle(false);
       }}
     >
-      <DialogContent className="w-80 max-w-[95vw]">
-        <DialogHeader>
-          <DialogTitle>{options.title}</DialogTitle>
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="text-base">{options.title}</DialogTitle>
           {options.description && (
-            <DialogDescription>{options.description}</DialogDescription>
+            <DialogDescription className="text-sm leading-relaxed">
+              {options.description}
+            </DialogDescription>
           )}
         </DialogHeader>
-        <DialogFooter>
+        <DialogFooter className="mt-6 gap-2 sm:space-x-2">
           <Button
             type="button"
             variant="secondary"
             size="sm"
             onClick={() => settle(false)}
+            className="w-full sm:w-auto"
           >
             {options.cancelLabel ?? "Cancel"}
           </Button>
@@ -99,6 +102,7 @@ export function ConfirmDialogContainer() {
             variant={options.variant ?? "primary"}
             size="sm"
             onClick={() => settle(true)}
+            className="w-full sm:w-auto"
           >
             {options.confirmLabel ?? "Confirm"}
           </Button>

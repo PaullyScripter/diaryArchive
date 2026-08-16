@@ -274,6 +274,13 @@ export default function PolicyPage() {
           <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-300 mt-2">
             We strongly recommend adding a recovery email in Settings.
           </p>
+          <p className="text-sm leading-relaxed text-amber-700 dark:text-amber-300 mt-3">
+            The same applies when you <strong>change your password</strong> in
+            Settings. Your master key must be re-encrypted with your current
+            password at that moment; if it cannot be, changing the password
+            permanently destroys all your previously encrypted private diaries.
+            The app blocks the change in that case rather than burn your data.
+          </p>
         </WarningCard>
       </Section>
 

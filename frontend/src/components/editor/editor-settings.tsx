@@ -103,6 +103,19 @@ export function EditorSettings({
             Privacy cannot be changed after creation.
           </p>
         )}
+        {privacy === "private" && (
+          <div className="rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 mt-2">
+            <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+              <strong>Read before writing privately.</strong> Your private diaries
+              are encrypted end-to-end and can only be decrypted with a master key
+              unlocked by your password. If you change your password in Settings
+              without re-encrypting that key, these diaries are{" "}
+              <strong>permanently destroyed</strong>. Keep a recovery email and your
+              password safe. Losing your password without a recovery email also
+              permanently destroys them.
+            </p>
+          </div>
+        )}
       </div>
 
       {privacy !== "private" && (
