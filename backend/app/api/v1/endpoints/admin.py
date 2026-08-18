@@ -7,14 +7,17 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_admin
+from app.core.config import settings
 from app.core.database import DatabaseManager
-from app.repositories.diary_repo import DiaryRepository
 from app.core.exceptions import (
     NotFoundException,
     PermissionDeniedException,
+    RateLimitException,
     ValidationException,
 )
+from app.core.security import check_rate_limit
 from app.models.report import ReportUpdate
+from app.repositories.diary_repo import DiaryRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
 from app.repositories.user_repo import UserRepository
 from app.services.audit_service import list_audit_logs, log_audit
@@ -24,9 +27,35 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 logger = logging.getLogger(__name__)
 
 SENSITIVE_FIELDS = {
-    "password_hash", "email_encrypted", "email_hash",
-    "encrypted_master_key", "master_key_salt", "master_key_iv",
+    "password_hash",
+    "email_encrypted",
+    "email_hash",
+    "encrypted_master_key",
+    "master_key_salt",
+    "master_key_iv",
 }
+
+
+async def _admin_rate_limit(
+    request: Request, current_admin: dict, rule: str = "admin_action"
+) -> None:
+    """Throttle admin actions per admin account (MED-10)."""
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:{rule}:{current_admin['_id']}",
+        *settings.get_rate_limit(rule),
+    )
+    if is_limited:
+        logger.warning(
+            "Admin action throttled: admin=%s action=%s ip=%s",
+            current_admin.get("username"),
+            rule,
+            _client_ip(request) or "unknown",
+        )
+        raise RateLimitException("Too many admin actions. Try again later.")
+
+
+def _client_ip(request: Request) -> str | None:
+    return request.client.host if getattr(request, "client", None) else None
 
 
 def _sanitize_user(user: dict) -> dict:
@@ -48,6 +77,7 @@ def _build_admin_user_item(user: dict) -> dict:
 
 # ─── Reports ────────────────────────────────────────────────
 
+
 @router.get("/reports")
 async def admin_list_reports(
     status: str = Query("pending", description="pending, resolved, dismissed, all"),
@@ -68,6 +98,8 @@ async def admin_update_report(
 ):
     if body.status.value == "pending":
         raise ValidationException("Cannot set report status back to pending")
+
+    await _admin_rate_limit(request, current_admin, "admin_report_action")
 
     result = await update_report(
         report_id=report_id,
@@ -92,6 +124,7 @@ async def admin_update_report(
 
 # ─── Diary Hide ──────────────────────────────────────────────
 
+
 @router.put("/diaries/{diary_id}/hide")
 async def admin_hide_diary(
     diary_id: str,
@@ -103,12 +136,22 @@ async def admin_hide_diary(
     if len(reason) < 10:
         raise ValidationException("Hide reason must be at least 10 characters")
 
+    await _admin_rate_limit(request, current_admin)
+
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
         raise NotFoundException("Diary not found")
 
-    await diary_repo.update(diary_id, {"privacy": "hidden"})
+    await diary_repo.update(
+        diary_id,
+        {
+            "privacy": "hidden",
+            # LOW-10: preserve the diary's real privacy so an unhide restores
+            # it rather than leaking a previously-private diary to the public.
+            "hidden_original_privacy": diary.get("privacy", "public"),
+        },
+    )
 
     await log_audit(
         admin_id=str(current_admin["_id"]),
@@ -144,6 +187,8 @@ async def admin_unhide_diary(
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
+    await _admin_rate_limit(request, current_admin)
+
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
@@ -151,7 +196,17 @@ async def admin_unhide_diary(
 
     reason = body.get("reason", "").strip() or "Restored by admin"
 
-    await diary_repo.update(diary_id, {"privacy": "public"})
+    original_privacy = diary.get("hidden_original_privacy") or "public"
+    if original_privacy not in ("public", "private", "draft"):
+        original_privacy = "public"
+
+    await diary_repo.update(
+        diary_id,
+        {
+            "privacy": original_privacy,
+            "hidden_original_privacy": None,
+        },
+    )
 
     await log_audit(
         admin_id=str(current_admin["_id"]),
@@ -159,20 +214,25 @@ async def admin_unhide_diary(
         action="unhide_diary",
         target_type="diary",
         target_id=diary_id,
-        details={"title": diary.get("title"), "reason": reason},
-        ip_address=request.client.host if request.client else None,
+        details={
+            "title": diary.get("title"),
+            "reason": reason,
+            "restored_privacy": original_privacy,
+        },
+        ip_address=_client_ip(request),
     )
 
     updated = await diary_repo.get_by_id(diary_id)
     if updated and updated.get("privacy") == "public":
         _index_diary(updated)
 
-    return {"data": {"id": diary_id, "hidden": False}}
+    return {"data": {"id": diary_id, "hidden": False, "privacy": original_privacy}}
 
 
 def _remove_from_index(diary_id: str) -> None:
     try:
         from app.services.diary_service import _remove_from_index_async
+
         _remove_from_index_async(diary_id)
     except Exception:
         pass
@@ -181,12 +241,14 @@ def _remove_from_index(diary_id: str) -> None:
 def _index_diary(diary: dict) -> None:
     try:
         from app.services.diary_service import _index_diary_async
+
         _index_diary_async(diary)
     except Exception:
         pass
 
 
 # ─── Users ──────────────────────────────────────────────────
+
 
 @router.get("/users")
 async def admin_list_users(
@@ -240,6 +302,8 @@ async def admin_ban_user(
     is_banned = body.get("is_banned")
     reason = body.get("reason", "").strip()
 
+    await _admin_rate_limit(request, current_admin)
+
     if is_banned is None:
         raise ValidationException("is_banned field is required")
 
@@ -265,7 +329,9 @@ async def admin_ban_user(
         revoked = await refresh_repo.delete_all_for_user(user_id)
         logger.info(
             "Admin %s banned user %s, revoked %d sessions",
-            current_admin["username"], target_user["username"], revoked,
+            current_admin["username"],
+            target_user["username"],
+            revoked,
         )
         _remove_banned_user_from_search(user_id)
     else:
@@ -277,15 +343,21 @@ async def admin_ban_user(
         action="ban_user" if is_banned else "unban_user",
         target_type="user",
         target_id=user_id,
-        details={"is_banned": is_banned, "reason": reason or None, "target_username": target_user["username"]},
+        details={
+            "is_banned": is_banned,
+            "reason": reason or None,
+            "target_username": target_user["username"],
+        },
         ip_address=request.client.host if request.client else None,
     )
 
-    return {"data": {
-        "id": user_id,
-        "username": target_user["username"],
-        "is_banned": is_banned,
-    }}
+    return {
+        "data": {
+            "id": user_id,
+            "username": target_user["username"],
+            "is_banned": is_banned,
+        }
+    }
 
 
 @router.put("/users/{user_id}/role")
@@ -298,6 +370,8 @@ async def admin_change_role(
     is_admin_flag = body.get("is_admin")
     if is_admin_flag is None:
         raise ValidationException("is_admin field is required")
+
+    await _admin_rate_limit(request, current_admin)
 
     if str(current_admin["_id"]) == user_id:
         raise PermissionDeniedException("You cannot change your own admin role")
@@ -324,14 +398,17 @@ async def admin_change_role(
         ip_address=request.client.host if request.client else None,
     )
 
-    return {"data": {
-        "id": user_id,
-        "username": target_user["username"],
-        "is_admin": is_admin_flag,
-    }}
+    return {
+        "data": {
+            "id": user_id,
+            "username": target_user["username"],
+            "is_admin": is_admin_flag,
+        }
+    }
 
 
 # ─── Audit Logs ─────────────────────────────────────────────
+
 
 @router.get("/audit-logs")
 async def admin_audit_logs(
@@ -363,6 +440,7 @@ async def admin_audit_logs(
 
 
 # ─── Stats ──────────────────────────────────────────────────
+
 
 @router.get("/stats")
 async def admin_stats(
@@ -431,6 +509,7 @@ async def admin_stats(
 
 # ─── Health ─────────────────────────────────────────────────
 
+
 @router.get("/health")
 async def admin_health(
     current_admin: dict = Depends(get_current_admin),
@@ -463,7 +542,9 @@ async def admin_health(
     t0 = time.monotonic()
     try:
         import asyncio as _asyncio
+
         from app.search.config import get_client as get_meili_client
+
         client = get_meili_client()
         await _asyncio.to_thread(client.health)
         latency = round((time.monotonic() - t0) * 1000)
@@ -484,16 +565,21 @@ async def admin_health(
 
 def _remove_banned_user_from_search(user_id: str) -> None:
     try:
-        from app.search.indexer import DiaryIndexer
-        from app.core.database import DatabaseManager
         from app.core.background import run_in_background
+        from app.core.database import DatabaseManager
+        from app.search.indexer import DiaryIndexer
+
         db = DatabaseManager.get_db()
         indexer = DiaryIndexer()
+
         async def _do():
-            cursor = db.diaries.find({"user_id": ObjectId(user_id), "privacy": "public"}, {"_id": 1})
+            cursor = db.diaries.find(
+                {"user_id": ObjectId(user_id), "privacy": "public"}, {"_id": 1}
+            )
             async for diary in cursor:
                 await indexer.remove_diary(str(diary["_id"]))
             logger.info("Removed user %s diaries from search index", user_id)
+
         run_in_background(_do())
     except Exception:
         logger.warning("Failed to remove banned user from search index", exc_info=True)
@@ -501,15 +587,19 @@ def _remove_banned_user_from_search(user_id: str) -> None:
 
 def _reindex_user_diaries_async(user_id: str) -> None:
     try:
-        from app.core.database import DatabaseManager
         from app.core.background import run_in_background
+        from app.core.database import DatabaseManager
+
         db = DatabaseManager.get_db()
+
         async def _do():
             cursor = db.diaries.find({"user_id": ObjectId(user_id), "privacy": "public"})
             async for diary in cursor:
                 from app.services.diary_service import _index_diary_async
+
                 _index_diary_async(diary)
             logger.info("Re-indexed user %s diaries", user_id)
+
         run_in_background(_do())
     except Exception:
         logger.warning("Failed to re-index user diaries", exc_info=True)
@@ -550,7 +640,7 @@ async def _send_admin_notification(
 
     body = (
         f"Hello,\n\n"
-        f"Your {target} \"{diary_title or 'Untitled'}\" has been {action} by an administrator"
+        f'Your {target} "{diary_title or "Untitled"}" has been {action} by an administrator'
         f" for the following reason: {reason or 'Content policy violation'}.\n\n"
         f"Please review our Community Guidelines. Repeated violations may result"
         f" in account suspension or banning.\n\n"
@@ -570,5 +660,9 @@ async def _send_admin_notification(
             "body": body,
         },
     )
-    logger.info("Admin notification sent: id=%s type=%s recipient=%s",
-                 result, notification_type, recipient_id)
+    logger.info(
+        "Admin notification sent: id=%s type=%s recipient=%s",
+        result,
+        notification_type,
+        recipient_id,
+    )

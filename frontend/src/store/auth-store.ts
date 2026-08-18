@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { apiClient } from "@/lib/api/client";
+import { clearAllMasterKeys } from "@/lib/master-key-cache";
 
 export interface User {
   id: string;
@@ -156,6 +157,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    clearAllMasterKeys();
     try {
       await apiClient.post("/auth/logout");
     } catch {

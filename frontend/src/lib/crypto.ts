@@ -1,6 +1,17 @@
 // ============================================================
 // Web Crypto API wrapper for DiaryArchive E2E encryption
 // ============================================================
+//
+// Key hierarchy:
+//   password --> PBKDF2 --> passwordKey (non-extractable)
+//   masterBytes (32 random bytes) --encrypted with passwordKey--> stored server-side
+//   masterBytes --imported as non-extractable HKDF baseKey--> masterKey
+//   masterKey --HKDF(salt)--> per-diary AES-GCM key
+//
+// The in-memory `masterKey` is non-extractable, so an XSS compromise cannot
+// call `crypto.subtle.exportKey` to exfiltrate it. The raw master bytes are
+// only materialised transiently during setup / load / password change and are
+// never held by normal diary encryption/decryption paths.
 
 // --- Key Derivation ---
 
@@ -26,22 +37,32 @@ export async function deriveKeyFromPassword(
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+    ["encrypt", "decrypt"]
   );
 }
 
 // --- Master Key ---
 
-export async function generateMasterKey(): Promise<CryptoKey> {
-  return crypto.subtle.generateKey(
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+const MASTER_KEY_BYTES = 32;
+
+export function generateMasterKey(): Uint8Array {
+  const bytes = new Uint8Array(MASTER_KEY_BYTES);
+  crypto.getRandomValues(bytes);
+  return bytes;
+}
+
+export async function importMasterKey(masterBytes: Uint8Array): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    masterBytes as BufferSource,
+    "HKDF",
+    false,
+    ["deriveKey"]
   );
 }
 
 export async function encryptMasterKey(
-  masterKey: CryptoKey,
+  masterBytes: Uint8Array,
   password: string
 ): Promise<{ encryptedMasterKey: string; salt: string; iv: string }> {
   const salt = new Uint8Array(new ArrayBuffer(16));
@@ -49,11 +70,10 @@ export async function encryptMasterKey(
   const iv = new Uint8Array(new ArrayBuffer(12));
   crypto.getRandomValues(iv);
   const passwordKey = await deriveKeyFromPassword(password, salt);
-  const wrappedKey = await crypto.subtle.wrapKey(
-    "raw",
-    masterKey,
+  const wrappedKey = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv as BufferSource },
     passwordKey,
-    { name: "AES-GCM", iv: iv as BufferSource }
+    masterBytes as BufferSource
   );
   return {
     encryptedMasterKey: bufferToHex(wrappedKey),
@@ -67,19 +87,16 @@ export async function decryptMasterKey(
   salt: string,
   iv: string,
   password: string
-): Promise<CryptoKey> {
+): Promise<Uint8Array> {
   const saltBytes = hexToBuffer(salt);
   const ivBytes = hexToBuffer(iv);
   const passwordKey = await deriveKeyFromPassword(password, saltBytes);
-  return crypto.subtle.unwrapKey(
-    "raw",
-    hexToBuffer(encryptedMasterKey) as BufferSource,
-    passwordKey,
+  const plainBytes = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: ivBytes as BufferSource },
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt"]
+    passwordKey,
+    hexToBuffer(encryptedMasterKey) as BufferSource
   );
+  return new Uint8Array(plainBytes);
 }
 
 // --- Per-Diary Key Derivation ---
@@ -88,14 +105,6 @@ async function deriveDiaryKey(
   masterKey: CryptoKey,
   diarySalt: Uint8Array
 ): Promise<CryptoKey> {
-  const keyData = await crypto.subtle.exportKey("raw", masterKey);
-  const hkdfKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    "HKDF",
-    false,
-    ["deriveKey"]
-  );
   return crypto.subtle.deriveKey(
     {
       name: "HKDF",
@@ -103,7 +112,7 @@ async function deriveDiaryKey(
       info: new TextEncoder().encode("diaryarchive-diary-key-v1"),
       hash: "SHA-256",
     },
-    hkdfKey,
+    masterKey,
     { name: "AES-GCM", length: 256 },
     false,
     ["encrypt", "decrypt"]

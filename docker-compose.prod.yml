@@ -12,6 +12,14 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    read_only: true
+    tmpfs:
+      - /var/run
+      - /var/cache/nginx
+      - /var/log/nginx
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/certs:/etc/nginx/certs:ro
@@ -94,8 +102,20 @@ services:
     restart: always
 
   backend:
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     deploy:
-      replicas: 2
+      # NOTE: This architecture deliberately operates as a SINGLE backend
+      # instance. `deploy.replicas` is IGNORED by plain `docker compose up`
+      # (it only applies to Swarm), so claiming multiple replicas here would be
+      # dishonest. A single stateless backend scales vertically; horizontal
+      # scaling would require a real orchestrator (Swarm/K8s) and is out of
+      # scope for this single-host deployment. See docs/ops/deployment.md.
       resources:
         limits:
           cpus: "1"
@@ -116,6 +136,14 @@ services:
       CORS_ORIGINS: '["https://diaryarchive.com"]'
 
   frontend:
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     build:
       context: ./frontend
       dockerfile: Dockerfile
