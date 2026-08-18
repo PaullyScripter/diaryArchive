@@ -50,12 +50,19 @@ async def issue_bio_warning(
 
     bio_count = user.get("bio_warning_count", 0)
     new_count = bio_count + 1
-    deadline = datetime.now(UTC) + timedelta(minutes=5)
+    now = datetime.now(UTC)
+    deadline = now + timedelta(minutes=5)
 
     update_fields: dict = {
         "bio_warning_deadline": deadline,
         "bio_warning_count": new_count,
         "bio_warning_reason": reason,
+        # Snapshot of the offending bio at warning time. The user's own
+        # "confirm bio change" is only honored after the server verifies the
+        # bio actually differs from this snapshot (i.e. it really changed after
+        # this warning was issued), closing the self-confirmation bypass.
+        "bio_warning_about_snapshot": user.get("about"),
+        "bio_warning_issued_at": now,
     }
 
     if new_count >= 3:
@@ -89,8 +96,8 @@ async def issue_bio_warning(
                 f"Please update your bio within 5 minutes. Failure to comply may result in"
                 f" your bio being blanked" +
                 (" and your bio editing privileges being suspended." if new_count >= 3 else ".") +
-                f"\n\nRepeated violations may result in account suspension or banning.\n\n"
-                f"Regards,\nDiaryArchive Moderation"
+                "\n\nRepeated violations may result in account suspension or banning.\n\n"
+                "Regards,\nDiaryArchive Moderation"
             ),
             "count": new_count,
         },
@@ -102,7 +109,11 @@ async def issue_bio_warning(
         action="bio_warning",
         target_type="user",
         target_id=user_id,
-        details={"reason": reason, "bio_warning_count": new_count, "deadline": deadline.isoformat()},
+        details={
+            "reason": reason,
+            "bio_warning_count": new_count,
+            "deadline": deadline.isoformat(),
+        },
         ip_address=request.client.host if request.client else None,
     )
 
@@ -161,7 +172,7 @@ async def issue_username_warning(
                 f"1. Go to Report > Open a Ticket\n"
                 f"2. Select the 'Username Change' category\n"
                 f"3. Set the subject to 'Username Change Request'\n"
-                f"4. In the description, explain the situation and provide an appropriate new username\n"
+                f"4. In the description, explain the situation and provide a new username\n"
                 f"5. An admin will review your request and assist you\n\n"
                 f"Please submit your username change request within 15 minutes. Failure to comply"
                 f" may result in your account being banned.\n\n"
@@ -240,24 +251,48 @@ async def confirm_bio_change(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = str(current_user["_id"])
-    db = DatabaseManager.get_db()
-
-    result = await db.reports.update_many(
-        {
-            "target_type": "user",
-            "target_id": current_user["_id"],
-            "status": "pending",
-        },
-        {"$set": {"status": "decisiontakenbyuser"}},
-    )
-
     user_repo = UserRepository()
-    if current_user.get("bio_warning_deadline"):
-        await user_repo.update(user_id, {"bio_warning_awaiting_review": True})
+
+    # Re-fetch a fresh copy so we reason about the on-disk state, never a stale
+    # version injected into the dependency.
+    fresh = await user_repo.get_by_id(user_id)
+    if fresh is None:
+        raise NotFoundException("User not found")
+
+    deadline = fresh.get("bio_warning_deadline")
+    if not deadline:
+        # No active warning to confirm (already resolved / wrong warning).
+        raise ValidationException("No bio warning is currently pending.")
+
+    snapshot = fresh.get("bio_warning_about_snapshot")
+    current_about = fresh.get("about")
+    issued_at = fresh.get("bio_warning_issued_at")
+
+    # Server-side verification: the bio MUST actually have changed after this
+    # warning was issued. The user cannot simply claim compliance.
+    if current_about is None or current_about == snapshot:
+        raise ValidationException(
+            "Your bio has not changed since the warning. Please update your bio first."
+        )
+    updated_at = fresh.get("updated_at")
+    if issued_at and updated_at and updated_at < issued_at:
+        raise ValidationException(
+            "Your bio was not updated after this warning. Please edit it again."
+        )
+
+    # Legitimately complied: clear the auto-blank deadline and snapshot, and
+    # leave the pending moderation reports for admin review (do NOT let the user
+    # self-clear their own moderation queue). Record an auditable confirmation.
+    await user_repo.update(user_id, {
+        "bio_warning_deadline": None,
+        "bio_warning_about_snapshot": None,
+        "bio_warning_confirmed_at": datetime.now(UTC),
+    })
+
+    logger.info("Bio change confirmed (server-verified) for user %s", user_id)
 
     return {
         "data": {
             "message": "Bio change confirmed. The moderation team will review your changes.",
-            "reports_updated": result.modified_count,
         }
     }

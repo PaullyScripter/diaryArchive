@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Public origin used to build reset/verify links inside emails. Must be the
     # origin the user's browser actually talks to (NOT an internal docker host).
     public_app_url: str = "http://localhost:3000"
+    # External, publicly reachable backend/API origin (no trailing path). Used
+    # to build absolute media URLs and CSP connect-src/img-src entries. When
+    # unset, responses fall back to same-origin relative URLs.
+    public_api_url: str | None = None
 
     cors_origins: list[str] = ["http://localhost:3000"]
 
@@ -51,7 +55,29 @@ class Settings(BaseSettings):
     max_media_per_diary: int = 20
     max_daily_uploads: int = 50
 
+    # Privacy: client IP address retention.
+    #   - If true, request logs store a truncated/anon IP (first three octets).
+    #   - log_retention_days bounds how long request logs are retained by the
+    #     retention job (0 disables automatic deletion).
+    anonymize_ip_in_logs: bool = True
+    log_retention_days: int = 30
+
+    # Backup & restore (see docker/scripts/backup.sh, restore.sh, verify-restore.sh).
+    # These are consumed by the ops scripts via the production environment.
+    backup_dir: str = "/backups"
+    backup_encryption_enabled: bool = True
+    backup_retention_daily: int = 14
+    backup_retention_weekly: int = 8
+    backup_retention_monthly: int = 6
+
     warnings_check_interval_hours: int = 1
+
+    # Orphan sweep + counter reconciliation cadence. Runs as a periodic
+    # in-process task (MED-2); 24h is a sensible default for production.
+    cleanup_interval_hours: int = 24
+
+    # How often the durable search-sync outbox worker polls for pending entries.
+    search_outbox_interval_seconds: int = 30
 
     # Centralized rate limits: key -> (max_attempts, window_seconds). Endpoints
     # read from here via get_rate_limit so policy is tunable in one place rather
@@ -61,6 +87,9 @@ class Settings(BaseSettings):
         "register": (5, 60),
         "login": (10, 60),
         "login_user": (5, 300),
+        # Per-account failed-login lockout (independent of client IP so rotating
+        # IPs cannot brute-force a single account). 5 failures -> 15 min cooldown.
+        "login_account": (5, 900),
         "refresh": (20, 60),
         "password_reset_request": (3, 3600),
         "password_reset_submit": (10, 3600),
@@ -77,6 +106,10 @@ class Settings(BaseSettings):
         "admin_ticket_reply": (30, 60),
         "admin_ticket_close": (30, 60),
         "admin_ticket_resolve": (30, 60),
+        # Admin mutations are globally throttled per admin account so a
+        # compromised admin token cannot mass-delete/hide/ban at will.
+        "admin_action": (120, 60),
+        "admin_report_action": (60, 60),
     }
 
     def get_rate_limit(self, name: str) -> tuple[int, int]:
@@ -109,9 +142,7 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY must be at least 32 characters")
 
         if not self.email_encryption_key or len(self.email_encryption_key) != 64:
-            raise ValueError(
-                "EMAIL_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)"
-            )
+            raise ValueError("EMAIL_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)")
         if self.email_encryption_key.lower() != self.email_encryption_key or any(
             c not in "0123456789abcdef" for c in self.email_encryption_key.lower()
         ):

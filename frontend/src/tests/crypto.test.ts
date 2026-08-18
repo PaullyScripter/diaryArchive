@@ -3,6 +3,7 @@ import {
   encryptDiary,
   decryptDiary,
   generateMasterKey,
+  importMasterKey,
   encryptMasterKey,
   decryptMasterKey,
   type DiaryPlaintext,
@@ -10,7 +11,7 @@ import {
 
 describe("crypto", () => {
   it("round-trips a diary through encrypt/decrypt", async () => {
-    const mk = await generateMasterKey();
+    const mk = await importMasterKey(generateMasterKey());
 
     const plaintext: DiaryPlaintext = {
       title: "My Private Diary",
@@ -30,8 +31,8 @@ describe("crypto", () => {
   });
 
   it("fails to decrypt with wrong master key", async () => {
-    const mk1 = await generateMasterKey();
-    const mk2 = await generateMasterKey();
+    const mk1 = await importMasterKey(generateMasterKey());
+    const mk2 = await importMasterKey(generateMasterKey());
 
     const encrypted = await encryptDiary(
       { title: "Secret", contentHtml: "<p>test</p>", tags: [] },
@@ -42,7 +43,7 @@ describe("crypto", () => {
   });
 
   it("master key round-trips through wrap/unwrap", async () => {
-    const mk = await generateMasterKey();
+    const mk = generateMasterKey();
     const password = "CorrectHorseBatteryStaple1!";
 
     const { encryptedMasterKey, salt, iv } = await encryptMasterKey(mk, password);
@@ -53,15 +54,16 @@ describe("crypto", () => {
     const decrypted = await decryptMasterKey(encryptedMasterKey, salt, iv, password);
     expect(decrypted).toBeDefined();
 
+    const mkKey = await importMasterKey(decrypted);
     const plain = await decryptDiary(
-      await encryptDiary({ title: "Test", contentHtml: "<p>x</p>", tags: [] }, mk),
-      decrypted,
+      await encryptDiary({ title: "Test", contentHtml: "<p>x</p>", tags: [] }, await importMasterKey(mk)),
+      mkKey,
     );
     expect(plain.title).toBe("Test");
   });
 
   it("fails to unwrap master key with wrong password", async () => {
-    const mk = await generateMasterKey();
+    const mk = generateMasterKey();
     const { encryptedMasterKey, salt, iv } = await encryptMasterKey(mk, "Password1!");
 
     await expect(
@@ -70,13 +72,21 @@ describe("crypto", () => {
   });
 
   it("generates unique ciphertexts for same plaintext", async () => {
-    const mk = await generateMasterKey();
+    const mk = await importMasterKey(generateMasterKey());
     const plain: DiaryPlaintext = { title: "A", contentHtml: "<p>B</p>", tags: [] };
-
     const e1 = await encryptDiary(plain, mk);
     const e2 = await encryptDiary(plain, mk);
 
     expect(e1.ciphertext).not.toBe(e2.ciphertext);
     expect(e1.iv).not.toBe(e2.iv);
+  });
+
+  it("master key is non-extractable", async () => {
+    const mk = await importMasterKey(generateMasterKey());
+    expect(mk.extractable).toBe(false);
+
+    await expect(
+      crypto.subtle.exportKey("raw", mk),
+    ).rejects.toThrow();
   });
 });

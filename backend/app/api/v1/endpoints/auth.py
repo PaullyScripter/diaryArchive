@@ -17,12 +17,15 @@ from app.core.exceptions import (
 )
 from app.core.security import (
     check_rate_limit,
+    clear_attempts,
     create_access_token,
     create_email_verification_token,
     generate_refresh_token,
     get_client_ip,
     hash_password_async,
     hash_token,
+    is_locked_out,
+    record_failed_attempt,
     verify_password_async,
 )
 from app.models.token import AuthResponse, RegisterResponse, TokenResponse
@@ -173,9 +176,20 @@ async def register(
                 [email_hash, legacy_email_hash(body.email)]
             )
             if existing_email:
-                raise ConflictException("Email is already associated with another account")
-        except ConflictException:
-            raise
+                # Anti-enumeration: do NOT confirm that the email is already
+                # registered. Return a generic, success-shaped response so an
+                # attacker cannot tell registered emails from unregistered ones.
+                # No account is created and no duplicate verification mail is
+                # sent.
+                return JSONResponse(
+                    status_code=201,
+                    content={
+                        "message": (
+                            "If that email is available, a verification link has been "
+                            "sent. Please check your inbox."
+                        )
+                    },
+                )
         except Exception:
             raise ValidationException("Invalid email format")
 
@@ -255,10 +269,20 @@ async def login(
         )
         raise RateLimitException("Too many login attempts")
 
+    # Per-account lockout (independent of client IP). An attacker rotating IPs
+    # still hits the same account-level counter and is throttled.
+    account_key = f"auth_fail:login:{username_lower}"
+    if await is_locked_out(account_key, *settings.get_rate_limit("login_account")):
+        raise RateLimitException("Too many failed attempts. Try again later.")
+
     user_repo = UserRepository()
     user = await user_repo.get_by_username(username_lower)
 
     if user is None or not await verify_password_async(body.password, user["password_hash"]):
+        # Record the failure against the account regardless of whether the
+        # account exists, so both paths consume identical work and rate-limit
+        # state (no account-existence timing/enumeration oracle).
+        await record_failed_attempt(account_key, *settings.get_rate_limit("login_account"))
         await _write_auth_audit(
             actor=username_lower,
             action="login_failed",
@@ -295,6 +319,7 @@ async def login(
         )
 
     await user_repo.update(str(user["_id"]), {"last_login_at": datetime.now(UTC)})
+    await clear_attempts(account_key)
     _check_age_achievement(str(user["_id"]))
 
     access_token = create_access_token(

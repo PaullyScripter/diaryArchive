@@ -147,6 +147,24 @@ describe("sanitizeHtml", () => {
     expect(result).not.toContain("alert");
   });
 
+  it("neutralizes url()/javascript: inside inline style attributes (LOW-11)", () => {
+    const input =
+      '<div style="background:url(https://evil.example/beacon.png);color:red">x</div>';
+    const result = sanitizeHtml(input);
+    // The url() call is broken by the DISABLED- prefix so no request fires.
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain("background:url(");
+    expect(result).toContain("color:red");
+  });
+
+  it("neutralizes escaped url() inside inline style attributes (LOW-11)", () => {
+    const input = String.raw`<div style="background:u\72l(https://evil.example/x.png);color:red">x</div>`;
+    const result = sanitizeHtml(input);
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain("background:url(");
+    expect(result).toContain("color:red");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });
@@ -154,5 +172,45 @@ describe("sanitizeHtml", () => {
   it("handles null/undefined gracefully", () => {
     expect(() => sanitizeHtml(null as unknown as string)).not.toThrow();
     expect(() => sanitizeHtml(undefined as unknown as string)).not.toThrow();
+  });
+
+  it("drops arbitrary external images (tracking pixel)", () => {
+    const input =
+      '<p>hi</p><img src="https://tracker.example/pixel.gif" alt="t">';
+    const result = sanitizeHtml(input);
+    expect(result).not.toContain("tracker.example");
+    expect(result).not.toContain("<img");
+  });
+
+  it("keeps same-origin relative media images", () => {
+    const input = '<img src="/api/v1/media/file/abc?v=original" alt="m">';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("/api/v1/media/file/abc");
+  });
+
+  it("keeps images from the configured API origin", () => {
+    const prev = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "https://api.diaryarchive.com/api/v1";
+    try {
+      const input =
+        '<img src="https://api.diaryarchive.com/api/v1/media/file/x?v=original">';
+      const result = sanitizeHtml(input);
+      expect(result).toContain("api.diaryarchive.com");
+    } finally {
+      process.env.NEXT_PUBLIC_API_URL = prev;
+    }
+  });
+
+  it("drops images from arbitrary hosts even when API origin is set", () => {
+    const prev = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "https://api.diaryarchive.com/api/v1";
+    try {
+      const input = '<img src="https://evil.example/steal.gif">';
+      const result = sanitizeHtml(input);
+      expect(result).not.toContain("evil.example");
+      expect(result).not.toContain("<img");
+    } finally {
+      process.env.NEXT_PUBLIC_API_URL = prev;
+    }
   });
 });

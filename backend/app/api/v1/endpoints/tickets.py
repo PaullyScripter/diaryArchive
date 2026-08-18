@@ -29,9 +29,7 @@ async def create_ticket_endpoint(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:ticket:{current_user['_id']}", 5, 3600
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:ticket:{current_user['_id']}", 5, 3600)
     if is_limited:
         raise RateLimitException("Too many ticket submissions. Please try again later.")
 
@@ -61,12 +59,16 @@ async def list_my_tickets(
 @router.get("/{ticket_id}")
 async def get_ticket_detail(
     ticket_id: str,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):
     return await get_ticket(
         ticket_id=ticket_id,
         user_id=str(current_user["_id"]),
         is_admin=False,
+        page=page,
+        per_page=per_page,
     )
 
 
@@ -79,7 +81,8 @@ async def reply_to_ticket(
 ):
     is_limited, _ = await check_rate_limit(
         f"rate_limit:ticket_reply:{current_user['_id']}:{get_client_ip(request)}",
-        10, 300,
+        10,
+        300,
     )
     if is_limited:
         raise RateLimitException("Too many replies. Please try again later.")
@@ -115,11 +118,15 @@ async def admin_list_tickets(
 @admin_router.get("/{ticket_id}")
 async def admin_get_ticket(
     ticket_id: str,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):
     return await get_ticket(
         ticket_id=ticket_id,
         is_admin=True,
+        page=page,
+        per_page=per_page,
     )
 
 

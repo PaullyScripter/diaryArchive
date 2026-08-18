@@ -1,3 +1,4 @@
+import asyncio
 from datetime import UTC, datetime
 
 from app.core.exceptions import (
@@ -12,9 +13,40 @@ from app.repositories.like_repo import LikeRepository
 from app.repositories.user_repo import UserRepository
 
 
-async def _count_liked_public_diaries(
-    collection, user_id: str, banned_ids: list
-) -> int:
+class _ToggleLocks:
+    """Per-(user, target) asyncio locks that serialize toggle operations within
+    this process.
+
+    A toggle is a delete-then-insert flip. Under concurrent requests the
+    ordering of delete/insert across requests is nondeterministic, so two
+    simultaneous "like" calls could end unliked. Serializing each (actor,
+    target) pair makes concurrent toggles behave like a deterministic sequence
+    (two likes -> liked; two unlikes -> unliked). This matches the single-
+    backend production architecture (see MED-7); a multi-replica deployment
+    would additionally rely on the DB unique indexes already in place.
+    """
+
+    def __init__(self):
+        self._locks: dict[tuple, asyncio.Lock] = {}
+        self._guard = asyncio.Lock()
+
+    async def get(self, key: tuple) -> asyncio.Lock:
+        async with self._guard:
+            lock = self._locks.get(key)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._locks[key] = lock
+            return lock
+
+
+_toggle_locks = _ToggleLocks()
+
+
+async def _toggle_guard(key: tuple):
+    return await _toggle_locks.get(key)
+
+
+async def _count_liked_public_diaries(collection, user_id: str, banned_ids: list) -> int:
     """Count a user's liked/bookmarked diaries that are public and not authored
     by a banned user, using a DB-side aggregation instead of materializing all
     like/bookmark rows into memory."""
@@ -43,17 +75,20 @@ async def _count_liked_public_diaries(
 async def _sync_comment_counts(diaries: list[dict]) -> None:
     if not diaries:
         return
-    from bson import ObjectId
     diary_ids = [d["_id"] for d in diaries]
     repo = DiaryRepository()
-    counts = await repo._collection.database.comments.aggregate([
-        {"$match": {
-            "diary_id": {"$in": diary_ids},
-            "is_deleted": {"$ne": True},
-            "parent_comment_id": None,
-        }},
-        {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
-    ]).to_list(length=len(diary_ids))
+    counts = await repo._collection.database.comments.aggregate(
+        [
+            {
+                "$match": {
+                    "diary_id": {"$in": diary_ids},
+                    "is_deleted": {"$ne": True},
+                    "parent_comment_id": None,
+                }
+            },
+            {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
+        ]
+    ).to_list(length=len(diary_ids))
     count_map = {str(c["_id"]): c["count"] for c in counts}
     for d in diaries:
         d["stats"]["comment_count"] = count_map.get(str(d["_id"]), 0)
@@ -74,52 +109,50 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
     like_repo = LikeRepository()
     user_id = str(current_user["_id"])
 
-    deleted = await like_repo.find_one_and_delete(user_id, diary_id)
-    if deleted is not None:
-        await diary_repo._collection.update_one(
-            {"_id": diary["_id"]}, {"$inc": {"stats.like_count": -1}}
-        )
-        diary = await diary_repo.get_by_id(diary_id)
-        if diary:
-            from app.services.diary_service import _index_diary_async
-            _index_diary_async(diary)
-        return {
-            "is_liked": False,
-            "like_count": diary["stats"]["like_count"] if diary else 0,
-        }
+    async with await _toggle_guard(("like", user_id, diary_id)):
+        # Atomic toggle: delete first; if a like was actually removed the state
+        # flipped to unliked. Otherwise insert (upsert with $setOnInsert); the
+        # unique index + upserted_id guarantees a single like and a single
+        # counter increment even under concurrent requests.
+        removed = await like_repo.ensure_unliked(user_id, diary_id)
+        if removed:
+            await diary_repo._collection.update_one(
+                {"_id": diary["_id"]}, {"$inc": {"stats.like_count": -1}}
+            )
+            diary = await diary_repo.get_by_id(diary_id)
+            if diary:
+                from app.services.diary_service import _index_diary_async
 
-    try:
-        await like_repo.create({
-            "user_id": current_user["_id"],
-            "diary_id": diary["_id"],
-            "created_at": datetime.now(UTC),
-        })
-    except Exception:
+                _index_diary_async(diary)
+            return {
+                "is_liked": False,
+                "like_count": diary["stats"]["like_count"] if diary else 0,
+            }
+
+        added = await like_repo.ensure_liked(user_id, diary_id, datetime.now(UTC))
+        if added:
+            await diary_repo._collection.update_one(
+                {"_id": diary["_id"]}, {"$inc": {"stats.like_count": 1}}
+            )
         diary = await diary_repo.get_by_id(diary_id)
+        if diary and added:
+            from app.services.diary_service import _index_diary_async
+
+            _index_diary_async(diary)
+            from app.services.notification_service import _send_notification_async
+
+            _send_notification_async(
+                recipient_id=str(diary["user_id"]),
+                actor_id=user_id,
+                notification_type="like",
+                target_id=diary_id,
+                metadata={"diary_title": diary.get("title")},
+            )
+            _check_likes_achievement_async(str(diary["user_id"]))
         return {
-            "is_liked": False,
+            "is_liked": True,
             "like_count": diary["stats"]["like_count"] if diary else 0,
         }
-    await diary_repo._collection.update_one(
-        {"_id": diary["_id"]}, {"$inc": {"stats.like_count": 1}}
-    )
-    diary = await diary_repo.get_by_id(diary_id)
-    if diary:
-        from app.services.diary_service import _index_diary_async
-        _index_diary_async(diary)
-        from app.services.notification_service import _send_notification_async
-        _send_notification_async(
-            recipient_id=str(diary["user_id"]),
-            actor_id=user_id,
-            notification_type="like",
-            target_id=diary_id,
-            metadata={"diary_title": diary.get("title")},
-        )
-        _check_likes_achievement_async(str(diary["user_id"]))
-    return {
-        "is_liked": True,
-        "like_count": diary["stats"]["like_count"] if diary else 0,
-    }
 
 
 async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
@@ -137,51 +170,45 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
     bookmark_repo = BookmarkRepository()
     user_id = str(current_user["_id"])
 
-    deleted = await bookmark_repo.find_one_and_delete(user_id, diary_id)
-    if deleted is not None:
-        await diary_repo._collection.update_one(
-            {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": -1}}
-        )
-        diary = await diary_repo.get_by_id(diary_id)
-        if diary:
-            from app.services.diary_service import _index_diary_async
-            _index_diary_async(diary)
-        return {
-            "is_bookmarked": False,
-            "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
-        }
+    async with await _toggle_guard(("bookmark", user_id, diary_id)):
+        removed = await bookmark_repo.ensure_unbookmarked(user_id, diary_id)
+        if removed:
+            await diary_repo._collection.update_one(
+                {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": -1}}
+            )
+            diary = await diary_repo.get_by_id(diary_id)
+            if diary:
+                from app.services.diary_service import _index_diary_async
 
-    try:
-        await bookmark_repo.create({
-            "user_id": current_user["_id"],
-            "diary_id": diary["_id"],
-            "created_at": datetime.now(UTC),
-        })
-    except Exception:
+                _index_diary_async(diary)
+            return {
+                "is_bookmarked": False,
+                "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
+            }
+
+        added = await bookmark_repo.ensure_bookmarked(user_id, diary_id, datetime.now(UTC))
+        if added:
+            await diary_repo._collection.update_one(
+                {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": 1}}
+            )
         diary = await diary_repo.get_by_id(diary_id)
+        if diary and added:
+            from app.services.diary_service import _index_diary_async
+
+            _index_diary_async(diary)
+            from app.services.notification_service import _send_notification_async
+
+            _send_notification_async(
+                recipient_id=str(diary["user_id"]),
+                actor_id=user_id,
+                notification_type="bookmark",
+                target_id=diary_id,
+                metadata={"diary_title": diary.get("title")},
+            )
         return {
-            "is_bookmarked": False,
+            "is_bookmarked": True,
             "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
         }
-    await diary_repo._collection.update_one(
-        {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": 1}}
-    )
-    diary = await diary_repo.get_by_id(diary_id)
-    if diary:
-        from app.services.diary_service import _index_diary_async
-        _index_diary_async(diary)
-        from app.services.notification_service import _send_notification_async
-        _send_notification_async(
-            recipient_id=str(diary["user_id"]),
-            actor_id=user_id,
-            notification_type="bookmark",
-            target_id=diary_id,
-            metadata={"diary_title": diary.get("title")},
-        )
-    return {
-        "is_bookmarked": True,
-        "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
-    }
 
 
 async def toggle_follow(username: str, current_user: dict) -> dict:
@@ -203,44 +230,39 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
     follower_id = str(current_user["_id"])
     following_id = str(target["_id"])
 
-    deleted = await follow_repo.find_one_and_delete(follower_id, following_id)
-    if deleted is not None:
-        await user_repo.update_stats(following_id, "follower_count", -1)
-        await user_repo.update_stats(follower_id, "following_count", -1)
-        target = await user_repo.get_by_id(following_id)
-        return {
-            "is_following": False,
-            "follower_count": target["stats"]["follower_count"] if target else 0,
-        }
+    async with await _toggle_guard(("follow", follower_id, following_id)):
+        removed = await follow_repo.ensure_unfollowed(follower_id, following_id)
+        if removed:
+            await user_repo.update_stats(following_id, "follower_count", -1)
+            await user_repo.update_stats(follower_id, "following_count", -1)
+            target = await user_repo.get_by_id(following_id)
+            return {
+                "is_following": False,
+                "follower_count": target["stats"]["follower_count"] if target else 0,
+            }
 
-    try:
-        await follow_repo.create({
-            "follower_id": current_user["_id"],
-            "following_id": target["_id"],
-            "created_at": datetime.now(UTC),
-        })
-    except Exception:
+        added = await follow_repo.ensure_following(
+            follower_id, following_id, datetime.now(UTC)
+        )
+        if added:
+            await user_repo.update_stats(following_id, "follower_count", 1)
+            await user_repo.update_stats(follower_id, "following_count", 1)
         target = await user_repo.get_by_id(following_id)
+        if added:
+            from app.services.notification_service import _send_notification_async
+
+            _send_notification_async(
+                recipient_id=following_id,
+                actor_id=follower_id,
+                notification_type="follow",
+                target_id=following_id,
+                target_type="user",
+            )
+            _check_followers_achievement_async(following_id)
         return {
-            "is_following": False,
+            "is_following": True,
             "follower_count": target["stats"]["follower_count"] if target else 0,
         }
-    await user_repo.update_stats(following_id, "follower_count", 1)
-    await user_repo.update_stats(follower_id, "following_count", 1)
-    target = await user_repo.get_by_id(following_id)
-    from app.services.notification_service import _send_notification_async
-    _send_notification_async(
-        recipient_id=following_id,
-        actor_id=follower_id,
-        notification_type="follow",
-        target_id=following_id,
-        target_type="user",
-    )
-    _check_followers_achievement_async(following_id)
-    return {
-        "is_following": True,
-        "follower_count": target["stats"]["follower_count"] if target else 0,
-    }
 
 
 async def list_followers(
@@ -265,7 +287,9 @@ async def list_followers(
 
     following_set: set[str] = set()
     if current_user and follower_ids:
-        following_set = await follow_repo.find_following_by_ids(str(current_user["_id"]), follower_ids)
+        following_set = await follow_repo.find_following_by_ids(
+            str(current_user["_id"]), follower_ids
+        )
 
     data = []
     for f in follows:
@@ -273,19 +297,24 @@ async def list_followers(
         u = followers_map.get(fid, {"_id": fid, "username": "unknown"})
         if u.get("is_banned"):
             continue
-        data.append({
-            "id": str(u.get("_id", fid)),
-            "username": u.get("username", "unknown"),
-            "avatar_path": u.get("avatar_path"),
-            "about": u.get("about"),
-            "is_following": fid in following_set,
-        })
+        data.append(
+            {
+                "id": str(u.get("_id", fid)),
+                "username": u.get("username", "unknown"),
+                "avatar_path": u.get("avatar_path"),
+                "about": u.get("about"),
+                "is_following": fid in following_set,
+            }
+        )
 
     return {
         "data": data,
         "meta": {
-            "page": page, "per_page": per_page, "total": total,
-            "has_next": (page * per_page) < total, "has_prev": page > 1,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "has_next": (page * per_page) < total,
+            "has_prev": page > 1,
         },
     }
 
@@ -312,7 +341,9 @@ async def list_following(
 
     following_set: set[str] = set()
     if current_user and following_ids:
-        following_set = await follow_repo.find_following_by_ids(str(current_user["_id"]), following_ids)
+        following_set = await follow_repo.find_following_by_ids(
+            str(current_user["_id"]), following_ids
+        )
 
     data = []
     for f in follows:
@@ -320,19 +351,24 @@ async def list_following(
         u = following_map.get(fid, {"_id": fid, "username": "unknown"})
         if u.get("is_banned"):
             continue
-        data.append({
-            "id": str(u.get("_id", fid)),
-            "username": u.get("username", "unknown"),
-            "avatar_path": u.get("avatar_path"),
-            "about": u.get("about"),
-            "is_following": fid in following_set,
-        })
+        data.append(
+            {
+                "id": str(u.get("_id", fid)),
+                "username": u.get("username", "unknown"),
+                "avatar_path": u.get("avatar_path"),
+                "about": u.get("about"),
+                "is_following": fid in following_set,
+            }
+        )
 
     return {
         "data": data,
         "meta": {
-            "page": page, "per_page": per_page, "total": total,
-            "has_next": (page * per_page) < total, "has_prev": page > 1,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "has_next": (page * per_page) < total,
+            "has_prev": page > 1,
         },
     }
 
@@ -354,8 +390,9 @@ async def list_my_likes(
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     if banned_ids:
-        diaries = [d for d in diaries
-                   if d.get("privacy") == "public" and d["user_id"] not in banned_ids]
+        diaries = [
+            d for d in diaries if d.get("privacy") == "public" and d["user_id"] not in banned_ids
+        ]
     else:
         diaries = [d for d in diaries if d.get("privacy") == "public"]
 
@@ -367,8 +404,11 @@ async def list_my_likes(
         return {
             "data": [],
             "meta": {
-                "page": page, "per_page": per_page, "total": total,
-                "has_next": (page * per_page) < total, "has_prev": page > 1,
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "has_next": (page * per_page) < total,
+                "has_prev": page > 1,
             },
         }
 
@@ -378,20 +418,27 @@ async def list_my_likes(
 
     await _sync_comment_counts(diaries)
     from app.services.enrichment_service import enrich_diary_batch
+
     diaries = await enrich_diary_batch(diaries, current_user)
 
     data = []
     for diary in diaries:
-        author = author_map.get(str(diary["user_id"]), {"_id": str(diary["user_id"]), "username": "unknown"})
+        author = author_map.get(
+            str(diary["user_id"]), {"_id": str(diary["user_id"]), "username": "unknown"}
+        )
         from app.services.diary_service import _build_diary_list_item
+
         item = _build_diary_list_item(diary, author, current_user)
         data.append(item)
 
     return {
         "data": data,
         "meta": {
-            "page": page, "per_page": per_page, "total": total,
-            "has_next": (page * per_page) < total, "has_prev": page > 1,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "has_next": (page * per_page) < total,
+            "has_prev": page > 1,
         },
     }
 
@@ -403,7 +450,9 @@ async def list_my_bookmarks(
 ) -> dict:
     bookmark_repo = BookmarkRepository()
     skip = (page - 1) * per_page
-    bookmarks = await bookmark_repo.find_by_user(str(current_user["_id"]), skip=skip, limit=per_page)
+    bookmarks = await bookmark_repo.find_by_user(
+        str(current_user["_id"]), skip=skip, limit=per_page
+    )
 
     diary_ids = [str(bm["diary_id"]) for bm in bookmarks]
     diary_repo = DiaryRepository()
@@ -417,8 +466,9 @@ async def list_my_bookmarks(
 
     diaries = await diary_repo.find_by_ids(diary_ids)
     if banned_ids:
-        diaries = [d for d in diaries
-                   if d.get("privacy") == "public" and d["user_id"] not in banned_ids]
+        diaries = [
+            d for d in diaries if d.get("privacy") == "public" and d["user_id"] not in banned_ids
+        ]
     else:
         diaries = [d for d in diaries if d.get("privacy") == "public"]
 
@@ -426,8 +476,11 @@ async def list_my_bookmarks(
         return {
             "data": [],
             "meta": {
-                "page": page, "per_page": per_page, "total": total,
-                "has_next": (page * per_page) < total, "has_prev": page > 1,
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "has_next": (page * per_page) < total,
+                "has_prev": page > 1,
             },
         }
 
@@ -437,20 +490,27 @@ async def list_my_bookmarks(
 
     await _sync_comment_counts(diaries)
     from app.services.enrichment_service import enrich_diary_batch
+
     diaries = await enrich_diary_batch(diaries, current_user)
 
     data = []
     for diary in diaries:
-        author = author_map.get(str(diary["user_id"]), {"_id": str(diary["user_id"]), "username": "unknown"})
+        author = author_map.get(
+            str(diary["user_id"]), {"_id": str(diary["user_id"]), "username": "unknown"}
+        )
         from app.services.diary_service import _build_diary_list_item
+
         item = _build_diary_list_item(diary, author, current_user)
         data.append(item)
 
     return {
         "data": data,
         "meta": {
-            "page": page, "per_page": per_page, "total": total,
-            "has_next": (page * per_page) < total, "has_prev": page > 1,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "has_next": (page * per_page) < total,
+            "has_prev": page > 1,
         },
     }
 
@@ -478,6 +538,7 @@ async def list_following_feed(
         return {"data": [], "meta": {"total": 0, "limit": limit}}
 
     from app.services.enrichment_service import enrich_diary_batch
+
     diaries = await enrich_diary_batch(diaries, current_user)
 
     await _sync_comment_counts(diaries)
@@ -488,9 +549,12 @@ async def list_following_feed(
     author_map = {str(u["_id"]): u for u in authors}
 
     from app.services.diary_service import _build_diary_list_item
+
     data = []
     for diary in diaries:
-        author = author_map.get(str(diary["user_id"]), {"_id": str(diary["user_id"]), "username": "unknown"})
+        author = author_map.get(
+            str(diary["user_id"]), {"_id": str(diary["user_id"]), "username": "unknown"}
+        )
         data.append(_build_diary_list_item(diary, author, current_user))
 
     return {"data": data, "meta": {"total": len(data), "limit": limit}}
@@ -502,6 +566,7 @@ def _check_likes_achievement_async(user_id: str) -> None:
     async def _do():
         try:
             from app.services.achievement_service import check_and_award_likes_achievements
+
             await check_and_award_likes_achievements(user_id)
         except Exception:
             pass
@@ -515,6 +580,7 @@ def _check_followers_achievement_async(user_id: str) -> None:
     async def _do():
         try:
             from app.services.achievement_service import check_and_award_followers_achievements
+
             await check_and_award_followers_achievements(user_id)
         except Exception:
             pass

@@ -8,7 +8,13 @@ import {
   decryptMasterKey,
   encryptMasterKey,
   generateMasterKey,
+  importMasterKey,
 } from "@/lib/crypto";
+import {
+  clearMasterKey as clearMasterKeyFromCache,
+  getMasterKey,
+  setMasterKey,
+} from "@/lib/master-key-cache";
 import { useAuthStore } from "@/store/auth-store";
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -53,7 +59,7 @@ export function useMasterKey(): MasterKeyState & {
 
   const isAvailable = hasMasterKey && state.masterKey !== null;
 
-  const cachedKey = userId ? masterKeyMap.get(userId) : undefined;
+  const cachedKey = userId ? getMasterKey(userId) : undefined;
   useEffect(() => {
     if (cachedKey && !state.masterKey) {
       setState({ masterKey: cachedKey, isLoading: false, error: null });
@@ -82,13 +88,14 @@ export function useMasterKey(): MasterKeyState & {
           }));
           return;
         }
-        const mk = await decryptMasterKey(
+        const masterBytes = await decryptMasterKey(
           keyData.encrypted_master_key,
           keyData.master_key_salt,
           keyData.master_key_iv,
           password
         );
-        masterKeyMap.set(userId, mk);
+        const mk = await importMasterKey(masterBytes);
+        setMasterKey(userId, mk);
         setState({ masterKey: mk, isLoading: false, error: null });
       } catch (err: unknown) {
         const message = extractErrorMessage(err, "Incorrect password or corrupted key data");
@@ -115,9 +122,10 @@ export function useMasterKey(): MasterKeyState & {
       }
       setState((s) => ({ ...s, isLoading: true, error: null }));
       try {
-        const mk = await generateMasterKey();
+        const masterBytes = generateMasterKey();
+        const mk = await importMasterKey(masterBytes);
         const { encryptedMasterKey, salt, iv } = await encryptMasterKey(
-          mk,
+          masterBytes,
           password
         );
         await apiClient.put("/users/me/encryption-key", {
@@ -125,7 +133,7 @@ export function useMasterKey(): MasterKeyState & {
           master_key_salt: salt,
           master_key_iv: iv,
         });
-        masterKeyMap.set(userId, mk);
+        setMasterKey(userId, mk);
         useAuthStore.getState().setUser({
           ...useAuthStore.getState().user!,
           has_master_key: true,
@@ -149,39 +157,48 @@ export function useMasterKey(): MasterKeyState & {
       currentPassword: string,
       newPassword: string
     ): Promise<{ newEncryptedMasterKey: string; newMasterKeySalt: string; newMasterKeyIv: string } | null> => {
-      if (!hasMasterKey) return null;
-      let key = state.masterKey ?? (userId ? getMasterKey(userId) : undefined);
-      if (!key) {
-        if (!currentPassword) return null;
-        try {
-          await loadMasterKey(currentPassword);
-          key = userId ? getMasterKey(userId) : undefined;
-        } catch {
-          throw new Error(
-            "Could not unlock your master key with your current password. " +
-              "Changing the password now would permanently destroy your private diaries. " +
-              "Enter the correct current password, or keep your password unchanged."
-          );
-        }
+      if (!hasMasterKey || !userId) return null;
+      const meResp = await apiClient.get("/users/me/encryption-key");
+      const keyData = meResp.data.data || meResp.data;
+      if (!keyData?.encrypted_master_key || !keyData?.master_key_salt || !keyData?.master_key_iv) {
+        return null;
       }
-      if (!key) return null;
+      let masterBytes: Uint8Array;
+      try {
+        masterBytes = await decryptMasterKey(
+          keyData.encrypted_master_key,
+          keyData.master_key_salt,
+          keyData.master_key_iv,
+          currentPassword
+        );
+      } catch {
+        throw new Error(
+          "Could not unlock your master key with your current password. " +
+            "Changing the password now would permanently destroy your private diaries. " +
+            "Enter the correct current password, or keep your password unchanged."
+        );
+      }
       const { encryptedMasterKey, salt, iv } = await encryptMasterKey(
-        key,
+        masterBytes,
         newPassword
       );
-      await decryptMasterKey(
+      const check = await decryptMasterKey(
         encryptedMasterKey,
         salt,
         iv,
         newPassword
       );
+      void check;
+      const refreshed = await importMasterKey(masterBytes);
+      setMasterKey(userId, refreshed);
+      setState((s) => ({ ...s, masterKey: refreshed }));
       return { newEncryptedMasterKey: encryptedMasterKey, newMasterKeySalt: salt, newMasterKeyIv: iv };
     },
-    [hasMasterKey, state.masterKey, userId, loadMasterKey]
+    [hasMasterKey, userId]
   );
 
   const clearMasterKey = useCallback(() => {
-    if (userId) masterKeyMap.delete(userId);
+    if (userId) clearMasterKeyFromCache(userId);
     setState({ masterKey: null, isLoading: false, error: null });
   }, [userId]);
 
@@ -201,6 +218,4 @@ export function useMasterKey(): MasterKeyState & {
   };
 }
 
-export function getMasterKey(userId: string): CryptoKey | undefined {
-  return masterKeyMap.get(userId);
-}
+export { getMasterKey, clearMasterKeyFromCache };

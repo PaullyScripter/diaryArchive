@@ -1,0 +1,14 @@
+[Unit]
+Description=DiaryArchive encrypted backup
+Documentation=file:///opt/diaryarchive/docs/ops/backup-restore.md
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# Adjust paths for your deployment (BACKUP_ROOT is the shared backup directory).
+WorkingDirectory=/opt/diaryarchive
+EnvironmentFile=/opt/diaryarchive/.env.production
+ExecStart=/opt/diaryarchive/docker/scripts/backup.sh /opt/diaryarchive/backups
+# Fail loudly if the backup destination is unavailable so operators notice.
+OnFailure=docker.service

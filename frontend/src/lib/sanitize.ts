@@ -75,16 +75,78 @@ export function scrubCssText(css: string): string {
 
 const STYLE_BLOCK_RE = /<style[^>]*>([\s\S]*?)<\/style>/gi;
 
+// Inline style="" attributes are allowed through DOMPurify but are NOT covered
+// by the <style> block scrub above. Scrub them with the same blocklist so a
+// value like `background: url(https://evil.example/beacon)` — a tracking /
+// exfiltration vector, especially in E2E-encrypted private diaries that never
+// reach the backend sanitizer — cannot slip through as an inline style.
+let styleHookRegistered = false;
+
+function ensureStyleHookRegistered() {
+  if (styleHookRegistered || typeof DOMPurify.addHook !== "function") return;
+  styleHookRegistered = true;
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node.hasAttribute && node.hasAttribute("style")) {
+      node.setAttribute("style", scrubCssText(node.getAttribute("style") || ""));
+    }
+  });
+}
+
+function apiOrigin(): string | null {
+  const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+  if (!/^https?:\/\//i.test(base)) return null;
+  try {
+    return new URL(base).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Allow only images the app itself serves (relative /api/... media proxy,
+ * bundled assets) or that come from the configured API origin. Arbitrary
+ * external <img src> — the classic tracking-pixel / reader-identification
+ * vector — is stripped. This is especially important for E2E-encrypted private
+ * diaries, which never reach the backend sanitizer, so the browser is the only
+ * defense.
+ */
+export function isAllowedImageSource(value: string): boolean {
+  const v = (value ?? "").trim();
+  if (!v) return false;
+  if (v.startsWith("/")) return true; // same-origin relative
+  if (!/^https?:\/\//i.test(v)) return false; // reject data:, javascript:, etc.
+  const allowed = apiOrigin();
+  if (!allowed) return false;
+  try {
+    return new URL(v).origin === allowed;
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizeHtml(html: string): string {
+  ensureStyleHookRegistered();
+
   const cleaned = DOMPurify.sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
     FORCE_BODY: true,
   });
-  return cleaned.replace(STYLE_BLOCK_RE, (match, css: string) =>
+
+  const result = cleaned.replace(STYLE_BLOCK_RE, (match, css: string) =>
     match.replace(css, scrubCssText(css))
   );
+
+  if (!result.includes("<img")) return result;
+
+  // Drop src (and the whole empty img tag for cleanliness) on disallowed hosts.
+  const doc = new DOMParser().parseFromString(result, "text/html");
+  doc.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src") ?? "";
+    if (!isAllowedImageSource(src)) img.remove();
+  });
+  return doc.body.innerHTML;
 }
 
 export function sanitizeCss(css: string): string {

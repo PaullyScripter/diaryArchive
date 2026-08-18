@@ -4,6 +4,8 @@ from bson import ObjectId
 
 from app.repositories.base import BaseRepository
 
+MAX_MESSAGES = 1000
+
 
 class TicketRepository(BaseRepository):
     collection_name = "tickets"
@@ -16,9 +18,7 @@ class TicketRepository(BaseRepository):
         result = await self.create(data)
         return str(result)
 
-    async def find_by_user(
-        self, user_id: str, skip: int = 0, limit: int = 20
-    ) -> list[dict]:
+    async def find_by_user(self, user_id: str, skip: int = 0, limit: int = 20) -> list[dict]:
         return await self.find(
             filter={"user_id": ObjectId(user_id)},
             sort=[("created_at", -1)],
@@ -51,9 +51,7 @@ class TicketRepository(BaseRepository):
             filter_dict["status"] = status
         return await self.count(filter_dict)
 
-    async def assign_admin(
-        self, ticket_id: str, admin_id: str, admin_username: str
-    ) -> bool:
+    async def assign_admin(self, ticket_id: str, admin_id: str, admin_username: str) -> bool:
         if not ObjectId.is_valid(ticket_id):
             return False
         result = await self._collection.update_one(
@@ -76,11 +74,20 @@ class TicketRepository(BaseRepository):
         result = await self._collection.update_one(
             {"_id": ObjectId(ticket_id)},
             {
-                "$push": {"messages": message},
+                "$push": {"messages": {"$each": [message], "$slice": -MAX_MESSAGES}},
+                "$inc": {"messages_count": 1},
                 "$set": {"updated_at": datetime.now(UTC)},
             },
         )
         return result.modified_count > 0
+
+    async def set_message_count(self, ticket_id: str, count: int) -> None:
+        if not ObjectId.is_valid(ticket_id):
+            return
+        await self._collection.update_one(
+            {"_id": ObjectId(ticket_id)},
+            {"$set": {"messages_count": count}},
+        )
 
     async def close_ticket(self, ticket_id: str) -> bool:
         if not ObjectId.is_valid(ticket_id):
@@ -97,8 +104,10 @@ class TicketRepository(BaseRepository):
         return result.modified_count > 0
 
     async def find_pending_appeal(self, user_id: str) -> dict | None:
-        return await self.find_one({
-            "user_id": ObjectId(user_id),
-            "category": "account_help",
-            "status": "open",
-        })
+        return await self.find_one(
+            {
+                "user_id": ObjectId(user_id),
+                "category": "account_help",
+                "status": "open",
+            }
+        )

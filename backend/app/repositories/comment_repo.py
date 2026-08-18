@@ -136,6 +136,30 @@ class CommentRepository(BaseRepository):
             "created_at": datetime.now(UTC),
         })
 
+    async def ensure_comment_liked(self, comment_id: str, user_id: str) -> bool:
+        """Atomically insert a comment-like if absent. Returns True only if this
+        call performed the insertion (state changed). The unique compound index
+        makes concurrent likes converge to a single row."""
+        from datetime import UTC, datetime
+        db = self._collection.database
+        result = await db.comment_likes.update_one(
+            {
+                "comment_id": ObjectId(comment_id),
+                "user_id": ObjectId(user_id),
+            },
+            {"$setOnInsert": {"created_at": datetime.now(UTC)}},
+            upsert=True,
+        )
+        return result.upserted_id is not None
+
+    async def ensure_comment_unliked(self, comment_id: str, user_id: str) -> bool:
+        db = self._collection.database
+        result = await db.comment_likes.delete_one({
+            "comment_id": ObjectId(comment_id),
+            "user_id": ObjectId(user_id),
+        })
+        return result.deleted_count > 0
+
     async def remove_comment_like(self, comment_id: str, user_id: str) -> None:
         db = self._collection.database
         await db.comment_likes.delete_one({

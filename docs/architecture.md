@@ -210,6 +210,7 @@ diaryarchive/
 │   ├── security.md              # Security model
 │   ├── privacy.md               # Privacy model
 │   ├── deployment.md            # Deployment guide
+│   ├── ops/backup-restore.md    # Backup, restore & key rotation
 │   └── adr/                     # Architecture Decision Records
 │       └── 001-e2e-encryption.md
 ├── .github/

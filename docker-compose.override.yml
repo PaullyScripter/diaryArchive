@@ -1,0 +1,36 @@
+# Development override - auto-loaded by Docker Compose ONLY when you run a
+# plain `docker compose up` WITHOUT an explicit -f flag.
+#
+# It publishes the service ports to the host for local containerized
+# development convenience. It is NEVER loaded for production because production
+# uses `docker compose -f docker-compose.yml -f docker-compose.prod.yml` (the
+# presence of explicit -f files disables the automatic override load).
+#
+# Production must route all external traffic through nginx (docker-compose.prod.yml)
+# and must NOT publish these internal service ports.
+
+services:
+  mongodb:
+    ports:
+      - "27017:27017"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  meilisearch:
+    ports:
+      - "7700:7700"
+
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  backend:
+    ports:
+      - "8000:8000"
+
+  frontend:
+    ports:
+      - "3000:3000"

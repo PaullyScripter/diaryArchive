@@ -92,6 +92,21 @@ def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple
         return False, max(0, max_attempts - len(hits))
 
 
+def _fallback_count(key: str, window_seconds: int) -> int:
+    """Return how many hits remain within the window for a key in the fallback
+    limiter. Used by is_locked_out/clear_attempts so they agree with
+    record_failed_attempt when Redis is unavailable."""
+    now_ms = int(time.time() * 1000)
+    window_start = now_ms - (window_seconds * 1000)
+    with _fallback_lock:
+        hits = _fallback_hits.get(key)
+        if not hits:
+            return 0
+        while hits and hits[0] < window_start:
+            hits.popleft()
+        return len(hits)
+
+
 def get_client_ip(request) -> str:
     """Return a client IP that is safe to use for security decisions (rate limits).
 
@@ -131,12 +146,13 @@ async def record_failed_attempt(key: str, max_attempts: int, window_seconds: int
         return False
 
 
-async def is_locked_out(key: str, max_attempts: int) -> bool:
+async def is_locked_out(key: str, max_attempts: int, window_seconds: int = 300) -> bool:
     """Check (without consuming) whether a failure counter has reached the limit."""
     try:
         redis: Redis = DatabaseManager.get_redis()
     except RuntimeError:
-        return False
+        # Agree with record_failed_attempt's fallback namespacing.
+        return _fallback_count(f"lockout:{key}", window_seconds) >= max_attempts
     try:
         count = await redis.get(key)
         return count is not None and int(count) >= max_attempts
@@ -147,6 +163,11 @@ async def is_locked_out(key: str, max_attempts: int) -> bool:
 async def clear_attempts(key: str) -> None:
     try:
         redis: Redis = DatabaseManager.get_redis()
+    except RuntimeError:
+        with _fallback_lock:
+            _fallback_hits.pop(f"lockout:{key}", None)
+        return
+    try:
         await redis.delete(key)
     except Exception:
         pass
