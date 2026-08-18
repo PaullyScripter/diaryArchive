@@ -282,3 +282,18 @@ style { display: none; }
 .badge-gradient {
   animation: badge-pop-shine 3s ease-in-out infinite;
 }
+
+/* Bug Catcher badge: the bug's legs crawl back and forth. */
+@keyframes badge-bug-legs {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(0.5px); }
+}
+
+.badge-bug-legs {
+  transform-origin: center;
+  animation: badge-bug-legs 0.6s ease-in-out infinite;
+}
+
+.badge-bug-legs.reverse {
+  animation-direction: reverse;
+}

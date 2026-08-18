@@ -9,6 +9,7 @@ interface BadgeData {
   color: string;
   icon: string;
   shine?: boolean;
+  anim?: string;
 }
 
 const iconPaths: Record<string, string> = {
@@ -19,6 +20,15 @@ const iconPaths: Record<string, string> = {
   flame: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z",
 };
 
+// "Bug Catcher" icon. The body is a single path; the legs are separate paths
+// so they can be animated independently (see .badge-bug-legs).
+const BUG_BODY =
+  "M12 9a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0v-2a4 4 0 0 1 4-4z M12 3v2 M10 3.5 9 5.5 M14 3.5 15 5.5 M8 6.5 6.5 8 M16 6.5 17.5 8";
+const BUG_LEG_LEFT =
+  "M7.5 13.5 3 12 M8 16 3.5 17 M8 10.5 3 9";
+const BUG_LEG_RIGHT =
+  "M16.5 13.5 21 12 M16 16 20.5 17 M16 10.5 21 9";
+
 const FALLBACKS: Record<string, string> = {
   bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
 };
@@ -26,12 +36,32 @@ const FALLBACKS: Record<string, string> = {
 function BadgeIcon({ badge, size = "sm" }: { badge: BadgeData; size?: "sm" | "md" }) {
   const gid = useId();
   const isGradient = badge.color.startsWith("linear-gradient");
+  const isBug = badge.icon === "bug";
   const animClass =
+    badge.anim === "bug-legs" ? "badge-bug-legs" :
     badge.tier === "gradient" ? "badge-gradient" :
     badge.tier === "diamond" ? "badge-diamond" : "";
   const icon = iconPaths[badge.icon] || iconPaths.book;
   const color = badge.color || FALLBACKS[badge.tier] || "#8B6914";
   const sizeClass = size === "md" ? "w-5 h-5" : "w-3.5 h-3.5";
+
+  if (isBug) {
+    return (
+      <svg
+        className={`${sizeClass} shrink-0`}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d={BUG_BODY} />
+        <path d={BUG_LEG_LEFT} className={animClass} />
+        <path d={BUG_LEG_RIGHT} className={`${animClass} reverse`} />
+      </svg>
+    );
+  }
 
   return (
     <svg

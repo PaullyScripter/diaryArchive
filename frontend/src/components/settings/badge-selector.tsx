@@ -13,6 +13,7 @@ interface Achievement {
   color: string;
   icon: string;
   shine?: boolean;
+  anim?: string;
 }
 
 interface DisplayedBadge {
@@ -22,6 +23,7 @@ interface DisplayedBadge {
   color: string;
   icon: string;
   shine?: boolean;
+  anim?: string;
 }
 
 const iconPaths: Record<string, string> = {
@@ -30,10 +32,11 @@ const iconPaths: Record<string, string> = {
   users: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   clock: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 6v6l4 2",
   flame: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z",
+  bug: "M12 20v-6 M12 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M8 5l-2-2 M16 5l2-2 M6 9H2 M22 9h-4 M4 14l-3-2 M23 16l-3-2 M5 19l-4 1 M19 19l4 1 M8 12H5 M19 12h-3",
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  diaries: "Diaries", likes: "Likes", followers: "Followers", age: "Age", streak: "Streak",
+  diaries: "Diaries", likes: "Likes", followers: "Followers", age: "Age", streak: "Streak", other: "Others",
 };
 
 const TIER_ORDER: Record<string, number> = {
@@ -43,6 +46,14 @@ const TIER_ORDER: Record<string, number> = {
 const FALLBACK_COLORS: Record<string, string> = {
   bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
 };
+
+// "Bug Catcher" icon: static body + animatable legs.
+const BUG_BODY =
+  "M12 9a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0v-2a4 4 0 0 1 4-4z M12 3v2 M10 3.5 9 5.5 M14 3.5 15 5.5 M8 6.5 6.5 8 M16 6.5 17.5 8";
+const BUG_LEG_LEFT =
+  "M7.5 13.5 3 12 M8 16 3.5 17 M8 10.5 3 9";
+const BUG_LEG_RIGHT =
+  "M16.5 13.5 21 12 M16 16 20.5 17 M16 10.5 21 9";
 
 export function BadgeSelector() {
   const qc = useQueryClient();
@@ -117,7 +128,7 @@ export function BadgeSelector() {
               {typeItems.map((ach) => {
                 const isGradient = ach.color.startsWith("linear-gradient");
                 const fillColor = isGradient ? FALLBACK_COLORS[ach.tier] || "#9B59B6" : ach.color;
-                const animClass = ach.tier === "diamond" ? "badge-diamond" : ach.tier === "gradient" ? "badge-gradient" : "";
+                const animClass = ach.anim === "bug-legs" ? "badge-bug-legs" : ach.tier === "diamond" ? "badge-diamond" : ach.tier === "gradient" ? "badge-gradient" : "";
                 const isSelected = selectedTiers[type] === ach.tier;
 
                 return (
@@ -132,9 +143,25 @@ export function BadgeSelector() {
                     }`}
                     title={ach.label}
                   >
-                    <svg className={`w-3.5 h-3.5 ${animClass}`} viewBox="0 0 24 24" fill={fillColor}>
-                      <path d={icon} />
-                    </svg>
+                    {ach.icon === "bug" ? (
+                      <svg
+                        className="w-3.5 h-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={fillColor}
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d={BUG_BODY} />
+                        <path d={BUG_LEG_LEFT} className={animClass} />
+                        <path d={BUG_LEG_RIGHT} className={`${animClass} reverse`} />
+                      </svg>
+                    ) : (
+                      <svg className={`w-3.5 h-3.5 ${animClass}`} viewBox="0 0 24 24" fill={fillColor}>
+                        <path d={icon} />
+                      </svg>
+                    )}
                     {ach.label}
                   </button>
                 );
