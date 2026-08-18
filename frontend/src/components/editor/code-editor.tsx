@@ -24,10 +24,11 @@ interface CodeEditorProps {
 // editor never touches `window` during SSR/prerender and stays privacy-first
 // (no CDN requests).
 async function ensureMonaco() {
-  const [{ default: monaco }, { emmetHTML, emmetCSS }] = await Promise.all([
-    import("monaco-editor"),
-    import("emmet-monaco-es"),
-  ]);
+  // monaco-editor's ESM entry has no default export — it exports the editor
+  // API as named members (editor, languages, Uri, ...). Import the whole
+  // module namespace and pass that as the Monaco instance.
+  const monaco = await import("monaco-editor");
+  const { emmetHTML, emmetCSS } = await import("emmet-monaco-es");
   emmetHTML(monaco as never);
   emmetCSS(monaco as never);
   loader.config({ monaco: monaco as never });
@@ -43,17 +44,31 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    ensureMonaco().then(() => {
-      if (mounted) setReady(true);
-    });
+    ensureMonaco()
+      .then(() => {
+        if (mounted) setReady(true);
+      })
+      .catch((err) => {
+        console.error("Failed to initialise Monaco editor:", err);
+        if (mounted) setError(true);
+      });
     return () => {
       mounted = false;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
+
+  if (error) {
+    return (
+      <div className="flex h-full min-h-[120px] items-center justify-center text-xs text-destructive">
+        Editor failed to load. Reload the page to try again.
+      </div>
+    );
+  }
 
   if (!ready) {
     return (

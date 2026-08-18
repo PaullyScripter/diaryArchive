@@ -33,6 +33,7 @@ ACHIEVEMENTS = {
     "streak_14":  {"type": "streak", "tier": "gold",     "threshold": 14,   "color": "#DAA520", "label": "14-Day Streak",  "icon": "flame"},
     "streak_30":  {"type": "streak", "tier": "diamond",  "threshold": 30,   "color": "#B9F2FF", "label": "30-Day Streak",  "icon": "flame", "shine": True},
     "streak_100": {"type": "streak", "tier": "gradient", "threshold": 100,  "color": "linear-gradient(135deg, #FF6B35, #FFD700)", "label": "100-Day Streak", "icon": "flame", "shine": True},
+    "bug_catcher": {"type": "other", "tier": "gold", "threshold": 2, "color": "#22C55E", "label": "Bug Catcher", "icon": "bug", "anim": "bug-legs"},
 }
 
 
@@ -112,6 +113,7 @@ async def _award(ach_type: str, count: int, user_id: str) -> list[dict]:
                 "color": ach["color"],
                 "icon": ach.get("icon", "book"),
                 "shine": ach.get("shine", False),
+                "anim": ach.get("anim"),
                 "awarded_at": datetime.now(UTC),
             }
             await db.achievements.insert_one(doc)
@@ -138,6 +140,7 @@ async def get_user_achievements(user_id: str) -> list[dict]:
             "color": d["color"],
             "icon": d.get("icon", "book"),
             "shine": d.get("shine", False),
+            "anim": d.get("anim"),
             "awarded_at": d["awarded_at"].isoformat() if d.get("awarded_at") else None,
         })
     return result
@@ -156,6 +159,7 @@ async def get_displayed_badge(user_id: str) -> dict | None:
         "color": badge.get("color", "#8B6914"),
         "icon": badge.get("icon", "book"),
         "shine": badge.get("shine", False),
+        "anim": badge.get("anim"),
     }
 
 
@@ -172,6 +176,7 @@ async def get_displayed_badges(user_id: str) -> list[dict]:
             "color": b.get("color", "#8B6914"),
             "icon": b.get("icon", "book"),
             "shine": b.get("shine", False),
+            "anim": b.get("anim"),
         }
         for b in user["displayed_badges"].values()
     ]
@@ -191,6 +196,7 @@ async def set_displayed_badge(user_id: str, achievement_id: str) -> dict | None:
         "color": ach["color"],
         "icon": ach.get("icon", "book"),
         "shine": ach.get("shine", False),
+        "anim": ach.get("anim"),
     }
     user_repo = UserRepository()
     user = await user_repo.get_by_id(user_id)
