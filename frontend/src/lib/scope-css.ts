@@ -12,5 +12,13 @@
 const ROOT_SELECTOR_RE = /(^|[{,}>])\s*(html|body|:root)(?=\s*[{,])/g;
 
 export function scopeAuthorCss(css: string): string {
-  return css.replace(ROOT_SELECTOR_RE, "$1 :host");
+  const scoped = css.replace(ROOT_SELECTOR_RE, "$1 :host");
+  // Code editors / preview iframes apply a box-sizing reset so that author
+  // declarations like `width: min(1420px, 100%)` together with padding fit
+  // inside the diary box instead of overflowing it. Without this, content-box
+  // sizing (the CSS default) makes the border-box larger than `100%`, which
+  // clips / scrolls the design. Apply it only within the shadow tree.
+  const reset =
+    ":host, :host *, :host *::before, :host *::after { box-sizing: border-box; }";
+  return `${reset}\n${scoped}`;
 }

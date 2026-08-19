@@ -298,3 +298,43 @@ style { display: none; }
   transform-origin: center;
   animation: badge-bug-legs 0.6s ease-in-out infinite;
 }
+
+/* ============================================================
+   Self-hosted display fonts for custom HTML/CSS diaries.
+   Authors reference these by canonical family name in their own
+   <style> (e.g. font-family: "Playfair Display"), and the shadow
+   DOM resolves them document-wide. Bundling the woff2 locally keeps
+   the fonts private (no external font CDN / reader-IP leak) while
+   rendering identically to a full-page editor.
+   ============================================================ */
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+  src: url("/fonts/playfair-display-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/librecaslon-400-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/librecaslon-700-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/librecaslon-italic-400-latin.woff2") format("woff2");
+}

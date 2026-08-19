@@ -43,4 +43,15 @@ describe("scopeAuthorCss", () => {
     expect(out).toContain('content: "body { "');
     expect(out).toContain("font-family: body");
   });
+
+  it("prepends a box-sizing border-box reset so author widths fit their padding", () => {
+    // Author CSS like `.newspaper { width: min(1420px, 100%); padding: 22px 36px }`
+    // uses content-box sizing by default, so the border-box (content + padding)
+    // overflows `100%` and clips/scrolls. Code editors/preview iframes apply a
+    // border-box reset; do the same scoped to the shadow tree so `width: 100%`
+    // plus padding stays within the diary box.
+    const out = scopeAuthorCss("<style>body { margin: 0 } .x { width: 100% }</style><div class=x></div>");
+    expect(out.startsWith(":host, :host *, :host *::before, :host *::after { box-sizing: border-box; }")).toBe(true);
+    expect(out).toContain(":host { margin: 0 }");
+  });
 });
