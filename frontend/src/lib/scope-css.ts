@@ -18,7 +18,11 @@ export function scopeAuthorCss(css: string): string {
   // inside the diary box instead of overflowing it. Without this, content-box
   // sizing (the CSS default) makes the border-box larger than `100%`, which
   // clips / scrolls the design. Apply it only within the shadow tree.
+  //
+  // Must be wrapped in its own <style> tag: scopeAuthorCss returns a full HTML
+  // fragment (the diary's markup with scoped styles), so a bare CSS rule would
+  // otherwise sit outside any <style> and render as visible text.
   const reset =
-    ":host, :host *, :host *::before, :host *::after { box-sizing: border-box; }";
+    "<style>:host, :host *, :host *::before, :host *::after { box-sizing: border-box; }</style>";
   return `${reset}\n${scoped}`;
 }
