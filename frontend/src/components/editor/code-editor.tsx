@@ -20,17 +20,66 @@ interface CodeEditorProps {
   ariaLabel?: string;
 }
 
+// Tell Monaco how to spawn its workers. getWorker takes precedence over the
+// webpack plugin's getWorkerUrl, so the built-in HTML/CSS language service
+// (tag completion, CSS property suggestions, formatting, hover) actually loads.
+// We use webpack 5's native `new Worker(new URL(...))` pattern (relative paths,
+// resolved at build time) so the worker files are emitted and served same-origin
+// by Next.js (privacy-first, no CDN). The monaco-editor-webpack-plugin alone
+// emits workers to /_next/*.worker.js which Next's dev server doesn't serve
+// (404), so we override getWorker.
+function configureWorkers() {
+  if (typeof window === "undefined") return;
+  const env = (window as unknown as { MonacoEnvironment?: { getWorker?: unknown } })
+    .MonacoEnvironment;
+  if (env?.getWorker) return;
+  (window as unknown as { MonacoEnvironment: { getWorker?: unknown } }).MonacoEnvironment = {
+    ...(env as { getWorker?: unknown }),
+    getWorker: (_workerId: string, label: string) => {
+      if (label === "html" || label === "handlebars" || label === "razor") {
+        return new Worker(
+          new URL(
+            "../../../node_modules/monaco-editor/esm/vs/languages/features/html/html.worker.js",
+            import.meta.url,
+          ),
+          { type: "module" },
+        );
+      }
+      if (label === "css" || label === "scss" || label === "less") {
+        return new Worker(
+          new URL(
+            "../../../node_modules/monaco-editor/esm/vs/languages/features/css/css.worker.js",
+            import.meta.url,
+          ),
+          { type: "module" },
+        );
+      }
+      return new Worker(
+        new URL(
+          "../../../node_modules/monaco-editor/esm/vs/editor/editor.worker.js",
+          import.meta.url,
+        ),
+        { type: "module" },
+      );
+    },
+  };
+}
+
 // Load Monaco and wire up Emmet + local workers on the client only, so the
 // editor never touches `window` during SSR/prerender and stays privacy-first
 // (no CDN requests).
 async function ensureMonaco() {
-  // monaco-editor's ESM entry has no default export — it exports the editor
+  configureWorkers();
+  // monaco-editor's ESM entry has no default export - it exports the editor
   // API as named members (editor, languages, Uri, ...). Import the whole
   // module namespace and pass that as the Monaco instance.
   const monaco = await import("monaco-editor");
   const { emmetHTML, emmetCSS } = await import("emmet-monaco-es");
-  emmetHTML(monaco as never);
-  emmetCSS(monaco as never);
+  // monaco 0.5x dropped the internal Monarch tokenizer structure that emmet's
+  // default 'monarch' detection relied on. Use the public 'standard' tokenizer
+  // API (model.tokenization.getLineTokens) so abbreviation detection works.
+  emmetHTML(monaco as never, ["html"], { tokenizer: "standard" });
+  emmetCSS(monaco as never, ["css"], { tokenizer: "standard" });
   loader.config({ monaco: monaco as never });
 }
 
@@ -73,7 +122,7 @@ export function CodeEditor({
   if (!ready) {
     return (
       <div className="flex h-full min-h-[120px] items-center justify-center text-xs text-muted">
-        Loading editor…
+        Loading editor...
       </div>
     );
   }
