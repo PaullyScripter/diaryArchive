@@ -6,6 +6,29 @@ from app.repositories.base import BaseRepository
 class LikeRepository(BaseRepository):
     collection_name = "likes"
 
+    async def ensure_liked(self, user_id: str, diary_id: str, created_at) -> bool:
+        """Atomically insert a like if absent. Returns True only if this call
+        performed the insertion (i.e. the state actually changed). A unique
+        compound index makes concurrent calls converge to a single like."""
+        result = await self._collection.update_one(
+            {
+                "user_id": ObjectId(user_id),
+                "diary_id": ObjectId(diary_id),
+            },
+            {"$setOnInsert": {"created_at": created_at}},
+            upsert=True,
+        )
+        return result.upserted_id is not None
+
+    async def ensure_unliked(self, user_id: str, diary_id: str) -> bool:
+        """Atomically delete a like if present. Returns True only if a like was
+        actually removed (state changed)."""
+        result = await self._collection.delete_one({
+            "user_id": ObjectId(user_id),
+            "diary_id": ObjectId(diary_id),
+        })
+        return result.deleted_count > 0
+
     async def find_by_user_and_diary(self, user_id: str, diary_id: str) -> dict | None:
         return await self.find_one({
             "user_id": ObjectId(user_id),

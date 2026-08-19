@@ -179,6 +179,48 @@ def test_style_breakout_escaped_angle_brackets_neutralized():
     assert "</style><" not in out
 
 
+def test_external_image_from_arbitrary_host_dropped(monkeypatch):
+    # HIGH-2: arbitrary external <img src> (a tracking pixel / probe) must be
+    # removed even though it is not a script: scheme.
+    from app.core import sanitize
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "public_media_base_url", None)
+    monkeypatch.setattr(settings, "public_api_url", None)
+    html = '<img src="https://tracker.example/pixel.gif"><p>hi</p>'
+    result = sanitize.sanitize_html(html)
+    assert "tracker.example" not in result
+    assert "src=" not in result
+
+
+def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
+    # Relative (self-hosted) media and configured public media origin allowed.
+    from app.core import sanitize
+    from app.core.config import settings
+
+    monkeypatch.setattr(
+        settings, "public_media_base_url", "https://media.diaryarchive.com"
+    )
+    monkeypatch.setattr(settings, "public_api_url", "https://api.diaryarchive.com")
+    html = (
+        '<img src="/api/v1/media/file/abc?v=original">'
+        '<img src="https://media.diaryarchive.com/x.png">'
+        '<img src="https://evil.example/y.png">'
+    )
+    result = sanitize.sanitize_html(html)
+    assert "/api/v1/media/file/abc" in result
+    assert "media.diaryarchive.com" in result
+    assert "evil.example" not in result
+
+
+def test_external_href_link_kept():
+    # Links (navigation, no resource loading) to arbitrary http(s) are allowed;
+    # only dangerous schemes are stripped.
+    html = '<a href="https://www.example.com/ref">r</a>'
+    result = sanitize_html(html)
+    assert 'href="https://www.example.com/ref"' in result
+
+
 def test_disallowed_tags_stripped():
     html = "<script>alert(1)</script><form>Hello</form><div class=\"x\">body</div>"
     result = sanitize_html(html)

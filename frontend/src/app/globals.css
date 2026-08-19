@@ -282,3 +282,59 @@ style { display: none; }
 .badge-gradient {
   animation: badge-pop-shine 3s ease-in-out infinite;
 }
+
+/* Bug Catcher badge: the bug's legs crawl back and forth. Each leg carries a
+   negative animation-delay (--bug-leg-delay via inline style) so the front /
+   middle / back pairs move out of phase, giving a natural alternating crawl. */
+@keyframes badge-bug-legs {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(1.5px); }
+}
+
+.badge-bug-legs {
+  /* SVG paths need fill-box so translateY moves relative to the legs, not the
+     whole 24x24 viewBox, otherwise the movement is off-screen / invisible. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: badge-bug-legs 0.6s ease-in-out infinite;
+}
+
+/* ============================================================
+   Self-hosted display fonts for custom HTML/CSS diaries.
+   Authors reference these by canonical family name in their own
+   <style> (e.g. font-family: "Playfair Display"), and the shadow
+   DOM resolves them document-wide. Bundling the woff2 locally keeps
+   the fonts private (no external font CDN / reader-IP leak) while
+   rendering identically to a full-page editor.
+   ============================================================ */
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+  src: url("/fonts/playfair-display-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/librecaslon-400-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/librecaslon-700-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/librecaslon-italic-400-latin.woff2") format("woff2");
+}

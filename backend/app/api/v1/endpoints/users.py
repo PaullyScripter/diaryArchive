@@ -1,4 +1,3 @@
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 
@@ -52,15 +51,14 @@ async def update_my_email(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:update_email:{current_user['_id']}", 5, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:update_email:{current_user['_id']}", 5, 60)
     if is_limited:
         raise RateLimitException("Too many email update attempts")
     result = await update_user_email(str(current_user["_id"]), body.email)
 
     if result.get("has_email") and not result.get("email_verified"):
         from app.core.security import create_email_verification_token, hash_token
+
         verification_token_raw = create_email_verification_token("")
         verification_token_hash = hash_token(verification_token_raw)
         verify_repo = EmailVerificationTokenRepository()
@@ -104,6 +102,28 @@ async def get_encryption_key(
     }
 
 
+@router.get("/me/export")
+async def export_my_data(
+    current_user: dict = Depends(get_current_user),
+):
+    from app.services.account_service import export_user_data
+
+    data = await export_user_data(str(current_user["_id"]))
+    return {"data": data}
+
+
+@router.delete("/me")
+async def delete_my_account(
+    current_user: dict = Depends(get_current_user),
+):
+    from app.services.account_service import delete_account
+
+    deleted = await delete_account(str(current_user["_id"]))
+    if not deleted:
+        raise NotFoundException("Account could not be deleted")
+    return {"data": {"deleted": True}}
+
+
 @router.get("/{username}/diaries")
 async def get_user_diaries(
     username: str,
@@ -136,21 +156,26 @@ async def get_user_diaries(
     data = []
     for diary in diaries:
         content_text = diary.get("content_text", "") or ""
-        data.append({
-            "id": str(diary["_id"]),
-            "title": diary.get("title"),
-            "excerpt": content_text[:200] if content_text else None,
-            "tags": diary.get("tags", []),
-            "emotion": diary.get("emotion"),
-            "stats": diary.get("stats", {
-                "like_count": 0,
-                "comment_count": 0,
-                "bookmark_count": 0,
-            }),
-            "created_at": fmt_dt(diary.get("created_at")),
-            "updated_at": fmt_dt(diary.get("updated_at")),
-            "published_at": fmt_dt(diary.get("published_at")),
-        })
+        data.append(
+            {
+                "id": str(diary["_id"]),
+                "title": diary.get("title"),
+                "excerpt": content_text[:200] if content_text else None,
+                "tags": diary.get("tags", []),
+                "emotion": diary.get("emotion"),
+                "stats": diary.get(
+                    "stats",
+                    {
+                        "like_count": 0,
+                        "comment_count": 0,
+                        "bookmark_count": 0,
+                    },
+                ),
+                "created_at": fmt_dt(diary.get("created_at")),
+                "updated_at": fmt_dt(diary.get("updated_at")),
+                "published_at": fmt_dt(diary.get("published_at")),
+            }
+        )
 
     return {
         "data": data,

@@ -6,13 +6,13 @@ from app.core.exceptions import (
     PermissionDeniedException,
     ValidationException,
 )
+from app.core.utils import fmt_dt
 from app.repositories.comment_repo import CommentRepository
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.user_repo import UserRepository
+from app.services.social_service import _toggle_guard
 
 logger = logging.getLogger(__name__)
-from app.core.utils import fmt_dt
-
 
 MAX_DEPTH = 4
 
@@ -50,7 +50,9 @@ def _build_comment_response(
         "is_deleted": comment.get("is_deleted", False),
         "is_owner": is_owner,
         "is_diary_owner": is_diary_owner,
-        "parent_comment_id": str(comment["parent_comment_id"]) if comment.get("parent_comment_id") else None,
+        "parent_comment_id": str(comment["parent_comment_id"])
+        if comment.get("parent_comment_id")
+        else None,
         "depth": comment.get("depth", 0),
         "reply_count": comment.get("reply_count", 0),
         "like_count": like_count if like_count > 0 else comment.get("like_count", 0),
@@ -111,7 +113,9 @@ async def create_comment(
         "user_id": current_user["_id"],
         "content": content,
         "is_deleted": False,
-        "parent_comment_id": diary["_id"].__class__(parent_comment_id) if parent_comment_id else None,
+        "parent_comment_id": diary["_id"].__class__(parent_comment_id)
+        if parent_comment_id
+        else None,
         "root_comment_id": root_id,
         "depth": depth,
         "reply_count": 0,
@@ -129,10 +133,12 @@ async def create_comment(
             {"$inc": {"stats.comment_count": 1}},
         )
     from app.services.diary_service import _index_diary_async
+
     updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
     if updated_diary:
         _index_diary_async(updated_diary)
     from app.services.notification_service import _send_notification_async
+
     _send_notification_async(
         recipient_id=str(diary["user_id"]),
         actor_id=str(current_user["_id"]),
@@ -182,7 +188,11 @@ async def list_comments(
 
     user_repo = UserRepository()
     diary_author = await user_repo.get_by_id(str(diary["user_id"]))
-    if diary_author and diary_author.get("is_banned") and not (current_user and str(current_user["_id"]) == str(diary["user_id"])):
+    if (
+        diary_author
+        and diary_author.get("is_banned")
+        and not (current_user and str(current_user["_id"]) == str(diary["user_id"]))
+    ):
         raise NotFoundException("Diary not found")
 
     banned_ids = await user_repo.get_banned_user_ids()
@@ -190,7 +200,9 @@ async def list_comments(
     comment_repo = CommentRepository()
     skip = (page - 1) * per_page
     comments = await comment_repo.find_by_diary(
-        diary_id, skip=skip, limit=per_page,
+        diary_id,
+        skip=skip,
+        limit=per_page,
         exclude_user_ids=banned_ids if banned_ids else None,
     )
     total = await comment_repo.count_by_diary(
@@ -224,14 +236,20 @@ async def list_replies(
 
     user_repo = UserRepository()
     diary_author = await user_repo.get_by_id(str(diary["user_id"]))
-    if diary_author and diary_author.get("is_banned") and not (current_user and str(current_user["_id"]) == str(diary["user_id"])):
+    if (
+        diary_author
+        and diary_author.get("is_banned")
+        and not (current_user and str(current_user["_id"]) == str(diary["user_id"]))
+    ):
         raise NotFoundException("Diary not found")
 
     banned_ids = await user_repo.get_banned_user_ids()
 
     skip = (page - 1) * per_page
     comments = await comment_repo.find_replies(
-        comment_id, skip=skip, limit=per_page,
+        comment_id,
+        skip=skip,
+        limit=per_page,
         exclude_user_ids=banned_ids if banned_ids else None,
     )
     total = await comment_repo.count_replies(
@@ -259,13 +277,19 @@ async def _enrich_and_format(
     liked_ids: set[str] = set()
     if current_user:
         comment_ids = [str(c["_id"]) for c in comments]
-        liked_ids = await comment_repo.batch_has_comment_likes(comment_ids, str(current_user["_id"]))
+        liked_ids = await comment_repo.batch_has_comment_likes(
+            comment_ids, str(current_user["_id"])
+        )
 
     data = []
     for comment in comments:
-        author = author_map.get(str(comment["user_id"]), {"_id": str(comment["user_id"]), "username": "[deleted]"})
+        author = author_map.get(
+            str(comment["user_id"]), {"_id": str(comment["user_id"]), "username": "[deleted]"}
+        )
         is_liked = str(comment["_id"]) in liked_ids
-        data.append(_build_comment_response(comment, author, current_user, diary, is_liked=is_liked))
+        data.append(
+            _build_comment_response(comment, author, current_user, diary, is_liked=is_liked)
+        )
 
     return {
         "data": data,
@@ -279,7 +303,9 @@ async def _enrich_and_format(
     }
 
 
-async def delete_comment(comment_id: str, diary_id: str, current_user: dict, admin_delete_reason: str | None = None) -> None:
+async def delete_comment(
+    comment_id: str, diary_id: str, current_user: dict, admin_delete_reason: str | None = None
+) -> None:
     comment_repo = CommentRepository()
     comment = await comment_repo.get_by_id(comment_id)
     if comment is None:
@@ -302,6 +328,7 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
         if not admin_delete_reason or len(admin_delete_reason.strip()) < 10:
             raise ValidationException("Admin deletion requires a reason of at least 10 characters")
         from app.services.audit_service import log_audit
+
         await log_audit(
             admin_id=str(current_user["_id"]),
             admin_username=current_user["username"],
@@ -313,12 +340,14 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
         from app.core.background import run_in_background
         from app.services.notification_service import create_notification
 
-        comment_reason = admin_delete_reason.strip() if admin_delete_reason else "Content policy violation"
+        comment_reason = (
+            admin_delete_reason.strip() if admin_delete_reason else "Content policy violation"
+        )
         diary_title = diary.get("title", "a diary")
         title = f'Your comment on "{diary_title}" was removed - {comment_reason}'
         body = (
             f"Hello,\n\n"
-            f"Your comment on \"{diary_title}\" has been removed by an administrator"
+            f'Your comment on "{diary_title}" has been removed by an administrator'
             f" for the following reason: {comment_reason}.\n\n"
             f"Please review our Community Guidelines. Repeated violations may result"
             f" in account suspension or banning.\n\n"
@@ -357,6 +386,7 @@ async def delete_comment(comment_id: str, diary_id: str, current_user: dict, adm
             {"$inc": {"stats.comment_count": -1}},
         )
     from app.services.diary_service import _index_diary_async
+
     updated_diary = await diary_repo.get_by_id(str(diary["_id"]))
     if updated_diary:
         _index_diary_async(updated_diary)
@@ -377,17 +407,15 @@ async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
 
     user_id = str(current_user["_id"])
 
-    deleted = await comment_repo.find_one_and_delete_comment_like(comment_id, user_id)
-    if deleted is not None:
-        await comment_repo.inc_like_count(comment_id, -1)
-        comment = await comment_repo.get_by_id(comment_id)
-        return {"is_liked": False, "like_count": comment["like_count"] if comment else 0}
+    async with await _toggle_guard(("comment_like", user_id, comment_id)):
+        removed = await comment_repo.ensure_comment_unliked(comment_id, user_id)
+        if removed:
+            await comment_repo.inc_like_count(comment_id, -1)
+            comment = await comment_repo.get_by_id(comment_id)
+            return {"is_liked": False, "like_count": comment["like_count"] if comment else 0}
 
-    try:
-        await comment_repo.add_comment_like(comment_id, user_id)
-    except Exception:
+        added = await comment_repo.ensure_comment_liked(comment_id, user_id)
+        if added:
+            await comment_repo.inc_like_count(comment_id, 1)
         comment = await comment_repo.get_by_id(comment_id)
-        return {"is_liked": False, "like_count": comment["like_count"] if comment else 0}
-    await comment_repo.inc_like_count(comment_id, 1)
-    comment = await comment_repo.get_by_id(comment_id)
-    return {"is_liked": True, "like_count": comment["like_count"] if comment else 0}
+        return {"is_liked": True, "like_count": comment["like_count"] if comment else 0}

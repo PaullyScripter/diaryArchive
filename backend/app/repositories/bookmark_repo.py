@@ -6,6 +6,27 @@ from app.repositories.base import BaseRepository
 class BookmarkRepository(BaseRepository):
     collection_name = "bookmarks"
 
+    async def ensure_bookmarked(self, user_id: str, diary_id: str, created_at) -> bool:
+        """Atomically insert a bookmark if absent. Returns True only if this
+        call performed the insertion. A unique compound index makes concurrent
+        calls converge to a single bookmark."""
+        result = await self._collection.update_one(
+            {
+                "user_id": ObjectId(user_id),
+                "diary_id": ObjectId(diary_id),
+            },
+            {"$setOnInsert": {"created_at": created_at}},
+            upsert=True,
+        )
+        return result.upserted_id is not None
+
+    async def ensure_unbookmarked(self, user_id: str, diary_id: str) -> bool:
+        result = await self._collection.delete_one({
+            "user_id": ObjectId(user_id),
+            "diary_id": ObjectId(diary_id),
+        })
+        return result.deleted_count > 0
+
     async def find_by_user_and_diary(self, user_id: str, diary_id: str) -> dict | None:
         return await self.find_one({
             "user_id": ObjectId(user_id),

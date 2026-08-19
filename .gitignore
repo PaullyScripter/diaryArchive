@@ -28,6 +28,12 @@ out/
 !.env.production.example
 backend/.env.production
 frontend/.env.production
+# Developer-specific local secrets must not be tracked. Safe templates are kept
+# as .env.example / *.example files instead.
+.env.development
+.env.development.*
+backend/.env.development
+frontend/.env.development
 
 # Backups
 /backups/

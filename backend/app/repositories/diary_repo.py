@@ -38,10 +38,12 @@ class DiaryRepository(BaseRepository):
         )
 
     async def count_public_by_user(self, user_id: str) -> int:
-        return await self.count({
-            "user_id": self._oid(user_id),
-            "privacy": "public",
-        })
+        return await self.count(
+            {
+                "user_id": self._oid(user_id),
+                "privacy": "public",
+            }
+        )
 
     async def find_public_by_user_ids(
         self,
@@ -85,9 +87,7 @@ class DiaryRepository(BaseRepository):
             limit=limit,
         )
 
-    async def count_public_feed(
-        self, exclude_user_ids: list[ObjectId] | None = None
-    ) -> int:
+    async def count_public_feed(self, exclude_user_ids: list[ObjectId] | None = None) -> int:
         query: dict = {"privacy": "public"}
         if exclude_user_ids:
             query["user_id"] = {"$nin": exclude_user_ids}
@@ -179,14 +179,17 @@ class DiaryRepository(BaseRepository):
     async def delete_cascade(self, diary_id: str) -> int:
         oid = self._oid(diary_id)
         db = self._collection.database
-        comment_ids = await db.comments.find(
-            {"diary_id": oid}, {"_id": 1}
-        ).to_list(length=10000)
+        comment_ids = await db.comments.find({"diary_id": oid}, {"_id": 1}).to_list(length=10000)
         comment_oids = [c["_id"] for c in comment_ids]
         if comment_oids:
             await db.comment_likes.delete_many({"comment_id": {"$in": comment_oids}})
         await db.comments.delete_many({"diary_id": oid})
         await db.likes.delete_many({"diary_id": oid})
         await db.bookmarks.delete_many({"diary_id": oid})
+        await db.notifications.delete_many({"target_type": "diary", "target_id": oid})
+        await db.notifications.delete_many(
+            {"target_type": "comment", "target_id": {"$in": comment_oids}}
+        )
+        await db.reports.delete_many({"target_type": "diary", "target_id": oid})
         result = await self._collection.delete_one({"_id": oid})
         return result.deleted_count

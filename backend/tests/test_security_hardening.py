@@ -79,20 +79,129 @@ def test_public_media_url_never_uses_internal_host(monkeypatch):
         "created_at": None,
     }
 
-    # When no public base URL is configured, fall back to a signed URL and
-    # NEVER leak the internal MinIO host.
+    # When no public base URL is configured, fall back to the app's own
+    # same-origin media proxy (never expires, never leaks the internal MinIO
+    # host). The frontend resolves the relative /api/... URL against the API
+    # origin.
     monkeypatch.setattr(settings, "public_media_base_url", None)
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(media_service, "_generate_signed_url", lambda p: f"signed://{p}")
-        result = media_service._build_media_response(media)
-        assert result["url"] == "signed://users/x/abc.webp"
-        assert "minio" not in result["url"]
+    result = media_service._build_media_response(media)
+    assert result["url"].startswith("/api/v1/media/file/")
+    assert "minio" not in result["url"]
+    assert "localhost" not in result["url"]
 
     # When configured, use the public base URL.
     monkeypatch.setattr(settings, "public_media_base_url", "https://media.diaryarchive.com")
     result = media_service._build_media_response(media)
     assert result["url"] == "https://media.diaryarchive.com/diaryarchive/users/x/abc.webp"
     assert "minio" not in result["url"]
+
+
+def test_fastapi_docs_disabled_in_production(monkeypatch):
+    """HIGH-1: /docs, /redoc and /openapi.json must not exist in production."""
+    from fastapi.testclient import TestClient
+
+    from app.core.config import settings
+    from app.main import create_app
+
+    monkeypatch.setattr(settings, "debug", False)
+    app = create_app()
+    client = TestClient(app)
+
+    assert app.docs_url is None
+    assert app.redoc_url is None
+    assert app.openapi_url is None
+
+    for path in ("/docs", "/redoc", "/openapi.json", "/api/v1/openapi.json"):
+        resp = client.get(path)
+        assert resp.status_code in (404, 405), (
+            f"{path} must not be exposed in production (got {resp.status_code})"
+        )
+
+
+def test_fastapi_docs_enabled_in_development(monkeypatch):
+    """HIGH-1: /docs, /redoc and /openapi.json exist when debug is enabled."""
+    from fastapi.testclient import TestClient
+
+    from app.core.config import settings
+    from app.main import create_app
+
+    monkeypatch.setattr(settings, "debug", True)
+    app = create_app()
+    client = TestClient(app)
+
+    assert app.docs_url == "/docs"
+    assert app.redoc_url == "/redoc"
+    assert app.openapi_url == "/openapi.json"
+    assert client.get("/docs").status_code == 200
+    assert client.get("/openapi.json").status_code == 200
+
+
+def test_production_csp_contains_no_dev_origins(monkeypatch):
+    """MED-9: production CSP must not reference localhost or internal hosts."""
+    from app.core.config import settings
+    from app.core.middleware import _build_csp
+
+    monkeypatch.setattr(settings, "debug", False)
+    monkeypatch.setattr(settings, "public_media_base_url", "https://media.diaryarchive.com")
+    monkeypatch.setattr(settings, "public_api_url", "https://api.diaryarchive.com")
+
+    csp = _build_csp()
+    assert "localhost" not in csp
+    assert "minio" not in csp
+    assert "media.diaryarchive.com" in csp
+    assert "api.diaryarchive.com" in csp
+    assert "object-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+
+
+def test_development_csp_allows_dev_origins(monkeypatch):
+    """In debug mode dev origins are permitted so local media still loads."""
+    from app.core.config import settings
+    from app.core.middleware import _build_csp
+
+    monkeypatch.setattr(settings, "debug", True)
+    csp = _build_csp()
+    assert "http://localhost:9000" in csp
+    assert "http://minio:9000" in csp
+
+
+def test_request_log_ip_is_anonymized():
+    from app.core.middleware import _anonymize_ip
+
+    assert _anonymize_ip("203.0.113.45") == "203.0.113.x"
+    assert _anonymize_ip("1.2.3.4") == "1.2.3.x"
+    assert _anonymize_ip("2001:db8::1").startswith("2001:db8:xxxx") or _anonymize_ip(
+        "2001:db8::1"
+    ).startswith("2001:xxxx")
+    assert _anonymize_ip("") == ""
+    assert _anonymize_ip("unknown") == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_account_lockout_blocks_brute_force_regardless_of_ip():
+    """MED-5: repeated failed logins against one account lock it out, so an
+    attacker rotating IPs cannot brute-force a single account."""
+    from app.core.config import settings
+    from app.core.security import clear_attempts, is_locked_out, record_failed_attempt
+
+    max_attempts, window = settings.get_rate_limit("login_account")
+    key = "auth_fail:login:targetuser"
+
+    await clear_attempts(key)
+    assert await is_locked_out(key, max_attempts) is False
+
+    locked = False
+    for _ in range(max_attempts + 2):
+        locked = await record_failed_attempt(key, max_attempts, window)
+    assert locked is True
+    assert await is_locked_out(key, max_attempts) is True
+
+    # A different account is unaffected by targetuser's lockout.
+    assert await is_locked_out("auth_fail:login:otheruser", max_attempts) is False
+
+    # A successful login clears the counter and unlocks the account.
+    await clear_attempts(key)
+    assert await is_locked_out(key, max_attempts) is False
 
 
 def test_ticket_reply_rejects_empty_message():

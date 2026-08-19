@@ -99,7 +99,17 @@ class TestRegister:
                 "accepted_terms": True,
             },
         )
-        assert response.status_code == 409
+        # Anti-enumeration: reusing an already-registered email returns a
+        # success-shaped response and creates NO second account, so an attacker
+        # cannot tell registered emails from unregistered ones.
+        assert response.status_code == 201
+        assert "verification" in response.json().get("message", "").lower()
+        # Confirm the second account was NOT created.
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={"username": "user2", "password": "ValidPass1"},
+        )
+        assert login.status_code == 401
 
     async def test_register_invalid_username(self, client: AsyncClient):
         response = await client.post(
@@ -163,6 +173,121 @@ class TestLogin:
             json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
         )
         assert response.status_code == 403
+
+
+class TestLoginLockoutAndEnumeration:
+    """MED-5: per-account lockout is independent of client IP, and login does
+    not leak account existence (non-existent users consume identical failure
+    state)."""
+
+    async def test_account_lockout_blocks_correct_password_across_ips(
+        self, client: AsyncClient, registered_user: dict
+    ):
+        # 5 failed attempts, each from a DIFFERENT client IP so the per-(user,IP)
+        # limiter is not what trips. The account-level counter must reach its
+        # threshold regardless of IP.
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/login",
+                headers={"X-Real-IP": f"10.0.0.{i}"},
+                json={
+                    "username": "testuser",
+                    "password": "WrongPass123",
+                    "accepted_terms": True,
+                },
+            )
+            assert resp.status_code == 401, resp.text
+
+        # A 6th attempt with the CORRECT password from a fresh IP is still
+        # rejected because the account is locked out.
+        locked = await client.post(
+            "/api/v1/auth/login",
+            headers={"X-Real-IP": "10.0.0.99"},
+            json={
+                "username": "testuser",
+                "password": "ValidPass123",
+                "accepted_terms": True,
+            },
+        )
+        assert locked.status_code == 429, locked.text
+        assert "later" in locked.json()["error"]["message"].lower()
+
+    async def test_account_lockout_survives_successful_auth_while_locked(
+        self, client: AsyncClient, registered_user: dict
+    ):
+        for i in range(5):
+            await client.post(
+                "/api/v1/auth/login",
+                headers={"X-Real-IP": f"10.1.0.{i}"},
+                json={
+                    "username": "testuser",
+                    "password": "WrongPass123",
+                    "accepted_terms": True,
+                },
+            )
+        resp = await client.post(
+            "/api/v1/auth/login",
+            headers={"X-Real-IP": "10.1.0.99"},
+            json={
+                "username": "testuser",
+                "password": "ValidPass123",
+                "accepted_terms": True,
+            },
+        )
+        assert resp.status_code == 429
+
+    async def test_nonexistent_user_locks_out_identically_to_existing(
+        self, client: AsyncClient
+    ):
+        # Non-existent account: 5 failed logins (each unique IP) must produce
+        # the same lockout behaviour as an existing account, so an attacker
+        # cannot infer which usernames exist.
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/login",
+                headers={"X-Real-IP": f"10.2.0.{i}"},
+                json={
+                    "username": "ghost_account",
+                    "password": "WrongPass123",
+                    "accepted_terms": True,
+                },
+            )
+            assert resp.status_code == 401
+
+        locked = await client.post(
+            "/api/v1/auth/login",
+            headers={"X-Real-IP": "10.2.0.99"},
+            json={
+                "username": "ghost_account",
+                "password": "Whatever123",
+                "accepted_terms": True,
+            },
+        )
+        assert locked.status_code == 429
+
+    async def test_wrong_password_and_missing_account_return_identical_status(
+        self, client: AsyncClient, registered_user: dict
+    ):
+        existing = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "testuser",
+                "password": "WrongPass123",
+                "accepted_terms": True,
+            },
+        )
+        missing = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "no_such_user_xyz",
+                "password": "WrongPass123",
+                "accepted_terms": True,
+            },
+        )
+        # Both 401, no existence oracle in the status code or error shape.
+        assert existing.status_code == 401
+        assert missing.status_code == 401
+        assert existing.json()["error"]["code"] == missing.json()["error"]["code"]
 
 
 class TestRefresh:

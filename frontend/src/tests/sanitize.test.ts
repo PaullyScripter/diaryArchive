@@ -48,6 +48,21 @@ describe("sanitizeHtml", () => {
     expect(result).toContain('<div class="diary-entry">');
   });
 
+  it("keeps the leading <style> block when the content also contains an <img>", () => {
+    // A <style> block plus any <img> forces the DOMParser branch of
+    // sanitizeHtml. Parsing as a full HTML document hoists the leading <style>
+    // into <head>, so doc.body.innerHTML alone would drop the author's CSS.
+    // The block must be re-appended so the diary keeps its styles.
+    const input =
+      '<style>:root{--paper:#e7dcc0}.newspaper{background:var(--paper)}</style><div class="newspaper"><img src="/api/v1/media/file/x" alt="p"><h1>Hi</h1></div>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("<style>");
+    expect(result).toContain("--paper:#e7dcc0");
+    expect(result).toContain(".newspaper{background");
+    expect(result).toContain('<div class="newspaper">');
+    expect(result).toContain('<img src="/api/v1/media/file/x"');
+  });
+
   it("neutralizes dangerous CSS inside style blocks", () => {
     const input =
       '<style>.a{background:url(javascript:alert(1));color:red}@import url("https://evil.example/x.css");.b{width:expression(1)}</style><p>x</p>';
@@ -147,6 +162,24 @@ describe("sanitizeHtml", () => {
     expect(result).not.toContain("alert");
   });
 
+  it("neutralizes url()/javascript: inside inline style attributes (LOW-11)", () => {
+    const input =
+      '<div style="background:url(https://evil.example/beacon.png);color:red">x</div>';
+    const result = sanitizeHtml(input);
+    // The url() call is broken by the DISABLED- prefix so no request fires.
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain("background:url(");
+    expect(result).toContain("color:red");
+  });
+
+  it("neutralizes escaped url() inside inline style attributes (LOW-11)", () => {
+    const input = String.raw`<div style="background:u\72l(https://evil.example/x.png);color:red">x</div>`;
+    const result = sanitizeHtml(input);
+    expect(result).toContain("DISABLED-url(");
+    expect(result).not.toContain("background:url(");
+    expect(result).toContain("color:red");
+  });
+
   it("handles empty string", () => {
     expect(sanitizeHtml("")).toBe("");
   });
@@ -154,5 +187,48 @@ describe("sanitizeHtml", () => {
   it("handles null/undefined gracefully", () => {
     expect(() => sanitizeHtml(null as unknown as string)).not.toThrow();
     expect(() => sanitizeHtml(undefined as unknown as string)).not.toThrow();
+  });
+
+  it("keeps external https: images (author preference)", () => {
+    const input =
+      '<p>hi</p><img src="https://images.unsplash.com/photo-123.jpg" alt="p">';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("images.unsplash.com");
+    expect(result).toContain("<img");
+  });
+
+  it("keeps same-origin relative media images", () => {
+    const input = '<img src="/api/v1/media/file/abc?v=original" alt="m">';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("/api/v1/media/file/abc");
+  });
+
+  it("keeps images from the configured API origin", () => {
+    const prev = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "https://api.diaryarchive.com/api/v1";
+    try {
+      const input =
+        '<img src="https://api.diaryarchive.com/api/v1/media/file/x?v=original">';
+      const result = sanitizeHtml(input);
+      expect(result).toContain("api.diaryarchive.com");
+    } finally {
+      process.env.NEXT_PUBLIC_API_URL = prev;
+    }
+  });
+
+  it("rejects non-https (http:) external images", () => {
+    const input = '<img src="http://tracker.example/pixel.gif">';
+    const result = sanitizeHtml(input);
+    expect(result).not.toContain("tracker.example");
+    expect(result).not.toContain("<img");
+  });
+
+  it("rejects unsafe inline data:/javascript: image sources", () => {
+    const input =
+      '<img src="javascript:alert(1)"> <img src="data:image/gif;base64,AAA">';
+    const result = sanitizeHtml(input);
+    expect(result).not.toContain("javascript:");
+    expect(result).not.toContain("data:image");
+    expect(result).not.toContain("<img");
   });
 });

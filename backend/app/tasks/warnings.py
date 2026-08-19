@@ -14,22 +14,34 @@ async def check_bio_warnings() -> int:
 
     expired = await db.users.find({
         "bio_warning_deadline": {"$lte": now},
-        "$or": [
-            {"bio_warning_awaiting_review": None},
-            {"bio_warning_awaiting_review": {"$ne": True}},
-        ],
     }).to_list(length=1000)
 
     count = 0
     user_repo = UserRepository()
     for user in expired:
         user_id = str(user["_id"])
-        await user_repo.update(user_id, {"about": None})
-        count += 1
-        logger.info(
-            "Bio auto-blanked for user %s (deadline: %s)",
-            user.get("username", user_id), user.get("bio_warning_deadline"),
-        )
+        snapshot = user.get("bio_warning_about_snapshot")
+        current_about = user.get("about")
+        # Only blank the bio if it is still (or again) the exact offending
+        # snapshot — i.e. the user did not actually comply. If it differs, the
+        # user has genuinely changed their bio, so we clear the pending warning
+        # state instead of punishing a compliant user.
+        if current_about == snapshot:
+            await user_repo.update(user_id, {"about": None})
+            count += 1
+            logger.info(
+                "Bio auto-blanked for user %s (deadline: %s)",
+                user.get("username", user_id), user.get("bio_warning_deadline"),
+            )
+        else:
+            await user_repo.update(user_id, {
+                "bio_warning_deadline": None,
+                "bio_warning_about_snapshot": None,
+            })
+            logger.info(
+                "Bio warning cleared for user %s (bio changed after warning)",
+                user.get("username", user_id),
+            )
 
     expired_bans = await db.users.find({
         "bio_edit_banned_until": {"$lte": now, "$ne": None},

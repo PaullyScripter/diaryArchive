@@ -4,9 +4,16 @@ from fastapi import APIRouter, Response
 
 from app.core.config import settings
 from app.core.database import DatabaseManager
+from app.core.metrics import render_metrics
 from app.core.minio_client import get_minio_client
 
 router = APIRouter()
+
+
+@router.get("/metrics")
+async def metrics(response: Response):
+    response.headers["Content-Type"] = "text/plain; version=0.0.4"
+    return render_metrics()
 
 
 @router.get("/health")
