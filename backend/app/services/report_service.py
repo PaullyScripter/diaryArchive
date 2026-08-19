@@ -1,6 +1,7 @@
 import logging
 
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 
 from app.core.exceptions import ConflictException, NotFoundException, ValidationException
 from app.repositories.comment_repo import CommentRepository
@@ -76,7 +77,19 @@ async def submit_report(
         report_doc["url"] = url
     if user_agent:
         report_doc["user_agent"] = user_agent
-    report_id = await report_repo.create_report(report_doc)
+    try:
+        report_id = await report_repo.create_report(report_doc)
+    except DuplicateKeyError:
+        # DB-level unique pending-report index (LOW-7) makes a concurrent
+        # duplicate submission a controlled conflict rather than a 500.
+        logger.warning(
+            "Duplicate report submission blocked by unique index "
+            "(reporter=%s target_type=%s target_id=%s)",
+            reporter_id, target_type, target_id,
+        )
+        raise ConflictException(
+            "You have already submitted a pending report for this target"
+        )
 
     user_repo = UserRepository()
     reporter = await user_repo.get_by_id(reporter_id)
@@ -218,7 +231,13 @@ def _build_target_preview(
                 "tags": diary.get("tags", []),
                 "content_deleted": diary.get("is_deleted", False),
             }
-        return {"title": "[Deleted]", "author_username": "unknown", "excerpt": None, "tags": [], "content_deleted": True}
+        return {
+            "title": "[Deleted]",
+            "author_username": "unknown",
+            "excerpt": None,
+            "tags": [],
+            "content_deleted": True,
+        }
 
     if target_type == "comment":
         comment = comments_map.get(target_id)
@@ -232,7 +251,12 @@ def _build_target_preview(
                 "content_deleted": comment.get("is_deleted", False),
                 "diary_id": str(comment.get("diary_id", "")),
             }
-        return {"content": None, "author_username": "unknown", "content_deleted": True, "diary_id": ""}
+        return {
+            "content": None,
+            "author_username": "unknown",
+            "content_deleted": True,
+            "diary_id": "",
+        }
 
     if target_type == "user":
         target_user = users_map.get(target_id)

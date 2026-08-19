@@ -1,12 +1,12 @@
 import logging
 from datetime import UTC, datetime
 
+from app.core.background import run_in_background
 from app.core.exceptions import (
     NotFoundException,
     PermissionDeniedException,
     ValidationException,
 )
-from app.core.background import run_in_background
 from app.core.sanitize import sanitize_html
 from app.core.utils import fmt_dt
 from app.repositories.diary_repo import DiaryRepository
@@ -18,34 +18,48 @@ logger = logging.getLogger(__name__)
 def _index_diary_async(diary: dict) -> None:
     async def _do_index():
         try:
-            from app.search.indexer import DiaryIndexer
-            indexer = DiaryIndexer()
-            await indexer.index_diary(diary)
+            from app.search.sync import enqueue_sync
+
+            await enqueue_sync(str(diary["_id"]), action="index")
         except Exception:
-            logger.warning("Async indexing failed for diary %s", diary.get("_id"))
+            logger.warning("Async index enqueue failed for diary %s", diary.get("_id"))
         try:
             from app.core.database import DatabaseManager
+
             redis = DatabaseManager.get_redis()
-            await redis.delete("tags:popular:90:50", "tags:popular:365:100", "emotions:counts:90", "emotions:counts:v2:90")
+            await redis.delete(
+                "tags:popular:90:50",
+                "tags:popular:365:100",
+                "emotions:counts:90",
+                "emotions:counts:v2:90",
+            )
         except Exception:
             pass
+
     run_in_background(_do_index())
 
 
 def _remove_from_index_async(diary_id: str) -> None:
     async def _do_remove():
         try:
-            from app.search.indexer import DiaryIndexer
-            indexer = DiaryIndexer()
-            await indexer.remove_diary(diary_id)
+            from app.search.sync import enqueue_sync
+
+            await enqueue_sync(diary_id, action="remove")
         except Exception:
-            logger.warning("Async index removal failed for diary %s", diary_id)
+            logger.warning("Async index removal enqueue failed for diary %s", diary_id)
         try:
             from app.core.database import DatabaseManager
+
             redis = DatabaseManager.get_redis()
-            await redis.delete("tags:popular:90:50", "tags:popular:365:100", "emotions:counts:90", "emotions:counts:v2:90")
+            await redis.delete(
+                "tags:popular:90:50",
+                "tags:popular:365:100",
+                "emotions:counts:90",
+                "emotions:counts:v2:90",
+            )
         except Exception:
             pass
+
     run_in_background(_do_remove())
 
 
@@ -53,11 +67,13 @@ def _cascade_delete_media_async(diary_id: str) -> None:
     async def _do():
         try:
             from app.services.media_service import cascade_delete_diary_media
+
             count = await cascade_delete_diary_media(diary_id)
             if count > 0:
                 logger.info("Cascade deleted %d media records for diary %s", count, diary_id)
         except Exception:
             logger.warning("Media cascade delete failed for diary %s", diary_id, exc_info=True)
+
     run_in_background(_do())
 
 
@@ -65,9 +81,11 @@ def _check_achievements_async(user_id: str) -> None:
     async def _do():
         try:
             from app.services.achievement_service import check_and_award_diary_achievements
+
             await check_and_award_diary_achievements(user_id)
         except Exception:
             pass
+
     run_in_background(_do())
 
 
@@ -187,9 +205,7 @@ async def create_diary(user: dict, data: dict) -> dict:
         if not isinstance(encrypted_data, dict):
             raise ValidationException("encrypted_data must be an object")
         if not all(k in encrypted_data for k in ("ciphertext", "iv", "salt")):
-            raise ValidationException(
-                "encrypted_data must contain ciphertext, iv, and salt"
-            )
+            raise ValidationException("encrypted_data must contain ciphertext, iv, and salt")
         if data.get("content_html"):
             raise ValidationException("content_html must be absent for private diaries")
         if data.get("content_text"):
@@ -217,7 +233,9 @@ async def create_diary(user: dict, data: dict) -> dict:
     content_warnings = data.get("content_warnings", [])
     if not isinstance(content_warnings, list):
         content_warnings = []
-    content_warnings = [w.lower().strip() for w in content_warnings if w.lower().strip() in VALID_WARNINGS]
+    content_warnings = [
+        w.lower().strip() for w in content_warnings if w.lower().strip() in VALID_WARNINGS
+    ]
 
     now = datetime.now(UTC)
     if privacy == "private":
@@ -297,8 +315,9 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
     is_liked = False
     is_bookmarked = False
     if current_user and diary.get("privacy") == "public":
-        from app.repositories.like_repo import LikeRepository
         from app.repositories.bookmark_repo import BookmarkRepository
+        from app.repositories.like_repo import LikeRepository
+
         user_id = str(current_user["_id"])
         like = await LikeRepository().find_by_user_and_diary(user_id, diary_id)
         bookmark = await BookmarkRepository().find_by_user_and_diary(user_id, diary_id)
@@ -340,9 +359,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
         if "encrypted_data" in updates and updates["encrypted_data"] is not None:
             ed = updates["encrypted_data"]
             if not isinstance(ed, dict) or not all(k in ed for k in ("ciphertext", "iv", "salt")):
-                raise ValidationException(
-                    "encrypted_data must contain ciphertext, iv, and salt"
-                )
+                raise ValidationException("encrypted_data must contain ciphertext, iv, and salt")
             set_fields["encrypted_data"] = ed
         if "tags" in updates and updates["tags"] is not None:
             set_fields["tags"] = _validate_tags(updates["tags"])
@@ -370,7 +387,11 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
             set_fields["comments_enabled"] = updates["comments_enabled"]
 
         if "content_warnings" in updates and updates["content_warnings"] is not None:
-            cw = [w.lower().strip() for w in updates["content_warnings"] if w.lower().strip() in VALID_WARNINGS]
+            cw = [
+                w.lower().strip()
+                for w in updates["content_warnings"]
+                if w.lower().strip() in VALID_WARNINGS
+            ]
             set_fields["content_warnings"] = cw
 
         if "tags" in updates and updates["tags"] is not None:
@@ -395,7 +416,9 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
     return _build_diary_response(updated_diary, author, current_user)
 
 
-async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: str | None = None) -> None:
+async def delete_diary(
+    diary_id: str, current_user: dict, admin_delete_reason: str | None = None
+) -> None:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
@@ -410,6 +433,7 @@ async def delete_diary(diary_id: str, current_user: dict, admin_delete_reason: s
         if not admin_delete_reason or len(admin_delete_reason.strip()) < 10:
             raise ValidationException("Admin deletion requires a reason of at least 10 characters")
         from app.services.audit_service import log_audit
+
         await log_audit(
             admin_id=str(current_user["_id"]),
             admin_username=current_user["username"],
@@ -492,17 +516,22 @@ async def list_public_diaries(
         )
 
     diary_ids = [d["_id"] for d in diaries]
-    comment_counts = await diary_repo._collection.database.comments.aggregate([
-        {"$match": {
-            "diary_id": {"$in": diary_ids},
-            "is_deleted": {"$ne": True},
-            "parent_comment_id": None,
-        }},
-        {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
-    ]).to_list(length=len(diary_ids))
+    comment_counts = await diary_repo._collection.database.comments.aggregate(
+        [
+            {
+                "$match": {
+                    "diary_id": {"$in": diary_ids},
+                    "is_deleted": {"$ne": True},
+                    "parent_comment_id": None,
+                }
+            },
+            {"$group": {"_id": "$diary_id", "count": {"$sum": 1}}},
+        ]
+    ).to_list(length=len(diary_ids))
     count_map = {str(c["_id"]): c["count"] for c in comment_counts}
 
     from app.services.enrichment_service import enrich_diary_batch
+
     diaries = await enrich_diary_batch(diaries, current_user)
 
     author_ids = list({str(d["user_id"]) for d in diaries})
@@ -575,7 +604,9 @@ async def list_my_diaries(
     author_info = _build_author(user)
     data = []
     for diary in diaries:
-        item = _build_diary_list_item(diary, {"_id": str(user["_id"]), "username": user["username"]}, current_user=user)
+        item = _build_diary_list_item(
+            diary, {"_id": str(user["_id"]), "username": user["username"]}, current_user=user
+        )
         item["author"] = author_info
         data.append(item)
 
@@ -633,7 +664,7 @@ def _send_delete_notification(
 
     body = (
         f"Hello,\n\n"
-        f"Your {target} \"{diary_title or 'Untitled'}\" has been {action} by an administrator"
+        f'Your {target} "{diary_title or "Untitled"}" has been {action} by an administrator'
         f" for the following reason: {reason or 'Content policy violation'}.\n\n"
         f"Please review our Community Guidelines. Repeated violations may result"
         f" in account suspension or banning.\n\n"

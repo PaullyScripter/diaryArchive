@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -13,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH (versioned + migration + rollback)
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -22,8 +23,7 @@ jobs:
           port: ${{ secrets.DEPLOY_PORT }}
           script: |
             cd ${{ vars.DEPLOY_DIR }}
-            git pull --ff-only origin main
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-            docker image prune -f
-            curl -fsS --retry 3 http://localhost/api/v1/health || exit 1
+            # deploy.sh: checks out the commit SHA, runs the migration/index
+            # stage, builds immutable commit-tagged images, health-checks, and
+            # rolls back to the previous known-good deployment on failure.
+            ./docker/scripts/deploy.sh ${{ github.sha }}

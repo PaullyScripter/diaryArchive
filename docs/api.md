@@ -764,6 +764,68 @@ Add or update the email on the current user's account.
 
 ---
 
+### GET /api/v1/users/me/export
+
+Export a self-contained snapshot of every piece of data the current account
+owns (profile, diaries, comments, social rows, notifications, achievements,
+tickets).
+
+**Auth:** Bearer access token
+
+**Success (200):**
+```json
+{
+  "data": {
+    "profile": { "id": "...", "username": "user", "stats": {}, "preferences": {} },
+    "diaries": [ { "id": "...", "title": "...", "privacy": "private", "encrypted_data": {} } ],
+    "comments": [],
+    "likes": [],
+    "bookmarks": [],
+    "follows": [],
+    "notifications": [],
+    "achievements": [],
+    "tickets": []
+  }
+}
+```
+
+Private diary ciphertext is returned opaque (server cannot decrypt it); the
+client holds the decryption keys.
+
+**Errors:**
+
+| Code | Status | Condition |
+|------|--------|-----------|
+| `not_authenticated` | 401 | No/invalid access token |
+
+---
+
+### DELETE /api/v1/users/me
+
+Permanently delete the current account and **all** of its data across every
+collection that references the user, including diaries (and their cascade of
+comments, likes, bookmarks, notifications, reports), media objects, social
+rows, notifications, reports, tickets, achievements, refresh/verification
+tokens, and MinIO object files.
+
+**Auth:** Bearer access token
+
+**Success (200):**
+```json
+{
+  "data": { "deleted": true }
+}
+```
+
+**Errors:**
+
+| Code | Status | Condition |
+|------|--------|-----------|
+| `not_authenticated` | 401 | No/invalid access token |
+| `not_found` | 404 | Account could not be deleted |
+
+---
+
 ## 5. Diaries
 
 ### GET /api/v1/diaries
@@ -2179,7 +2241,47 @@ Health check for all services.
 
 ---
 
-## 16. Error Codes
+## 16. Health & Metrics
+
+### GET /api/v1/health
+
+Liveness/readiness check for all backing services.
+
+**Auth:** None
+
+**Success (200):**
+```json
+{
+  "status": "healthy",
+  "checks": { "mongodb": "ok", "redis": "ok", "minio": "ok", "meilisearch": "ok" }
+}
+```
+
+Returns HTTP **503** with `"status": "degraded"` when any dependency is
+unreachable.
+
+---
+
+### GET /api/v1/metrics
+
+Prometheus-formatted (text/plain) lightweight in-process metrics for scraping.
+Exposes request totals/errors by route, request duration sums/counts, process
+uptime, and per-periodic-task summaries (cleanup, search outbox).
+
+**Auth:** None
+
+**Success (200):**
+```text
+# HELP process_uptime_seconds Time since the process started
+# TYPE process_uptime_seconds gauge
+process_uptime_seconds 259200
+request_requests_total{route="/api/v1/users/me"} 42
+request_errors_total{route="/api/v1/users/me"} 1
+```
+
+---
+
+## 17. Error Codes
 
 | HTTP | Code | Description |
 |------|------|-------------|

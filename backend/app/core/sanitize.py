@@ -1,9 +1,12 @@
 import re
+import urllib.parse
 
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
 from tinycss2 import parse_declaration_list, parse_stylesheet, serialize
 from tinycss2.ast import AtRule, Declaration, QualifiedRule
+
+from app.core.config import settings
 
 ALLOWED_TAGS = {
     # core text
@@ -89,6 +92,16 @@ _CSS_VALUE_RE = re.compile(
 )
 
 _DANGEROUS_URI_PREFIXES = ("javascript:", "vbscript:", "data:", "file:", "about:")
+
+
+def _origin_host(origin: str | None) -> str:
+    """Return scheme+host (no path) for a configured origin, or '' if unset."""
+    if not origin or not origin.strip():
+        return ""
+    origin = origin.strip().rstrip("/")
+    if "://" not in origin:
+        return ""
+    return origin.split("://", 1)[0] + "://" + origin.split("://", 1)[1].split("/", 1)[0]
 
 _MAX_RULE_DEPTH = 12
 
@@ -231,6 +244,37 @@ def _sanitize_style_attr(value: str):
     return serialize(declarations)
 
 
+def _is_allowed_image_src(value: str) -> bool:
+    """Only allow images that the app itself can serve or that come from an
+    allowlisted public media origin.
+
+    Loading remote <img> content can be used to track readers (pixel beacons)
+    or probe internal resources. So absolute URLs are restricted to the
+    configured media/API origins; anything else is dropped. Relative URLs
+    (the self-hosted media proxy and bundled assets) are always allowed.
+    """
+    v = (value or "").strip()
+    if not v:
+        return False
+    if v.lower().startswith(_DANGEROUS_URI_PREFIXES):
+        return False
+    if v.startswith("/"):
+        # Same-origin: the media proxy (/api/v1/media/...), avatar URLs,
+        # bundled assets. Never attacker-controlled remote content.
+        return True
+    parsed = urllib.parse.urlparse(v)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = (parsed.hostname or "").lower()
+    for origin in (settings.public_media_base_url, settings.public_api_url):
+        norm = _origin_host(origin)
+        if not norm:
+            continue
+        if host == urllib.parse.urlparse(norm).hostname.lower():
+            return True
+    return False
+
+
 def _attribute_filter(tag, name, value):
     """Bleach attribute callback: allowlist + value hardening."""
     wildcard = ALLOWED_ATTRIBUTES.get("*", [])
@@ -238,7 +282,14 @@ def _attribute_filter(tag, name, value):
         return None
     if name == "style":
         return _sanitize_style_attr(value)
-    if name in ("href", "src"):
+    if name == "src":
+        if tag == "img" and not _is_allowed_image_src(value):
+            return None
+        stripped = value.strip()
+        if stripped.lower().startswith(_DANGEROUS_URI_PREFIXES):
+            return None
+        return value
+    if name == "href":
         stripped = value.strip().lstrip()
         if stripped.lower().startswith(_DANGEROUS_URI_PREFIXES):
             return None

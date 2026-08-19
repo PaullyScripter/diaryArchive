@@ -7,6 +7,43 @@ on:
     branches: ["**"]
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_NOTIFY_USER_LIST: ""
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Backend dependency audit (pip-audit)
+        working-directory: backend
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
+      - name: Frontend dependency audit (npm audit)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
   backend-lint:
     runs-on: ubuntu-latest
     defaults:
@@ -65,6 +102,13 @@ jobs:
           EMAIL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
           DEBUG: "true"
 
+      - name: Verify migrations apply cleanly
+        run: python -m app.migrations.run_migrations
+        env:
+          MONGODB_URI: mongodb://localhost:27017/diaryarchive_test
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          EMAIL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
   frontend-lint:
     runs-on: ubuntu-latest
     defaults:
@@ -112,8 +156,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate prod compose config
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+
       - name: Build backend image
-        run: docker build -t diaryarchive-backend ./backend
+        run: docker build -t diaryarchive-backend:${{ github.sha }} ./backend
 
       - name: Build frontend image
-        run: docker build -t diaryarchive-frontend ./frontend
+        run: docker build -t diaryarchive-frontend:${{ github.sha }} ./frontend

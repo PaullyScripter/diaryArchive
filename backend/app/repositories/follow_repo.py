@@ -6,6 +6,27 @@ from app.repositories.base import BaseRepository
 class FollowRepository(BaseRepository):
     collection_name = "follows"
 
+    async def ensure_following(self, follower_id: str, following_id: str, created_at) -> bool:
+        """Atomically insert a follow if absent. Returns True only if this call
+        performed the insertion. A unique compound index makes concurrent calls
+        converge to a single follow."""
+        result = await self._collection.update_one(
+            {
+                "follower_id": ObjectId(follower_id),
+                "following_id": ObjectId(following_id),
+            },
+            {"$setOnInsert": {"created_at": created_at}},
+            upsert=True,
+        )
+        return result.upserted_id is not None
+
+    async def ensure_unfollowed(self, follower_id: str, following_id: str) -> bool:
+        result = await self._collection.delete_one({
+            "follower_id": ObjectId(follower_id),
+            "following_id": ObjectId(following_id),
+        })
+        return result.deleted_count > 0
+
     async def find_by_follower_and_following(
         self, follower_id: str, following_id: str
     ) -> dict | None:

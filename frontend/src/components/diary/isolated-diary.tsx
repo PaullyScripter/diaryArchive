@@ -59,7 +59,7 @@ export function IsolatedDiary({
   return (
     <div
       ref={hostRef}
-      className={`${className ?? ""} [isolation:isolate] [transform:translateZ(0)]`}
+      className={`${className ?? ""} w-full [isolation:isolate] [transform:translateZ(0)]`}
       style={style}
     />
   );
