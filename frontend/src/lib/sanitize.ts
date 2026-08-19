@@ -92,36 +92,27 @@ function ensureStyleHookRegistered() {
   });
 }
 
-function apiOrigin(): string | null {
-  const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
-  if (!/^https?:\/\//i.test(base)) return null;
-  try {
-    return new URL(base).origin;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Allow only images the app itself serves (relative /api/... media proxy,
- * bundled assets) or that come from the configured API origin. Arbitrary
- * external <img src> — the classic tracking-pixel / reader-identification
- * vector — is stripped. This is especially important for E2E-encrypted private
- * diaries, which never reach the backend sanitizer, so the browser is the only
- * defense.
+ * Decide whether an <img src> may render.
+ *
+ * Policy: same-origin relative paths and any https: URL are allowed, so authors
+ * can reference external images (e.g. a hosted newspaper photo) and the diary
+ * renders like a full-page editor. Only unsafe schemes that cannot be an image
+ * and are typical injection/exfiltration vectors are rejected outright:
+ * javascript:, data:, vbscript:, file:, and the like. External images still
+ * only load over https — never http, never inline data blobs — so no plaintext
+ * or payload-exfil channel is opened.
+ *
+ * Note: allowing arbitrary https images means the reader's IP is visible to the
+ * image host (a tracking/identification vector). This is the explicit author
+ * preference; the trade-off is documented here rather than silently applied.
  */
 export function isAllowedImageSource(value: string): boolean {
   const v = (value ?? "").trim();
   if (!v) return false;
   if (v.startsWith("/")) return true; // same-origin relative
-  if (!/^https?:\/\//i.test(v)) return false; // reject data:, javascript:, etc.
-  const allowed = apiOrigin();
-  if (!allowed) return false;
-  try {
-    return new URL(v).origin === allowed;
-  } catch {
-    return false;
-  }
+  // Allow https: images (external hosts included); reject everything else.
+  return /^https:\/\//i.test(v);
 }
 
 export function sanitizeHtml(html: string): string {

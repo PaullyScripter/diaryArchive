@@ -23,7 +23,10 @@ function apiOrigins(): string[] {
 
 function buildContentSecurityPolicy(): string {
   const extra = apiOrigins();
-  const imgSrc = ["'self'", "data:", "blob:", ...extra].join(" ");
+  // Custom HTML/CSS diaries may reference external https: images (an explicit
+  // author preference). Allow any https: image while still blocking http:.
+  // data:/blob: stay so the app's own avatars and media previews keep working.
+  const imgSrc = ["'self'", "data:", "blob:", "https:", ...extra].join(" ");
   const connectSrc = ["'self'", ...extra].join(" ");
   // Next.js injects inline scripts/styles for hydration; 'unsafe-inline' is
   // kept for style and (guarded by Next) script, consistent with the nginx edge

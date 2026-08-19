@@ -189,12 +189,12 @@ describe("sanitizeHtml", () => {
     expect(() => sanitizeHtml(undefined as unknown as string)).not.toThrow();
   });
 
-  it("drops arbitrary external images (tracking pixel)", () => {
+  it("keeps external https: images (author preference)", () => {
     const input =
-      '<p>hi</p><img src="https://tracker.example/pixel.gif" alt="t">';
+      '<p>hi</p><img src="https://images.unsplash.com/photo-123.jpg" alt="p">';
     const result = sanitizeHtml(input);
-    expect(result).not.toContain("tracker.example");
-    expect(result).not.toContain("<img");
+    expect(result).toContain("images.unsplash.com");
+    expect(result).toContain("<img");
   });
 
   it("keeps same-origin relative media images", () => {
@@ -216,16 +216,19 @@ describe("sanitizeHtml", () => {
     }
   });
 
-  it("drops images from arbitrary hosts even when API origin is set", () => {
-    const prev = process.env.NEXT_PUBLIC_API_URL;
-    process.env.NEXT_PUBLIC_API_URL = "https://api.diaryarchive.com/api/v1";
-    try {
-      const input = '<img src="https://evil.example/steal.gif">';
-      const result = sanitizeHtml(input);
-      expect(result).not.toContain("evil.example");
-      expect(result).not.toContain("<img");
-    } finally {
-      process.env.NEXT_PUBLIC_API_URL = prev;
-    }
+  it("rejects non-https (http:) external images", () => {
+    const input = '<img src="http://tracker.example/pixel.gif">';
+    const result = sanitizeHtml(input);
+    expect(result).not.toContain("tracker.example");
+    expect(result).not.toContain("<img");
+  });
+
+  it("rejects unsafe inline data:/javascript: image sources", () => {
+    const input =
+      '<img src="javascript:alert(1)"> <img src="data:image/gif;base64,AAA">';
+    const result = sanitizeHtml(input);
+    expect(result).not.toContain("javascript:");
+    expect(result).not.toContain("data:image");
+    expect(result).not.toContain("<img");
   });
 });
