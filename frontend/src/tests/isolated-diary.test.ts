@@ -13,6 +13,17 @@ describe("scopeAuthorCss", () => {
     expect(out).toContain(":host { margin: 0 }");
   });
 
+  it("remaps a leading :root that follows an opening <style> tag", () => {
+    // scopeAuthorCss runs on the full stored HTML string, which starts with an
+    // opening <style> tag, so the first selector (typically :root with CSS
+    // custom properties) is preceded by '>' — it must still be remapped to
+    // :host or its --vars never reach the shadow tree and every var() breaks.
+    const out = scopeAuthorCss("<style>:root { --paper: #e7dcc0; --ink: #211d17; } body { color: var(--ink) }</style><div>x</div>");
+    expect(out).toContain(":host { --paper: #e7dcc0; --ink: #211d17; }");
+    expect(out).toContain(":host { color: var(--ink) }");
+    expect(out).not.toContain(":root {");
+  });
+
   it("remaps body in a comma-separated selector list", () => {
     const out = scopeAuthorCss("body, .hero { color: red }");
     expect(out).toContain(":host, .hero { color: red }");
