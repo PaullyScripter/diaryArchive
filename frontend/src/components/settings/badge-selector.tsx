@@ -47,13 +47,29 @@ const FALLBACK_COLORS: Record<string, string> = {
   bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
 };
 
-// "Bug Catcher" icon: static body + animatable legs.
+// "Bug Catcher" icon: filled body + head, antennae, and animatable legs.
+// Each leg is its own path so the crawl can be desynchronized. The bug has
+// three pairs (front / middle / back); each pair moves together but out of
+// phase with the others (see .badge-bug-legs + --bug-leg-delay).
 const BUG_BODY =
-  "M12 9a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0v-2a4 4 0 0 1 4-4z M12 3v2 M10 3.5 9 5.5 M14 3.5 15 5.5 M8 6.5 6.5 8 M16 6.5 17.5 8";
-const BUG_LEG_LEFT =
-  "M7.5 13.5 3 12 M8 16 3.5 17 M8 10.5 3 9";
-const BUG_LEG_RIGHT =
-  "M16.5 13.5 21 12 M16 16 20.5 17 M16 10.5 21 9";
+  "M12 7c3.3 0 6 2.4 6 5.6V14c0 3-2.7 5.2-6 5.2S6 17 6 14v-1.4C6 9.4 8.7 7 12 7z";
+const BUG_HEAD = "M12 4.6a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z";
+const BUG_ANTENNA = "M10.8 4.6 8.4 2.2 M13.2 4.6 15.6 2.2";
+const BUG_ANTENNA_TIPS =
+  "M8.4 2.2m-0.7 0a0.7 0.7 0 1 0 1.4 0 0.7 0.7 0 1 0-1.4 0 M15.6 2.2m-0.7 0a0.7 0.7 0 1 0 1.4 0 0.7 0.7 0 1 0-1.4 0";
+const BUG_LEGS: { d: string; pair: "front" | "middle" | "back" }[] = [
+  { d: "M7.5 11 3 10.2", pair: "front" },
+  { d: "M7.2 14 2.8 13.6", pair: "middle" },
+  { d: "M7.5 17 3 17.6", pair: "back" },
+  { d: "M16.5 11 21 10.2", pair: "front" },
+  { d: "M16.8 14 21.2 13.6", pair: "middle" },
+  { d: "M16.5 17 21 17.6", pair: "back" },
+];
+const BUG_LEG_DELAY: Record<"front" | "middle" | "back", string> = {
+  front: "0s",
+  middle: "-0.2s",
+  back: "-0.4s",
+};
 
 export function BadgeSelector() {
   const qc = useQueryClient();
@@ -145,17 +161,25 @@ export function BadgeSelector() {
                   >
                     {ach.icon === "bug" ? (
                       <svg
-                        className="w-3.5 h-3.5"
+                        className="w-4 h-4"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke={fillColor}
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
                       >
-                        <path d={BUG_BODY} />
-                        <path d={BUG_LEG_LEFT} className={animClass} />
-                        <path d={BUG_LEG_RIGHT} className={`${animClass} reverse`} />
+                        <path d={BUG_ANTENNA} stroke={fillColor} strokeWidth="1.6" strokeLinecap="round" />
+                        <path d={BUG_ANTENNA_TIPS} fill={fillColor} />
+                        {BUG_LEGS.map((leg) => (
+                          <path
+                            key={leg.d}
+                            d={leg.d}
+                            className={animClass}
+                            style={{ animationDelay: BUG_LEG_DELAY[leg.pair] }}
+                            stroke={fillColor}
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                          />
+                        ))}
+                        <path d={BUG_HEAD} fill={fillColor} />
+                        <path d={BUG_BODY} fill={fillColor} />
                       </svg>
                     ) : (
                       <svg className={`w-3.5 h-3.5 ${animClass}`} viewBox="0 0 24 24" fill={fillColor}>

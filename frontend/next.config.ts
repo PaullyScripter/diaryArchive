@@ -42,6 +42,10 @@ function buildContentSecurityPolicy(): string {
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imgSrc}`,
     `connect-src ${connectSrc}`,
+    // Monaco language-service web workers are created as blob: URLs by
+    // webpack's `?worker` loader; allow them under the strict self-only policy.
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
     "font-src 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
