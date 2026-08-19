@@ -141,12 +141,18 @@ export function sanitizeHtml(html: string): string {
   if (!result.includes("<img")) return result;
 
   // Drop src (and the whole empty img tag for cleanliness) on disallowed hosts.
+  // Note: parsing as a full HTML document hoists any leading <style> block into
+  // <head>, so doc.body.innerHTML alone would silently drop the author's CSS.
+  // Re-append the style blocks (re-serialized) to keep the CSS with the body.
   const doc = new DOMParser().parseFromString(result, "text/html");
   doc.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src") ?? "";
     if (!isAllowedImageSource(src)) img.remove();
   });
-  return doc.body.innerHTML;
+  const styles = Array.from(doc.querySelectorAll("head style"))
+    .map((s) => s.outerHTML)
+    .join("");
+  return `${styles}${doc.body.innerHTML}`;
 }
 
 export function sanitizeCss(css: string): string {

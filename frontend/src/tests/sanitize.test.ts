@@ -48,6 +48,21 @@ describe("sanitizeHtml", () => {
     expect(result).toContain('<div class="diary-entry">');
   });
 
+  it("keeps the leading <style> block when the content also contains an <img>", () => {
+    // A <style> block plus any <img> forces the DOMParser branch of
+    // sanitizeHtml. Parsing as a full HTML document hoists the leading <style>
+    // into <head>, so doc.body.innerHTML alone would drop the author's CSS.
+    // The block must be re-appended so the diary keeps its styles.
+    const input =
+      '<style>:root{--paper:#e7dcc0}.newspaper{background:var(--paper)}</style><div class="newspaper"><img src="/api/v1/media/file/x" alt="p"><h1>Hi</h1></div>';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("<style>");
+    expect(result).toContain("--paper:#e7dcc0");
+    expect(result).toContain(".newspaper{background");
+    expect(result).toContain('<div class="newspaper">');
+    expect(result).toContain('<img src="/api/v1/media/file/x"');
+  });
+
   it("neutralizes dangerous CSS inside style blocks", () => {
     const input =
       '<style>.a{background:url(javascript:alert(1));color:red}@import url("https://evil.example/x.css");.b{width:expression(1)}</style><p>x</p>';
