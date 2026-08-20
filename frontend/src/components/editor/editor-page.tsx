@@ -6,6 +6,7 @@ import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Eye, Lock, Shield, Maximize2, Minimize2 } from "lucide-react";
+import { ExternalImagesWarning } from "@/components/editor/external-images-warning";
 
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
@@ -103,8 +104,58 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const handlePreviewContentWidth = useCallback((w: number) => setPreviewNaturalWidth(w), []);
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
   const [blockedExternalImages, setBlockedExternalImages] = useState<string[]>([]);
+  const [imagesWarningDismissed, setImagesWarningDismissed] = useState(false);
   const saveRef = useRef<() => Promise<void>>(async () => {});
   const sourceEditorInsertRef = useRef<((text: string) => void) | null>(null);
+  const [codeSplit, setCodeSplit] = useState(55);
+  const [cssSplit, setCssSplit] = useState(65);
+
+  // Resizable panes for the fullscreen source editor: a vertical divider
+  // between the code panes and the live preview, and a horizontal divider
+  // between the HTML and CSS editors.
+  const startVerticalDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const container = e.currentTarget.parentElement as HTMLElement;
+    const rect = container.getBoundingClientRect();
+    const startPct = codeSplit;
+    const onMove = (ev: PointerEvent) => {
+      const delta = ((ev.clientX - startX) / rect.width) * 100;
+      setCodeSplit(Math.min(85, Math.max(15, startPct + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [codeSplit]);
+
+  const startHorizontalDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const container = e.currentTarget.parentElement as HTMLElement;
+    const rect = container.getBoundingClientRect();
+    const startPct = cssSplit;
+    const onMove = (ev: PointerEvent) => {
+      const delta = ((ev.clientY - startY) / rect.height) * 100;
+      setCssSplit(Math.min(90, Math.max(25, startPct + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  }, [cssSplit]);
 
   // A diary is "HTML/CSS" when it ships its own <style> block (either via the
   // separate Custom CSS box or inline in the HTML source. Such diaries must be
@@ -520,13 +571,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         <p className="text-xs text-subtle">
           Writing in whole-diary mode - start a chapter with an H1 heading.
         </p>
-        <button
-          type="button"
-          onClick={() => setShowTemplatePicker(true)}
-          className="text-xs text-link hover:underline cursor-pointer"
-        >
-          Need an idea?
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/policy/advanced-editor"
+            className="text-xs text-link hover:underline cursor-pointer"
+          >
+            About the Advanced Editor
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowTemplatePicker(true)}
+            className="text-xs text-link hover:underline cursor-pointer"
+          >
+            Need an idea?
+          </button>
+        </div>
       </div>
 
       <EditorToolbar
@@ -534,7 +593,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         sourceMode={sourceMode}
         onToggleSource={() => setSourceMode(!sourceMode)}
         onImageUpload={(file) => {
-          if (editor) handleImageUpload(file, editor);
+          if (sourceMode) handleSourceImageFiles([file], (text) => sourceEditorInsertRef.current?.(text));
+          else if (editor) handleImageUpload(file, editor);
         }}
         onOpenGallery={() => setShowGallery(true)}
         onOpenTemplates={() => setShowTemplatePicker(true)}
@@ -555,25 +615,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             </button>
             <FloatingToolbar editor={editor} />
             {sourceMode ? renderSourceEditor(false) : renderRichEditor()}
-            {blockedExternalImages.length > 0 && (
-              <div
-                role="status"
-                className="mt-2 flex items-start gap-2 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-foreground"
-              >
-                <Shield className="w-4 h-4 mt-0.5 shrink-0 text-accent" />
-                <div>
-                  <p className="font-medium text-accent">
-                    External image{blockedExternalImages.length > 1 ? "s" : ""} removed for privacy
-                  </p>
-                  <p className="text-muted mt-0.5">
-                    {privacy === "private"
-                      ? "Private diaries block all external images so your readers' data never leaks to third-party hosts. "
-                      : "Only secure https: images are allowed. "}
-                    Upload your image to the media library, then use the gallery or
-                    drop/paste it here to insert its own link.
-                  </p>
-                </div>
-              </div>
+            {!imagesWarningDismissed && (
+              <ExternalImagesWarning
+                count={blockedExternalImages.length}
+                isPrivate={privacy === "private"}
+                onDismiss={() => setImagesWarningDismissed(true)}
+                className="mt-2"
+              />
             )}
           </div>
         </div>
@@ -615,45 +663,45 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               sourceMode={sourceMode}
               onToggleSource={() => setSourceMode(!sourceMode)}
               onImageUpload={(file) => {
-                if (editor) handleImageUpload(file, editor);
+                if (sourceMode) handleSourceImageFiles([file], (text) => sourceEditorInsertRef.current?.(text));
+                else if (editor) handleImageUpload(file, editor);
               }}
               onOpenGallery={() => setShowGallery(true)}
               onOpenTemplates={() => setShowTemplatePicker(true)}
             />
           </div>
-          <div className={`flex-1 min-h-0 flex p-4 gap-4 ${sourceMode ? "flex-row" : "flex-col"}`}>
-            <div className="flex flex-col gap-4 flex-1 min-h-0 min-w-0">
+          <div className={`flex-1 min-h-0 flex p-4 ${sourceMode ? "flex-row gap-0" : "flex-col gap-4"}`}>
+            <div className="flex flex-col gap-4 min-h-0 min-w-0" style={sourceMode ? { width: `${codeSplit}%` } : { flex: 1 }}>
               <div className="relative flex-1 min-h-0 overflow-auto rounded-md border border-border">
                 <FloatingToolbar editor={editor} />
                 {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
               </div>
-              {blockedExternalImages.length > 0 && sourceMode && (
-                <div
-                  role="status"
-                  className="mt-1 flex items-start gap-2 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-foreground"
-                >
-                  <Shield className="w-4 h-4 mt-0.5 shrink-0 text-accent" />
-                  <div>
-                    <p className="font-medium text-accent">
-                      External image{blockedExternalImages.length > 1 ? "s" : ""} removed for privacy
-                    </p>
-                    <p className="text-muted mt-0.5">
-                      {privacy === "private"
-                        ? "Private diaries block all external images so your readers' data never leaks to third-party hosts. "
-                        : "Only secure https: images are allowed. "}
-                      Upload your image to the media library, then use the gallery or
-                      drop/paste it here to insert its own link.
-                    </p>
-                  </div>
-                </div>
+              {!imagesWarningDismissed && (
+                <ExternalImagesWarning
+                  count={blockedExternalImages.length}
+                  isPrivate={privacy === "private"}
+                  onDismiss={() => setImagesWarningDismissed(true)}
+                  className="mt-1"
+                />
               )}
               {sourceMode && (
-                <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                <div
+                  className="shrink-0 flex flex-col border border-border rounded-md overflow-hidden"
+                  style={{ height: `${cssSplit}%`, minHeight: 160 }}
+                >
+                  <div
+                    className="group relative flex items-center justify-between px-3 py-2 border-b border-border shrink-0 cursor-row-resize"
+                    onPointerDown={startHorizontalDrag}
+                    title="Drag to resize the HTML/CSS editors"
+                  >
                     <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                       Custom CSS{" "}
                       <span className="text-subtle font-normal">(advanced)</span>
                     </h3>
+                    <div className="flex items-center gap-1.5 text-[10px] text-subtle">
+                      <div className="h-1 w-5 rounded-full bg-border" />
+                      drag to resize
+                    </div>
                   </div>
                   <div className="flex-1 min-h-0">
                     <CodeEditor
@@ -669,7 +717,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               )}
             </div>
             {sourceMode && (
-              <div className={`${isHtmlCss ? "w-[65%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
+              <div
+                className="group relative self-stretch w-1.5 shrink-0 cursor-col-resize rounded hover:bg-accent/30 active:bg-accent/40"
+                onPointerDown={startVerticalDrag}
+                title="Drag to resize the code editor and live preview"
+                role="separator"
+                aria-orientation="vertical"
+              />
+            )}
+            {sourceMode && (
+              <div className="flex flex-col min-w-[320px] shrink-0 border border-border rounded-md overflow-hidden bg-background" style={{ width: `calc(100% - ${codeSplit}% - 1.5rem)` }}>
                 <div className="relative z-10 flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                     Live Preview
