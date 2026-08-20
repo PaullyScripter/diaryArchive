@@ -245,7 +245,8 @@ export function EditorSettings({
                   min={320}
                   max={2000}
                   value={fixedWidth}
-                  onChange={(e) => setFixedWidth(Math.max(320, Math.min(2000, Number(e.target.value) || 320)))}
+                  onChange={(e) => setFixedWidth(Number(e.target.value) || 0)}
+                  onBlur={() => setFixedWidth(Math.max(320, Math.min(2000, fixedWidth)))}
                 />
                 <p className="mt-1 text-[11px] text-subtle">320 - 2000</p>
               </div>
@@ -259,7 +260,8 @@ export function EditorSettings({
                   min={240}
                   max={2000}
                   value={fixedHeight}
-                  onChange={(e) => setFixedHeight(Math.max(240, Math.min(2000, Number(e.target.value) || 240)))}
+                  onChange={(e) => setFixedHeight(Number(e.target.value) || 0)}
+                  onBlur={() => setFixedHeight(Math.max(240, Math.min(2000, fixedHeight)))}
                 />
                 <p className="mt-1 text-[11px] text-subtle">240 - 2000</p>
               </div>
