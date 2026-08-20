@@ -15,6 +15,7 @@ import { showToast } from "@/components/shared/toast";
 import { validateImageFile } from "@/lib/media-validator";
 import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
 import { IsolatedDiary } from "@/components/diary/isolated-diary";
+import { ResizableDiaryWindow } from "@/components/diary/resizable-diary-window";
 import { splitHtmlCss } from "@/lib/html-css";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -98,6 +99,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [previewWidth, setPreviewWidth] = useState<"mobile" | "tablet" | "full">("full");
   const [previewZoom, setPreviewZoom] = useState(100);
   const [previewTheme, setPreviewTheme] = useState<"system" | "light" | "dark">("system");
+  const [previewNaturalWidth, setPreviewNaturalWidth] = useState<number | null>(null);
+  const handlePreviewContentWidth = useCallback((w: number) => setPreviewNaturalWidth(w), []);
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
   const saveRef = useRef<() => Promise<void>>(async () => {});
 
@@ -783,15 +786,18 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
               <div style={{ zoom: previewZoom / 100 } as React.CSSProperties}>
                 {isHtmlCss ? (
-                  <IsolatedDiary
-                    html={sanitizeHtml(
-                      resolveMediaUrlsInHtml(
-                        customCss
-                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                          : contentHtml
-                      )
-                    )}
-                  />
+                  <ResizableDiaryWindow naturalWidth={previewNaturalWidth}>
+                    <IsolatedDiary
+                      html={sanitizeHtml(
+                        resolveMediaUrlsInHtml(
+                          customCss
+                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                            : contentHtml
+                        )
+                      )}
+                      onContentWidth={handlePreviewContentWidth}
+                    />
+                  </ResizableDiaryWindow>
                 ) : (
                   <article
                     className={`${PROSE_CLASSES} max-w-none overflow-x-auto`}
