@@ -121,7 +121,14 @@ export function TiptapEditor({
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content, { emitUpdate: false });
+      // Defer to a microtask: setContent can trigger a flushSync internally,
+      // which React disallows while it is already rendering (i.e. during a
+      // lifecycle effect). Running it outside the render phase avoids the
+      // "flushSync was called from inside a lifecycle method" warning.
+      const id = window.setTimeout(() => {
+        editor.commands.setContent(content, { emitUpdate: false });
+      }, 0);
+      return () => window.clearTimeout(id);
     }
   }, [content, editor]);
 
