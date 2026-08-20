@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { Position } from "monaco-editor";
 import dynamic from "next/dynamic";
 import { loader } from "@monaco-editor/react";
 
@@ -18,6 +19,18 @@ interface CodeEditorProps {
   height?: string | number;
   dark?: boolean;
   ariaLabel?: string;
+  /**
+   * Called when the user pastes or drops image files onto the editor. `insertAt`
+   * inserts text at the cursor/drop position, so the parent can upload the file
+   * and then insert the resulting <img> tag where the user's cursor is.
+   */
+  onImageFiles?: (files: File[], insertAt: (text: string) => void) => void;
+  /**
+   * Reports an insert-at-cursor API once the editor mounts, so the parent can
+   * insert text (e.g. a media <img> tag chosen from the gallery) into the
+   * HTML/CSS editor at the cursor.
+   */
+  onApiReady?: (api: { insertAt: (text: string) => void }) => void;
 }
 
 // Tell Monaco how to spawn its workers. getWorker takes precedence over the
@@ -90,10 +103,30 @@ export function CodeEditor({
   height = "100%",
   dark = false,
   ariaLabel,
+  onImageFiles,
+  onApiReady,
 }: CodeEditorProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
+  const onImageFilesRef = useRef(onImageFiles);
+  onImageFilesRef.current = onImageFiles;
+  const onApiReadyRef = useRef(onApiReady);
+  onApiReadyRef.current = onApiReady;
+
+  // When image files are pasted/dropped, block Monaco's default handling and
+  // hand them (plus an insertAt callback) to the parent for upload + <img>
+  // insertion at the cursor.
+  const handleImageFiles = (
+    e: React.ClipboardEvent | React.DragEvent,
+    files: File[],
+    insertAt: (text: string) => void
+  ) => {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (!images.length || !onImageFilesRef.current) return;
+    e.preventDefault();
+    onImageFilesRef.current(images, insertAt);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -138,6 +171,41 @@ export function CodeEditor({
         height="100%"
         width="100%"
         theme={dark ? "vs-dark" : "light"}
+        onMount={(editor, monaco) => {
+          // Insert text at the current cursor (or a given position).
+          const insertAt = (text: string, position?: Position) => {
+            const model = editor.getModel();
+            if (!model) return;
+            const pos = position ?? editor.getPosition() ?? model.getPositionAt(0);
+            const range = new monaco.Range(
+              pos.lineNumber,
+              pos.column,
+              pos.lineNumber,
+              pos.column
+            );
+            editor.executeEdits("paste-image", [{ range, text, forceMoveMarkers: true }]);
+            editor.focus();
+          };
+          onApiReadyRef.current?.({ insertAt });
+          // Paste / drop image files onto the editor. Monaco does not expose
+          // clipboard files, so listen on the editor's DOM node instead.
+          const domNode = editor.getDomNode();
+          domNode?.addEventListener("paste", (e) => {
+            const dt = (e as ClipboardEvent).clipboardData;
+            const files = dt ? Array.from(dt.files) : [];
+            handleImageFiles(e as unknown as React.ClipboardEvent, files, (text) => insertAt(text));
+          });
+          domNode?.addEventListener("drop", (e) => {
+            const dt = (e as DragEvent).dataTransfer;
+            const files = dt ? Array.from(dt.files) : [];
+            handleImageFiles(e as unknown as React.DragEvent, files, (text) => {
+              const target = editor.getTargetAtClientPoint(e.clientX, e.clientY);
+              const targetPosition =
+                target && "position" in target ? target.position : undefined;
+              insertAt(text, targetPosition ?? undefined);
+            });
+          });
+        }}
         onChange={(v) => {
           if (timerRef.current) clearTimeout(timerRef.current);
           timerRef.current = setTimeout(() => onChange(v ?? ""), 150);

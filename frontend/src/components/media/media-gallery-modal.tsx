@@ -11,9 +11,19 @@ interface MediaGalleryModalProps {
   editor: Editor | null;
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * When provided, clicking a media item calls this instead of inserting into
+   * the Tiptap `editor` (used to insert into the Monaco HTML/CSS editor).
+   */
+  onInsertItem?: (item: MediaItem) => void;
 }
 
-export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModalProps) {
+export function MediaGalleryModal({
+  editor,
+  isOpen,
+  onClose,
+  onInsertItem,
+}: MediaGalleryModalProps) {
   const perPage = 12;
   const { data, isLoading, fetchNextPage, hasNextPage } = useMediaGallery(perPage);
   const deleteMedia = useDeleteMedia();
@@ -51,6 +61,11 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
   };
 
   const handleInsert = (item: MediaItem) => {
+    if (onInsertItem) {
+      onInsertItem(item);
+      onClose();
+      return;
+    }
     if (editor) {
       editor.chain().focus().setResizableImage({ src: resolveMediaUrl(item.url) ?? item.url }).run();
       onClose();

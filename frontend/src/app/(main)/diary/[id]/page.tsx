@@ -460,14 +460,16 @@ export default function DiaryReaderPage() {
         <ResizableDiaryWindow naturalWidth={naturalWidth}>
           {hasCustomCss ? (
             <IsolatedDiary
-              html={sanitizeHtml(displayHtml)}
+              html={sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate })}
               className="mt-6"
               onContentWidth={handleContentWidth}
             />
           ) : (
             <article
               className={`mt-6 ${PROSE_CLASSES} [&_hr]:border-border [&_hr]:my-4 max-w-prose`}
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayHtml) }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate }),
+              }}
             />
           )}
         </ResizableDiaryWindow>

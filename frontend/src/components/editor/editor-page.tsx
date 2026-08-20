@@ -10,10 +10,10 @@ import { Eye, Lock, Shield, Maximize2, Minimize2 } from "lucide-react";
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
 import { useMasterKey } from "@/hooks/use-master-key";
-import { useMediaUpload } from "@/hooks/use-media";
+import { useMediaUpload, type MediaItem } from "@/hooks/use-media";
 import { showToast } from "@/components/shared/toast";
 import { validateImageFile } from "@/lib/media-validator";
-import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
+import { sanitizeHtml, sanitizeCss, findDisallowedImageSources } from "@/lib/sanitize";
 import { IsolatedDiary } from "@/components/diary/isolated-diary";
 import { ResizableDiaryWindow } from "@/components/diary/resizable-diary-window";
 import { splitHtmlCss } from "@/lib/html-css";
@@ -102,7 +102,9 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [previewNaturalWidth, setPreviewNaturalWidth] = useState<number | null>(null);
   const handlePreviewContentWidth = useCallback((w: number) => setPreviewNaturalWidth(w), []);
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
+  const [blockedExternalImages, setBlockedExternalImages] = useState<string[]>([]);
   const saveRef = useRef<() => Promise<void>>(async () => {});
+  const sourceEditorInsertRef = useRef<((text: string) => void) | null>(null);
 
   // A diary is "HTML/CSS" when it ships its own <style> block (either via the
   // separate Custom CSS box or inline in the HTML source. Such diaries must be
@@ -131,6 +133,48 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       }
     },
     [uploadMedia, privacy],
+  );
+
+  const handleSourceImageFiles = useCallback(
+    async (files: File[], insertAt: (text: string) => void) => {
+      for (const file of files) {
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+          showToast(validation.error || "Invalid file");
+          continue;
+        }
+        try {
+          const result = await uploadMedia.mutateAsync({
+            file,
+            isPrivate: privacy === "private",
+          });
+          // Insert a full <img> tag pointing at the uploaded media's own
+          // relative /api/v1/media/<id> URL (resolved to the full origin at
+          // render time), at the user's cursor.
+          insertAt(
+            `<img src="${resolveMediaUrl(result.url) ?? result.url}" alt="">`
+          );
+        } catch {
+          // toast already shown by hook
+        }
+      }
+    },
+    [uploadMedia, privacy],
+  );
+
+  const handleSourceGalleryInsert = useCallback(
+    (item: MediaItem) => {
+      // In source mode, insert into the Monaco HTML/CSS editor at the cursor;
+      // otherwise fall back to the Tiptap editor's default image insertion.
+      const insertAt = sourceEditorInsertRef.current;
+      const src = resolveMediaUrl(item.url) ?? item.url;
+      if (sourceMode && insertAt) {
+        insertAt(`<img src="${src}" alt="">`);
+      } else if (editor) {
+        editor.chain().focus().setResizableImage({ src }).run();
+      }
+    },
+    [sourceMode, editor],
   );
 
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
@@ -213,13 +257,22 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   };
 
   // Debounce the live preview so sanitize doesn't re-run on every keystroke.
+  // External https: images are allowed only for non-private (public/draft)
+  // diaries; private diaries strip every external image (privacy: a reader's
+  // IP/referrer must never leak to a third-party image host from a diary the
+  // author marked private).
+  const allowExternalImages = privacy !== "private";
   useEffect(() => {
     const raw = customCss
       ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
       : contentHtml;
-    const t = window.setTimeout(() => setLivePreviewHtml(sanitizeHtml(resolveMediaUrlsInHtml(raw))), 160);
+    const t = window.setTimeout(() => {
+      const resolved = resolveMediaUrlsInHtml(raw);
+      setLivePreviewHtml(sanitizeHtml(resolved, { allowExternalImages }));
+      setBlockedExternalImages(findDisallowedImageSources(resolved, { allowExternalImages }));
+    }, 160);
     return () => window.clearTimeout(t);
-  }, [contentHtml, customCss]);
+  }, [contentHtml, customCss, allowExternalImages]);
 
   const renderSourceEditor = (fullscreen: boolean) => (
     <div
@@ -236,6 +289,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         height={fullscreen ? "100%" : 360}
         dark={editorDark}
         ariaLabel="HTML source editor"
+        onImageFiles={handleSourceImageFiles}
+        onApiReady={(api) => {
+          sourceEditorInsertRef.current = api.insertAt;
+        }}
       />
     </div>
   );
@@ -257,6 +314,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const doSave = async (publishPrivacy?: string) => {
     const finalPrivacy = publishPrivacy ?? privacy;
     setSaveStatus("saving");
+    // Strip external images when saving anything private (and never for the
+    // encrypted payload — the browser is the only sanitizer for E2E data).
+    // Non-private diaries may keep https: external images.
+    const finalAllowExternalImages = finalPrivacy !== "private";
+    const sanitizedContent = sanitizeHtml(
+      customCss
+        ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+        : contentHtml,
+      { allowExternalImages: finalAllowExternalImages }
+    );
     try {
       let payload: Record<string, unknown>;
       if (finalPrivacy === "private") {
@@ -268,9 +335,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         const encryptedPayload = await encryptDiary(
           {
             title: title.trim() || "Untitled",
-            contentHtml: customCss
-              ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-              : contentHtml,
+            contentHtml: sanitizedContent,
             tags,
           },
           masterKey
@@ -285,9 +350,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         payload = {
           privacy: finalPrivacy,
           title: title.trim() || null,
-          content_html: customCss
-            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-            : contentHtml,
+          content_html: sanitizedContent,
           content_text: contentText,
           tags,
           emotion: emotion || null,
@@ -492,6 +555,26 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             </button>
             <FloatingToolbar editor={editor} />
             {sourceMode ? renderSourceEditor(false) : renderRichEditor()}
+            {blockedExternalImages.length > 0 && (
+              <div
+                role="status"
+                className="mt-2 flex items-start gap-2 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-foreground"
+              >
+                <Shield className="w-4 h-4 mt-0.5 shrink-0 text-accent" />
+                <div>
+                  <p className="font-medium text-accent">
+                    External image{blockedExternalImages.length > 1 ? "s" : ""} removed for privacy
+                  </p>
+                  <p className="text-muted mt-0.5">
+                    {privacy === "private"
+                      ? "Private diaries block all external images so your readers' data never leaks to third-party hosts. "
+                      : "Only secure https: images are allowed. "}
+                    Upload your image to the media library, then use the gallery or
+                    drop/paste it here to insert its own link.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         {!sourceMode && <ChapterManager editor={editor} />}
@@ -544,6 +627,26 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 <FloatingToolbar editor={editor} />
                 {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
               </div>
+              {blockedExternalImages.length > 0 && sourceMode && (
+                <div
+                  role="status"
+                  className="mt-1 flex items-start gap-2 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-xs text-foreground"
+                >
+                  <Shield className="w-4 h-4 mt-0.5 shrink-0 text-accent" />
+                  <div>
+                    <p className="font-medium text-accent">
+                      External image{blockedExternalImages.length > 1 ? "s" : ""} removed for privacy
+                    </p>
+                    <p className="text-muted mt-0.5">
+                      {privacy === "private"
+                        ? "Private diaries block all external images so your readers' data never leaks to third-party hosts. "
+                        : "Only secure https: images are allowed. "}
+                      Upload your image to the media library, then use the gallery or
+                      drop/paste it here to insert its own link.
+                    </p>
+                  </div>
+                </div>
+              )}
               {sourceMode && (
                 <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
@@ -793,7 +896,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                           customCss
                             ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                             : contentHtml
-                        )
+                        ),
+                        { allowExternalImages }
                       )}
                       onContentWidth={handlePreviewContentWidth}
                     />
@@ -807,7 +911,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                           customCss
                             ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                             : contentHtml
-                        )
+                        ),
+                        { allowExternalImages }
                       ),
                     }}
                   />
@@ -927,6 +1032,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editor={editor}
         isOpen={showGallery}
         onClose={() => setShowGallery(false)}
+        onInsertItem={handleSourceGalleryInsert}
       />
       <TemplatePicker
         isOpen={showTemplatePicker}
