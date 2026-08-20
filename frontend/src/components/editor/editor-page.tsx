@@ -97,7 +97,9 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
-  const [previewWidth, setPreviewWidth] = useState<"mobile" | "tablet" | "full">("full");
+  const [previewWidth, setPreviewWidth] = useState<"mobile" | "tablet" | "full" | "custom">("full");
+  const [customPreviewW, setCustomPreviewW] = useState(390);
+  const [customPreviewH, setCustomPreviewH] = useState(600);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [previewTheme, setPreviewTheme] = useState<"system" | "light" | "dark">("system");
   const [previewNaturalWidth, setPreviewNaturalWidth] = useState<number | null>(null);
@@ -143,7 +145,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     const startPct = cssSplit;
     const onMove = (ev: PointerEvent) => {
       const delta = ((ev.clientY - startY) / rect.height) * 100;
-      setCssSplit(Math.min(90, Math.max(25, startPct + delta)));
+      // Dragging up (negative delta) grows the CSS pane, so subtract.
+      setCssSplit(Math.min(90, Math.max(25, startPct - delta)));
     };
     const onUp = () => {
       document.removeEventListener("pointermove", onMove);
@@ -745,6 +748,33 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                         </button>
                       ))}
                     </div>
+                    <div className="flex items-center gap-1 text-[10px] text-muted" title="Custom preview size in pixels">
+                      <input
+                        type="number"
+                        min={120}
+                        max={2000}
+                        value={customPreviewW}
+                        onChange={(e) => {
+                          setCustomPreviewW(Number(e.target.value) || 0);
+                          setPreviewWidth("custom");
+                        }}
+                        className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        aria-label="Custom preview width in pixels"
+                      />
+                      <span>&times;</span>
+                      <input
+                        type="number"
+                        min={120}
+                        max={2000}
+                        value={customPreviewH}
+                        onChange={(e) => {
+                          setCustomPreviewH(Number(e.target.value) || 0);
+                          setPreviewWidth("custom");
+                        }}
+                        className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        aria-label="Custom preview height in pixels"
+                      />
+                    </div>
                     <span className="text-[10px] text-subtle">updates as you type</span>
                   </div>
                 </div>
@@ -754,8 +784,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                     className={`min-h-full p-2 bg-background ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
                   >
                     <div
-                      style={{ width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : "100%" }}
-                      className="mx-auto"
+                      style={{
+                        width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : previewWidth === "custom" ? customPreviewW : "100%",
+                        minHeight: previewWidth === "custom" ? customPreviewH : undefined,
+                      }}
+                      className={`mx-auto ${previewWidth === "custom" ? "overflow-y-auto" : ""}`}
                     >
                       {isHtmlCss ? (
                         <IsolatedDiary html={livePreviewHtml} />
