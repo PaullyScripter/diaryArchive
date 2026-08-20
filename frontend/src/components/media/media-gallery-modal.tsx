@@ -134,11 +134,18 @@ export function MediaGalleryModal({
             <>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {items.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    className="group relative aspect-square rounded-md border border-border bg-overlay/5 overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
+                    role="button"
+                    tabIndex={0}
+                    className="group relative aspect-square rounded-md border border-border bg-overlay/5 overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
                     onClick={() => handleInsert(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleInsert(item);
+                      }
+                    }}
                     aria-label={`Insert ${item.filename}`}
                   >
                     {item.mime_type.startsWith("image/") ? (
@@ -167,7 +174,7 @@ export function MediaGalleryModal({
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
 
