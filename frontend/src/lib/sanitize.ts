@@ -92,16 +92,25 @@ function ensureStyleHookRegistered() {
   });
 }
 
+function apiOrigin(): string | null {
+  const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+  if (!/^https?:\/\//i.test(base)) return null;
+  try {
+    return new URL(base).origin;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Decide whether an <img src> may render.
  *
- * Policy: same-origin relative paths and any https: URL are allowed, so authors
- * can reference external images (e.g. a hosted newspaper photo) and the diary
- * renders like a full-page editor. Only unsafe schemes that cannot be an image
- * and are typical injection/exfiltration vectors are rejected outright:
- * javascript:, data:, vbscript:, file:, and the like. External images still
- * only load over https — never http, never inline data blobs — so no plaintext
- * or payload-exfil channel is opened.
+ * Policy: allow (a) same-origin relative paths, (b) the configured API origin
+ * (which is where the app serves uploaded media — this may be http in local
+ * dev), and (c) any https: URL, so authors can reference external images (e.g.
+ * a hosted newspaper photo) and the diary renders like a full-page editor.
+ * Reject everything else: javascript:, data:, vbscript:, file:, and plain http:
+ * external hosts. No plaintext or payload-exfil channel is opened.
  *
  * Note: allowing arbitrary https images means the reader's IP is visible to the
  * image host (a tracking/identification vector). This is the explicit author
@@ -111,8 +120,15 @@ export function isAllowedImageSource(value: string): boolean {
   const v = (value ?? "").trim();
   if (!v) return false;
   if (v.startsWith("/")) return true; // same-origin relative
-  // Allow https: images (external hosts included); reject everything else.
-  return /^https:\/\//i.test(v);
+  if (/^https:\/\//i.test(v)) return true; // external https images
+  const origin = apiOrigin();
+  if (!origin) return false;
+  try {
+    // App-hosted media may be http in local dev, so match the exact origin.
+    return new URL(v).origin === origin;
+  } catch {
+    return false;
+  }
 }
 
 export function sanitizeHtml(html: string): string {

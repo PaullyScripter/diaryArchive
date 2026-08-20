@@ -216,6 +216,18 @@ describe("sanitizeHtml", () => {
     }
   });
 
+  it("keeps app media on the API origin even when it is http (local dev)", () => {
+    const prev = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "http://localhost:8000/api/v1";
+    try {
+      const input = '<img src="http://localhost:8000/api/v1/media/file/x?v=original">';
+      const result = sanitizeHtml(input);
+      expect(result).toContain("localhost:8000/api/v1/media/file/x");
+    } finally {
+      process.env.NEXT_PUBLIC_API_URL = prev;
+    }
+  });
+
   it("rejects non-https (http:) external images", () => {
     const input = '<img src="http://tracker.example/pixel.gif">';
     const result = sanitizeHtml(input);
