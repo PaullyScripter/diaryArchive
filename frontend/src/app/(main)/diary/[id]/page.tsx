@@ -457,7 +457,11 @@ export default function DiaryReaderPage() {
       )}
 
       {(!isPrivate || (isPrivate && isOwner && decrypted)) && (
-        <ResizableDiaryWindow naturalWidth={naturalWidth}>
+        <ResizableDiaryWindow
+          naturalWidth={naturalWidth}
+          fixedWidth={diary.fixed_width}
+          fixedHeight={diary.fixed_height}
+        >
           {hasCustomCss ? (
             <IsolatedDiary
               html={sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate })}
