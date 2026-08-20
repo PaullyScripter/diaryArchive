@@ -81,7 +81,7 @@ export function ResizableDiaryWindow({
       <div
         ref={containerRef}
         className="relative mt-6"
-        style={{ width: fixedWidth ?? "100%" }}
+        style={{ width: fixedWidth ? `min(${fixedWidth}px, 100%)` : "100%" }}
       >
         <div
           className="overflow-auto"
