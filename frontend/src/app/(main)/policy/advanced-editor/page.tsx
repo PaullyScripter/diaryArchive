@@ -14,9 +14,14 @@ const SECTIONS = [
   "3. What the Advanced Editor Gives You",
   "4. What You Can Create",
   "5. Editor Capabilities",
-  "6. Rules and Limitations",
-  "7. Why These Rules Exist",
-  "8. A Starter Template",
+  "6. How Sanitization Works",
+  "7. Allowed HTML Tags",
+  "8. Allowed HTML Attributes",
+  "9. Allowed CSS Properties",
+  "10. Blocked CSS Values and Patterns",
+  "11. Rules and Limitations",
+  "12. Why These Rules Exist",
+  "13. A Starter Template",
 ];
 
 function CodeBlock({ code }: { code: string }) {
@@ -54,6 +59,39 @@ function CodeBlock({ code }: { code: string }) {
           </span>
         ))}</code>
       </pre>
+    </div>
+  );
+}
+
+function TagList({ tags }: { tags: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1.5 my-3">
+      {tags.map((tag) => (
+        <code
+          key={tag}
+          className="text-xs px-2 py-1 rounded bg-overlay/5 border border-border/50 text-foreground font-mono"
+        >
+          {tag}
+        </code>
+      ))}
+    </div>
+  );
+}
+
+function CssPropertyTable({ title, props }: { title: string; props: string[] }) {
+  return (
+    <div className="mb-4">
+      <h4 className="text-sm font-semibold text-foreground mb-2">{title}</h4>
+      <div className="flex flex-wrap gap-1.5">
+        {props.map((p) => (
+          <code
+            key={p}
+            className="text-xs px-2 py-1 rounded bg-overlay/5 border border-border/50 text-foreground font-mono"
+          >
+            {p}
+          </code>
+        ))}
+      </div>
     </div>
   );
 }
@@ -173,9 +211,12 @@ export default function AdvancedEditorPage() {
     <LegalDocShell
       title="Advanced Editor"
       subtitle="A professional HTML and CSS editor for making your diary page truly yours."
-      updated="August 19, 2026"
+      updated="August 20, 2026"
       sections={SECTIONS}
     >
+      {/* ============================================================= */}
+      {/* SECTION 1 */}
+      {/* ============================================================= */}
       <Section title="1. What Is the Advanced Editor">
         <p className="text-base leading-relaxed text-muted mb-4">
           The Advanced Editor is a full-featured code editor built into
@@ -200,6 +241,9 @@ export default function AdvancedEditorPage() {
         </InfoCard>
       </Section>
 
+      {/* ============================================================= */}
+      {/* SECTION 2 */}
+      {/* ============================================================= */}
       <Section title="2. A Short Introduction to HTML and CSS">
         <p className="text-base leading-relaxed text-muted mb-4">
           Two simple languages power almost every page on the internet, and they
@@ -232,6 +276,9 @@ export default function AdvancedEditorPage() {
         </p>
       </Section>
 
+      {/* ============================================================= */}
+      {/* SECTION 3 */}
+      {/* ============================================================= */}
       <Section title="3. What the Advanced Editor Gives You">
         <InfoCard>
           <ul className="space-y-2.5 text-sm leading-relaxed text-muted">
@@ -266,6 +313,9 @@ export default function AdvancedEditorPage() {
         </InfoCard>
       </Section>
 
+      {/* ============================================================= */}
+      {/* SECTION 4 */}
+      {/* ============================================================= */}
       <Section title="4. What You Can Create">
         <p className="text-base leading-relaxed text-muted mb-4">
           Almost any diary page you can imagine. Some common examples:
@@ -302,6 +352,9 @@ export default function AdvancedEditorPage() {
         </div>
       </Section>
 
+      {/* ============================================================= */}
+      {/* SECTION 5 */}
+      {/* ============================================================= */}
       <Section title="5. Editor Capabilities">
         <p className="text-base leading-relaxed text-muted mb-4">
           The Advanced Editor is a professional code editor, not a toy. It gives
@@ -361,7 +414,511 @@ export default function AdvancedEditorPage() {
         </p>
       </Section>
 
-      <Section title="6. Rules and Limitations">
+      {/* ============================================================= */}
+      {/* SECTION 6: HOW SANITIZATION WORKS */}
+      {/* ============================================================= */}
+      <Section title="6. How Sanitization Works">
+        <p className="text-base leading-relaxed text-muted mb-4">
+          Every piece of HTML and CSS you write goes through a sanitization
+          pipeline before it is stored and before any reader sees it. This
+          happens automatically on both the frontend (in your browser) and the
+          backend (on the server). The two layers use the same rules so that no
+          harmful content ever reaches a reader.
+        </p>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Frontend sanitization (in your browser)</h3>
+          <p className="text-sm leading-relaxed text-muted mb-3">
+            When you save a diary, the content is cleaned by DOMPurify before it
+            leaves your browser. DOMPurify parses the HTML, removes any tags and
+            attributes that are not on the allowed list, and scrubs inline style
+            values against a blocklist of dangerous patterns. This is the first
+            line of defense.
+          </p>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Backend sanitization (on the server)</h3>
+          <p className="text-sm leading-relaxed text-muted">
+            When the server receives your diary content, it runs a second,
+            independent sanitization pass using Bleach and tinycss2. This pass
+            strips any remaining disallowed tags and attributes, parses every
+            <code className="text-foreground">{"<style>"}</code> block and inline
+            <code className="text-foreground">{"style=\"\""}</code> attribute, and
+            removes CSS declarations that match dangerous value patterns. Even
+            if someone bypassed the frontend, the backend would still catch
+            everything.
+          </p>
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">What the sanitizer does step by step</h3>
+          <ul className="space-y-2 text-sm leading-relaxed text-muted">
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">1.</span>
+              <span>Extracts all <code className="text-foreground">{"<style>"}</code> blocks and inline <code className="text-foreground">{"style=\"\""}</code> attributes.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">2.</span>
+              <span>Parses the CSS with tinycss2, then rebuilds each rule keeping only declarations with safe property names and safe values.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">3.</span>
+              <span>Decodes CSS escape sequences (for example, <code className="text-foreground">{"\\72"}</code> becomes <code className="text-foreground">r</code>) to prevent obfuscation attacks.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">4.</span>
+              <span>Checks every CSS value against a blocklist of dangerous patterns (such as <code className="text-foreground">url()</code>, <code className="text-foreground">javascript:</code>, <code className="text-foreground">data:</code>).</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">5.</span>
+              <span>Strips any HTML tags not on the allowed list. Disallowed tags are removed but their text content is kept.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">6.</span>
+              <span>Strips any HTML attributes not on the allowed list for each tag.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">7.</span>
+              <span>Checks <code className="text-foreground">href</code> and <code className="text-foreground">src</code> values and blocks dangerous URI schemes such as <code className="text-foreground">javascript:</code>, <code className="text-foreground">data:</code>, and <code className="text-foreground">file:</code>.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">8.</span>
+              <span>Drops <code className="text-foreground">@import</code>, <code className="text-foreground">@font-face</code>, and <code className="text-foreground">@charset</code> rules from CSS.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">9.</span>
+              <span>Limits CSS nesting depth to 12 levels to prevent resource exhaustion.</span>
+            </li>
+          </ul>
+        </InfoCard>
+
+        <WarningCard>
+          <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200">
+            The sanitizer is applied every time you save. Changes you see in the
+            live preview may differ from what is stored if your code contains
+            disallowed elements. Always check the final rendered diary page
+            after publishing.
+          </p>
+        </WarningCard>
+      </Section>
+
+      {/* ============================================================= */}
+      {/* SECTION 7: ALLOWED HTML TAGS */}
+      {/* ============================================================= */}
+      <Section title="7. Allowed HTML Tags">
+        <p className="text-base leading-relaxed text-muted mb-4">
+          Only the tags listed below are permitted. If you use a tag that is not
+          on this list, it will be removed when you save. The text content inside
+          a removed tag is kept, but the tag itself disappears.
+        </p>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Text and inline</h3>
+          <TagList tags={["p", "h1", "h2", "h3", "h4", "h5", "h6", "span", "strong", "em", "small", "sub", "sup", "mark", "abbr", "cite", "q", "s", "u", "code", "pre", "br"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Lists</h3>
+          <TagList tags={["ul", "ol", "li", "dl", "dt", "dd"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Links and media</h3>
+          <TagList tags={["a", "img", "hr"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Semantic layout</h3>
+          <TagList tags={["div", "article", "section", "header", "footer", "aside", "nav", "main", "figure", "figcaption", "blockquote"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Tables</h3>
+          <TagList tags={["table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "colgroup", "col"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Interactive (inert without JavaScript)</h3>
+          <TagList tags={["details", "summary", "label", "input", "fieldset", "legend"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Style</h3>
+          <TagList tags={["style"]} />
+        </InfoCard>
+
+        <WarningCard>
+          <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200">
+            The following tags are explicitly blocked and will always be removed:
+            <code className="text-foreground">script</code>,{" "}
+            <code className="text-foreground">iframe</code>,{" "}
+            <code className="text-foreground">object</code>,{" "}
+            <code className="text-foreground">embed</code>,{" "}
+            <code className="text-foreground">form</code>,{" "}
+            <code className="text-foreground">textarea</code>,{" "}
+            <code className="text-foreground">select</code>,{" "}
+            <code className="text-foreground">option</code>,{" "}
+            <code className="text-foreground">button</code>,{" "}
+            <code className="text-foreground">svg</code>,{" "}
+            <code className="text-foreground">math</code>,{" "}
+            <code className="text-foreground">link</code>,{" "}
+            <code className="text-foreground">meta</code>,{" "}
+            <code className="text-foreground">base</code>, and{" "}
+            <code className="text-foreground">template</code>.
+          </p>
+        </WarningCard>
+      </Section>
+
+      {/* ============================================================= */}
+      {/* SECTION 8: ALLOWED HTML ATTRIBUTES */}
+      {/* ============================================================= */}
+      <Section title="8. Allowed HTML Attributes">
+        <p className="text-base leading-relaxed text-muted mb-4">
+          Attributes control the behavior and metadata of an HTML tag. Not all
+          attributes are allowed. The following are the only ones permitted, and
+          only on the tags where they make sense.
+        </p>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Global attributes (allowed on all tags)</h3>
+          <TagList tags={["class", "style", "title"]} />
+          <p className="text-xs text-muted mt-2">
+            The <code className="text-foreground">class</code> attribute lets you
+            target elements with CSS. The <code className="text-foreground">style</code> attribute
+            lets you apply inline CSS. The <code className="text-foreground">title</code> attribute
+            adds a tooltip on hover.
+          </p>
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Link attributes</h3>
+          <p className="text-xs text-muted mb-2">
+            On <code className="text-foreground">{"<a>"}</code> tags:
+          </p>
+          <TagList tags={["href", "target", "rel"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Image attributes</h3>
+          <p className="text-xs text-muted mb-2">
+            On <code className="text-foreground">{"<img>"}</code> tags:
+          </p>
+          <TagList tags={["src", "alt", "width", "height"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Form input attributes</h3>
+          <p className="text-xs text-muted mb-2">
+            On <code className="text-foreground">{"<input>"}</code> tags:
+          </p>
+          <TagList tags={["type", "checked", "disabled", "value", "name"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Label attributes</h3>
+          <p className="text-xs text-muted mb-2">
+            On <code className="text-foreground">{"<label>"}</code> tags:
+          </p>
+          <TagList tags={["for"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Table attributes</h3>
+          <p className="text-xs text-muted mb-2">
+            On <code className="text-foreground">{"<td>"}</code>,{" "}
+            <code className="text-foreground">{"<th>"}</code>,{" "}
+            <code className="text-foreground">{"<col>"}</code>, and{" "}
+            <code className="text-foreground">{"<colgroup>"}</code> tags:
+          </p>
+          <TagList tags={["colspan", "rowspan", "scope", "align", "valign", "span"]} />
+        </InfoCard>
+
+        <WarningCard>
+          <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200">
+            All event handler attributes (such as{" "}
+            <code className="text-foreground">onclick</code>,{" "}
+            <code className="text-foreground">onerror</code>,{" "}
+            <code className="text-foreground">onload</code>,{" "}
+            <code className="text-foreground">onmouseover</code>) are always
+            removed. The <code className="text-foreground">data-*</code> custom
+            data attributes are also always removed. No exceptions.
+          </p>
+        </WarningCard>
+      </Section>
+
+      {/* ============================================================= */}
+      {/* SECTION 9: ALLOWED CSS PROPERTIES */}
+      {/* ============================================================= */}
+      <Section title="9. Allowed CSS Properties">
+        <p className="text-base leading-relaxed text-muted mb-4">
+          The sanitizer checks every CSS property name against an allowlist.
+          Properties not on this list are silently dropped from both{" "}
+          <code className="text-foreground">{"<style>"}</code> blocks and inline{" "}
+          <code className="text-foreground">{"style=\"\""}</code> attributes.
+        </p>
+
+        <CssPropertyTable
+          title="Typography"
+          props={[
+            "font-family", "font-size", "font-weight", "font-style",
+            "color", "background-color", "background", "background-image",
+            "text-align", "text-decoration", "text-indent", "text-transform",
+            "line-height", "letter-spacing", "white-space", "word-wrap",
+            "vertical-align", "text-shadow", "word-break", "overflow-wrap",
+            "text-overflow",
+          ]}
+        />
+
+        <CssPropertyTable
+          title="Box model"
+          props={[
+            "margin", "margin-left", "margin-right", "margin-top", "margin-bottom",
+            "padding", "padding-left", "padding-right", "padding-top", "padding-bottom",
+            "border", "border-left", "border-right", "border-top", "border-bottom",
+            "border-radius", "box-shadow", "border-collapse", "border-spacing",
+          ]}
+        />
+
+        <CssPropertyTable
+          title="Sizing and layout"
+          props={[
+            "width", "height", "min-width", "min-height", "max-width", "max-height",
+            "display", "float", "overflow", "overflow-x", "overflow-y",
+            "position", "top", "right", "bottom", "left", "inset", "z-index",
+          ]}
+        />
+
+        <CssPropertyTable
+          title="Flexbox"
+          props={[
+            "flex", "flex-direction", "flex-wrap", "flex-grow", "flex-shrink", "flex-basis",
+            "gap", "row-gap", "column-gap",
+            "align-items", "align-self", "align-content",
+            "justify-content", "justify-items", "justify-self",
+            "place-items", "place-content", "place-self",
+          ]}
+        />
+
+        <CssPropertyTable
+          title="Grid"
+          props={[
+            "grid", "grid-template", "grid-template-columns", "grid-template-rows",
+            "grid-template-areas", "grid-column", "grid-column-start", "grid-column-end",
+            "grid-row", "grid-row-start", "grid-row-end", "grid-area",
+            "grid-auto-flow", "grid-auto-rows", "grid-auto-columns", "grid-gap",
+          ]}
+        />
+
+        <CssPropertyTable
+          title="Visual and effects"
+          props={[
+            "box-sizing", "aspect-ratio", "object-fit", "object-position",
+            "opacity", "transform", "transform-origin", "transition",
+            "content", "filter", "backdrop-filter", "cursor",
+            "user-select", "visibility",
+          ]}
+        />
+
+        <CssPropertyTable
+          title="Columns"
+          props={["columns", "column-count", "column-gap"]}
+        />
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Custom properties (CSS variables)</h3>
+          <p className="text-sm leading-relaxed text-muted">
+            Any CSS custom property whose name starts with{" "}
+            <code className="text-foreground">--</code> is always allowed. You
+            can define and use as many CSS variables as you like. This is the
+            recommended way to keep your styles organized and easy to change.
+          </p>
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">At-rules</h3>
+          <ul className="space-y-1.5 text-sm leading-relaxed text-muted">
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2713;</span>
+              <span><code className="text-foreground">@media</code> is allowed. Responsive breakpoints work as expected.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2713;</span>
+              <span><code className="text-foreground">@supports</code> is allowed. Feature queries work as expected.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2713;</span>
+              <span><code className="text-foreground">@keyframes</code> (and vendor-prefixed variants) is allowed for CSS animations.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2717;</span>
+              <span><code className="text-foreground">@import</code> is dropped. External stylesheets cannot be loaded.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2717;</span>
+              <span><code className="text-foreground">@font-face</code> is dropped. Custom web fonts cannot be loaded.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2717;</span>
+              <span><code className="text-foreground">@charset</code> is dropped.</span>
+            </li>
+          </ul>
+        </InfoCard>
+      </Section>
+
+      {/* ============================================================= */}
+      {/* SECTION 10: BLOCKED CSS VALUES AND PATTERNS */}
+      {/* ============================================================= */}
+      <Section title="10. Blocked CSS Values and Patterns">
+        <p className="text-base leading-relaxed text-muted mb-4">
+          Even when a CSS property name is allowed, the value you assign to it
+          is checked against a blocklist of dangerous patterns. If a value
+          matches any of these patterns, the entire CSS declaration is removed.
+          This prevents attacks that try to load external resources, execute
+          code, or leak data through CSS.
+        </p>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Blocked value patterns</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-3 py-2 text-left font-semibold text-foreground">Pattern</th>
+                  <th className="px-3 py-2 text-left font-semibold text-foreground">What it catches</th>
+                  <th className="px-3 py-2 text-left font-semibold text-foreground">Why it is blocked</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">url()</td>
+                  <td className="px-3 py-2 text-muted">External resource loading (images, fonts, scripts)</td>
+                  <td className="px-3 py-2 text-muted">Prevents loading external resources that could track readers or inject content</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">expression()</td>
+                  <td className="px-3 py-2 text-muted">IE expression() function</td>
+                  <td className="px-3 py-2 text-muted">Legacy IE XSS vector</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">@import</td>
+                  <td className="px-3 py-2 text-muted">CSS @import statements</td>
+                  <td className="px-3 py-2 text-muted">Prevents loading external stylesheets that could alter page appearance or leak data</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">javascript:</td>
+                  <td className="px-3 py-2 text-muted">JavaScript URI scheme</td>
+                  <td className="px-3 py-2 text-muted">Prevents code execution in the reader&apos;s browser</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">vbscript:</td>
+                  <td className="px-3 py-2 text-muted">VBScript URI scheme</td>
+                  <td className="px-3 py-2 text-muted">Legacy IE code execution vector</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">data:</td>
+                  <td className="px-3 py-2 text-muted">data: URI scheme</td>
+                  <td className="px-3 py-2 text-muted">Prevents embedding base64-encoded payloads, tracking beacons, or malicious content</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">-moz-binding</td>
+                  <td className="px-3 py-2 text-muted">Mozilla XBL binding</td>
+                  <td className="px-3 py-2 text-muted">Legacy Firefox XSS vector</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">behavior:</td>
+                  <td className="px-3 py-2 text-muted">IE HTC behavior</td>
+                  <td className="px-3 py-2 text-muted">Legacy IE code execution vector</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">progid:</td>
+                  <td className="px-3 py-2 text-muted">IE ActiveX Transform</td>
+                  <td className="px-3 py-2 text-muted">Legacy IE code execution vector</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">document.</td>
+                  <td className="px-3 py-2 text-muted">DOM access</td>
+                  <td className="px-3 py-2 text-muted">Prevents reading or modifying the page DOM from CSS</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 font-mono text-xs text-foreground">window.</td>
+                  <td className="px-3 py-2 text-muted">Window object access</td>
+                  <td className="px-3 py-2 text-muted">Prevents accessing browser APIs from CSS</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Blocked URI schemes on links and images</h3>
+          <p className="text-sm leading-relaxed text-muted mb-3">
+            For <code className="text-foreground">href</code> and{" "}
+            <code className="text-foreground">src</code> attributes, the
+            following URI schemes are always blocked, regardless of context:
+          </p>
+          <TagList tags={["javascript:", "vbscript:", "data:", "file:", "about:"]} />
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Image source policy</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-3 py-2 text-left font-semibold text-foreground">Source type</th>
+                  <th className="px-3 py-2 text-left font-semibold text-foreground">Public diaries</th>
+                  <th className="px-3 py-2 text-left font-semibold text-foreground">Private diaries</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 text-muted">Uploaded via media library</td>
+                  <td className="px-3 py-2 text-muted">Allowed</td>
+                  <td className="px-3 py-2 text-muted">Allowed (served with signed URL)</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 text-muted">Same-origin relative path</td>
+                  <td className="px-3 py-2 text-muted">Allowed</td>
+                  <td className="px-3 py-2 text-muted">Allowed</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 text-muted">External https: image</td>
+                  <td className="px-3 py-2 text-muted">Allowed</td>
+                  <td className="px-3 py-2 text-muted">Blocked</td>
+                </tr>
+                <tr className="border-b border-border/50 bg-overlay/5">
+                  <td className="px-3 py-2 text-muted">External http: image</td>
+                  <td className="px-3 py-2 text-muted">Blocked</td>
+                  <td className="px-3 py-2 text-muted">Blocked</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="px-3 py-2 text-muted">javascript:, data:, vbscript:</td>
+                  <td className="px-3 py-2 text-muted">Blocked</td>
+                  <td className="px-3 py-2 text-muted">Blocked</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </InfoCard>
+
+        <InfoCard>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Escape sequence decoding</h3>
+          <p className="text-sm leading-relaxed text-muted">
+            Both sanitizers decode CSS escape sequences before checking against
+            the blocklist. For example, <code className="text-foreground">{"\\72"}</code>{" "}
+            becomes <code className="text-foreground">r</code>, and{" "}
+            <code className="text-foreground">{"\\28"}</code> becomes{" "}
+            <code className="text-foreground">(</code>. This prevents
+            obfuscation attacks where someone writes{" "}
+            <code className="text-foreground">{"j\\61vascript:"}</code> to bypass
+            a simple string match. After decoding, angle brackets are re-encoded
+            to prevent style-block breakout attacks.
+          </p>
+        </InfoCard>
+      </Section>
+
+      {/* ============================================================= */}
+      {/* SECTION 11: RULES AND LIMITATIONS */}
+      {/* ============================================================= */}
+      <Section title="11. Rules and Limitations">
         <p className="text-base leading-relaxed text-muted mb-4">
           To keep DiaryArchive safe and fast for everyone, the Advanced Editor
           enforces a few rules. They are intentionally simple.
@@ -374,6 +931,18 @@ export default function AdvancedEditorPage() {
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              <span><strong className="text-foreground">No SVG images.</strong> The <code className="text-foreground">svg</code> tag is not on the allowed list. Use PNG, JPEG, WebP, or GIF images instead.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              <span><strong className="text-foreground">No buttons or forms.</strong> The <code className="text-foreground">button</code>, <code className="text-foreground">form</code>, <code className="text-foreground">textarea</code>, and <code className="text-foreground">select</code> tags are not allowed. Use <code className="text-foreground">{"<a>"}</code> links or styled <code className="text-foreground">{"<div>"}</code> elements instead.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              <span><strong className="text-foreground">No external fonts.</strong> The <code className="text-foreground">link</code> tag and <code className="text-foreground">@font-face</code> rule are dropped. Use system fonts such as Georgia, Arial, Verdana, or monospace.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
               <span><strong className="text-foreground">No external images in private diaries.</strong> Private diaries block all images hosted on other websites. External <code className="text-foreground">https:</code> images are allowed only in public diaries.</span>
             </li>
             <li className="flex gap-2">
@@ -382,11 +951,15 @@ export default function AdvancedEditorPage() {
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
-              <span><strong className="text-foreground">No dangerous schemes.</strong> Links or image sources using <code className="text-foreground">javascript:</code>, <code className="text-foreground">data:</code>, or similar are removed.</span>
+              <span><strong className="text-foreground">No dangerous schemes.</strong> Links or image sources using <code className="text-foreground">javascript:</code>, <code className="text-foreground">data:</code>, <code className="text-foreground">file:</code>, or similar are removed.</span>
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
-              <span><strong className="text-foreground">A safe set of HTML tags and CSS properties.</strong> Anything outside that set is stripped on save.</span>
+              <span><strong className="text-foreground">A safe set of HTML tags and CSS properties.</strong> Anything outside that set is stripped on save. See sections 7 through 10 for the complete lists.</span>
+            </li>
+            <li className="flex gap-2">
+              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+              <span><strong className="text-foreground">CSS nesting depth limit.</strong> CSS rules nested more than 12 levels deep are dropped to prevent resource exhaustion.</span>
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
@@ -396,7 +969,10 @@ export default function AdvancedEditorPage() {
         </InfoCard>
       </Section>
 
-      <Section title="7. Why These Rules Exist">
+      {/* ============================================================= */}
+      {/* SECTION 12: WHY THESE RULES EXIST */}
+      {/* ============================================================= */}
+      <Section title="12. Why These Rules Exist">
         <p className="text-base leading-relaxed text-muted mb-4">
           These rules are not about limiting your creativity. They protect
           everyone who reads your diary, and everyone who shares the platform.
@@ -418,10 +994,27 @@ export default function AdvancedEditorPage() {
             blocked there entirely. Your own uploaded images are served from
             DiaryArchive and never leak a reader&apos;s details.
           </p>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Preventing data leaks through CSS</h3>
+          <p className="text-sm leading-relaxed text-muted mb-3">
+            CSS can be used to exfiltrate data. For example, a background image
+            with a URL that includes a reader&apos;s information could send that
+            data to an external server. The blocked value patterns (url(),
+            data:, javascript:) prevent this kind of abuse while still allowing
+            safe CSS features such as gradients, shadows, and transforms.
+          </p>
           <h3 className="text-sm font-semibold text-foreground mb-2">Consistency and performance</h3>
+          <p className="text-sm leading-relaxed text-muted mb-3">
+            A size limit, a known set of allowed features, and a CSS nesting
+            depth limit keep pages fast to load on any device and keep the site
+            stable for everyone.
+          </p>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Why SVG is blocked</h3>
           <p className="text-sm leading-relaxed text-muted">
-            A size limit and a known set of allowed features keep pages fast to
-            load on any device and keep the site stable for everyone.
+            SVG files can contain embedded JavaScript, external references, and
+            complex structures that are difficult to sanitize reliably. Rather
+            than risk a gap in protection, the sanitizer removes all SVG content.
+            Use raster image formats (PNG, JPEG, WebP, GIF) for your images
+            instead.
           </p>
         </InfoCard>
         <p className="text-sm leading-relaxed text-muted mt-2">
@@ -430,7 +1023,10 @@ export default function AdvancedEditorPage() {
         </p>
       </Section>
 
-      <Section title="8. A Starter Template">
+      {/* ============================================================= */}
+      {/* SECTION 13: STARTER TEMPLATE */}
+      {/* ============================================================= */}
+      <Section title="13. A Starter Template">
         <p className="text-base leading-relaxed text-muted mb-2">
           Here is a complete, ready-to-use page that introduces yourself, your
           hobbies, and a favorite thought. Copy it, paste it into the HTML editor

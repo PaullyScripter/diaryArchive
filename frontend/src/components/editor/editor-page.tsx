@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Eye, Lock, Shield, Maximize2, Minimize2 } from "lucide-react";
 import { ExternalImagesWarning } from "@/components/editor/external-images-warning";
+import { SanitizationWarning, detectSanitizationIssues, type SanitizationIssue } from "@/components/editor/sanitization-warning";
 
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
@@ -107,6 +108,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
   const [blockedExternalImages, setBlockedExternalImages] = useState<string[]>([]);
   const [imagesWarningDismissed, setImagesWarningDismissed] = useState(false);
+  const [sanitizationIssues, setSanitizationIssues] = useState<SanitizationIssue[]>([]);
+  const [sanitizationWarningDismissed, setSanitizationWarningDismissed] = useState(false);
   const saveRef = useRef<() => Promise<void>>(async () => {});
   const sourceEditorInsertRef = useRef<((text: string) => void) | null>(null);
   const previewRowRef = useRef<HTMLDivElement | null>(null);
@@ -352,6 +355,15 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     }, 160);
     return () => window.clearTimeout(t);
   }, [contentHtml, customCss, allowExternalImages]);
+
+  // Detect content that will be sanitized so we can warn the user.
+  useEffect(() => {
+    const issues = detectSanitizationIssues(contentHtml, customCss);
+    setSanitizationIssues(issues);
+    if (issues.length > 0) {
+      setSanitizationWarningDismissed(false);
+    }
+  }, [contentHtml, customCss]);
 
   const renderSourceEditor = (fullscreen: boolean) => (
     <div
@@ -655,6 +667,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 className="mt-2"
               />
             )}
+            {!sanitizationWarningDismissed && sanitizationIssues.length > 0 && (
+              <SanitizationWarning
+                issues={sanitizationIssues}
+                onDismiss={() => setSanitizationWarningDismissed(true)}
+                className="mt-2"
+              />
+            )}
           </div>
         </div>
         {!sourceMode && <ChapterManager editor={editor} />}
@@ -713,6 +732,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                   count={blockedExternalImages.length}
                   isPrivate={privacy === "private"}
                   onDismiss={() => setImagesWarningDismissed(true)}
+                  className="mt-1"
+                />
+              )}
+              {!sanitizationWarningDismissed && sanitizationIssues.length > 0 && (
+                <SanitizationWarning
+                  issues={sanitizationIssues}
+                  onDismiss={() => setSanitizationWarningDismissed(true)}
                   className="mt-1"
                 />
               )}
