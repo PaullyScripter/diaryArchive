@@ -109,8 +109,12 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [imagesWarningDismissed, setImagesWarningDismissed] = useState(false);
   const saveRef = useRef<() => Promise<void>>(async () => {});
   const sourceEditorInsertRef = useRef<((text: string) => void) | null>(null);
+  const previewRowRef = useRef<HTMLDivElement | null>(null);
   const [codeSplit, setCodeSplit] = useState(55);
   const [cssSplit, setCssSplit] = useState(65);
+  const [fixedEnabled, setFixedEnabled] = useState(false);
+  const [fixedWidth, setFixedWidth] = useState(720);
+  const [fixedHeight, setFixedHeight] = useState(800);
 
   // Resizable panes for the fullscreen source editor: a vertical divider
   // between the code panes and the live preview, and a horizontal divider
@@ -136,6 +140,20 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
   }, [codeSplit]);
+
+  // Given a desired preview pane width in pixels, move the vertical divider so
+  // the preview pane (and thus the diary) matches that width.
+  const setPreviewWidthPx = useCallback((px: number) => {
+    if (!px || px <= 0) return;
+    const row = previewRowRef.current;
+    if (!row) return;
+    const avail = row.clientWidth;
+    // Preview pane width is calc(100% - codeSplit% - 1.5rem); the 1.5rem
+    // divider is 24px. Solve for codeSplit so the pane equals `px`.
+    const target = Math.max(320, Math.min(avail - 24, px));
+    const codePct = 100 - ((target + 24) / avail) * 100;
+    setCodeSplit(Math.min(85, Math.max(15, codePct)));
+  }, []);
 
   const startHorizontalDrag = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -245,6 +263,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       setEmotion(existingDiary.emotion ?? "");
       setCommentsEnabled(existingDiary.comments_enabled);
       setContentWarnings(existingDiary.content_warnings ?? []);
+      if (existingDiary.fixed_width && existingDiary.fixed_height) {
+        setFixedEnabled(true);
+        setFixedWidth(existingDiary.fixed_width);
+        setFixedHeight(existingDiary.fixed_height);
+      } else {
+        setFixedEnabled(false);
+      }
     } else if (!isEditMode && !hasRecoveredDraft) {
       // new diary, no recovered draft
       setCommentsEnabled(true);
@@ -399,6 +424,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           encrypted_data: encryptedPayload,
           tags,
           emotion: emotion || null,
+          fixed_width: fixedEnabled ? fixedWidth : null,
+          fixed_height: fixedEnabled ? fixedHeight : null,
         };
       } else {
         payload = {
@@ -410,6 +437,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           emotion: emotion || null,
           comments_enabled: commentsEnabled,
           content_warnings: contentWarnings,
+          fixed_width: fixedEnabled ? fixedWidth : null,
+          fixed_height: fixedEnabled ? fixedHeight : null,
         };
       }
       if (isEditMode && diaryId) {
@@ -673,7 +702,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               onOpenTemplates={() => setShowTemplatePicker(true)}
             />
           </div>
-          <div className={`flex-1 min-h-0 flex p-4 ${sourceMode ? "flex-row gap-0" : "flex-col gap-4"}`}>
+          <div className={`flex-1 min-h-0 flex p-4 ${sourceMode ? "flex-row gap-0" : "flex-col gap-4"}`} ref={previewRowRef}>
             <div className="flex flex-col gap-4 min-h-0 min-w-0" style={sourceMode ? { width: `${codeSplit}%` } : { flex: 1 }}>
               <div className="relative flex-1 min-h-0 overflow-auto rounded-md border border-border">
                 <FloatingToolbar editor={editor} />
@@ -755,8 +784,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                         max={2000}
                         value={customPreviewW}
                         onChange={(e) => {
-                          setCustomPreviewW(Number(e.target.value) || 0);
+                          const v = Number(e.target.value) || 0;
+                          setCustomPreviewW(v);
                           setPreviewWidth("custom");
+                          setPreviewWidthPx(v);
                         }}
                         className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                         aria-label="Custom preview width in pixels"
@@ -784,11 +815,18 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                     className={`min-h-full p-2 bg-background ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
                   >
                     <div
-                      style={{
-                        width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : previewWidth === "custom" ? customPreviewW : "100%",
-                        minHeight: previewWidth === "custom" ? customPreviewH : undefined,
-                      }}
-                      className={`mx-auto ${previewWidth === "custom" ? "overflow-y-auto" : ""}`}
+                      style={
+                        fixedEnabled
+                          ? {
+                              width: fixedWidth,
+                              height: fixedHeight,
+                            }
+                          : {
+                              width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : previewWidth === "custom" ? customPreviewW : "100%",
+                              minHeight: previewWidth === "custom" ? customPreviewH : undefined,
+                            }
+                      }
+                      className={`mx-auto ${fixedEnabled ? "overflow-auto" : previewWidth === "custom" ? "overflow-y-auto" : ""}`}
                     >
                       {isHtmlCss ? (
                         <IsolatedDiary html={livePreviewHtml} />
@@ -831,6 +869,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             hasMasterKey={isMasterKeyAvailable}
             isEditMode={isEditMode}
             onSetupEncryption={() => setShowKeySetup(true)}
+            isHtmlCss={isHtmlCss}
+            fixedEnabled={fixedEnabled}
+            fixedWidth={fixedWidth}
+            fixedHeight={fixedHeight}
+            setFixedEnabled={setFixedEnabled}
+            setFixedWidth={setFixedWidth}
+            setFixedHeight={setFixedHeight}
           />
 
           <div className="mt-6">

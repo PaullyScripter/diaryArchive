@@ -20,6 +20,13 @@ interface EditorSettingsProps {
   hasMasterKey: boolean;
   isEditMode: boolean;
   onSetupEncryption: () => void;
+  isHtmlCss: boolean;
+  fixedEnabled: boolean;
+  fixedWidth: number;
+  fixedHeight: number;
+  setFixedEnabled: (v: boolean) => void;
+  setFixedWidth: (v: number) => void;
+  setFixedHeight: (v: number) => void;
 }
 
 export function EditorSettings({
@@ -36,6 +43,13 @@ export function EditorSettings({
   hasMasterKey,
   isEditMode,
   onSetupEncryption,
+  isHtmlCss,
+  fixedEnabled,
+  fixedWidth,
+  fixedHeight,
+  setFixedEnabled,
+  setFixedWidth,
+  setFixedHeight,
 }: EditorSettingsProps) {
   const warnings: Array<{ key: string; label: string }> = [
     { key: "adult", label: "Adult / Explicit" },
@@ -198,6 +212,60 @@ export function EditorSettings({
             </datalist>
           </div>
         </>
+      )}
+
+      {isHtmlCss && (
+        <div className="rounded-md border border-border bg-background p-4">
+          <label className="flex items-start gap-2 text-sm text-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={fixedEnabled}
+              onChange={(e) => setFixedEnabled(e.target.checked)}
+              className="mt-0.5 rounded border-border cursor-pointer"
+            />
+            <span>
+              Fixed width and height
+              <span className="block text-xs text-subtle font-normal mt-0.5">
+                Lock this HTML/CSS diary to a fixed window size. The diary scrolls
+                inside its own window instead of flooding the whole page, so
+                readers reach the comments faster.
+              </span>
+            </span>
+          </label>
+
+          {fixedEnabled && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1" htmlFor="fixed-width">
+                  Width (px)
+                </label>
+                <Input
+                  id="fixed-width"
+                  type="number"
+                  min={320}
+                  max={2000}
+                  value={fixedWidth}
+                  onChange={(e) => setFixedWidth(Math.max(320, Math.min(2000, Number(e.target.value) || 320)))}
+                />
+                <p className="mt-1 text-[11px] text-subtle">320 - 2000</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1" htmlFor="fixed-height">
+                  Height (px)
+                </label>
+                <Input
+                  id="fixed-height"
+                  type="number"
+                  min={240}
+                  max={2000}
+                  value={fixedHeight}
+                  onChange={(e) => setFixedHeight(Math.max(240, Math.min(2000, Number(e.target.value) || 240)))}
+                />
+                <p className="mt-1 text-[11px] text-subtle">240 - 2000</p>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
