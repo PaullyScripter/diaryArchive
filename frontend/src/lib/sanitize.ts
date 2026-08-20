@@ -92,31 +92,68 @@ function ensureStyleHookRegistered() {
   });
 }
 
+function apiOrigin(): string | null {
+  const base = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+  if (!/^https?:\/\//i.test(base)) return null;
+  try {
+    return new URL(base).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Options controlling image-source policy for a rendered diary.
+ *
+ * `allowExternalImages` permits https: images from arbitrary external hosts —
+ * the app's own media (same-origin relative paths and the configured API
+ * origin) is always allowed regardless of this flag. Public diaries opt in to
+ * external images (reader-IP exposure is an explicit author choice). Private /
+ * encrypted diaries never set it, so every external image is stripped: the
+ * reader's IP, referrer, and timing must not leak to a third-party image host
+ * from a diary the author marked private.
+ */
+export interface SanitizeOptions {
+  allowExternalImages?: boolean;
+}
+
 /**
  * Decide whether an <img src> may render.
  *
- * Policy: same-origin relative paths and any https: URL are allowed, so authors
- * can reference external images (e.g. a hosted newspaper photo) and the diary
- * renders like a full-page editor. Only unsafe schemes that cannot be an image
- * and are typical injection/exfiltration vectors are rejected outright:
- * javascript:, data:, vbscript:, file:, and the like. External images still
- * only load over https — never http, never inline data blobs — so no plaintext
- * or payload-exfil channel is opened.
+ * Policy: allow (a) same-origin relative paths, (b) the configured API origin
+ * (which is where the app serves uploaded media — this may be http in local
+ * dev), and (c) any https: URL only when `allowExternalImages` is true.
+ * Reject everything else: javascript:, data:, vbscript:, file:, and plain http:
+ * external hosts. No plaintext or payload-exfil channel is opened.
  *
  * Note: allowing arbitrary https images means the reader's IP is visible to the
  * image host (a tracking/identification vector). This is the explicit author
- * preference; the trade-off is documented here rather than silently applied.
+ * preference for public diaries; the trade-off is documented here rather than
+ * silently applied.
  */
-export function isAllowedImageSource(value: string): boolean {
+export function isAllowedImageSource(
+  value: string,
+  allowExternalImages = false
+): boolean {
   const v = (value ?? "").trim();
   if (!v) return false;
   if (v.startsWith("/")) return true; // same-origin relative
-  // Allow https: images (external hosts included); reject everything else.
-  return /^https:\/\//i.test(v);
+  const origin = apiOrigin();
+  if (origin) {
+    try {
+      // App-hosted media may be http in local dev, so match the exact origin.
+      if (new URL(v).origin === origin) return true;
+    } catch {
+      return false;
+    }
+  }
+  if (/^https:\/\//i.test(v)) return allowExternalImages; // external https: only when opted in
+  return false;
 }
 
-export function sanitizeHtml(html: string): string {
+export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
   ensureStyleHookRegistered();
+  const allowExternalImages = options?.allowExternalImages ?? false;
 
   const cleaned = DOMPurify.sanitize(html, {
     ALLOWED_TAGS,
@@ -138,7 +175,7 @@ export function sanitizeHtml(html: string): string {
   const doc = new DOMParser().parseFromString(result, "text/html");
   doc.querySelectorAll("img").forEach((img) => {
     const src = img.getAttribute("src") ?? "";
-    if (!isAllowedImageSource(src)) img.remove();
+    if (!isAllowedImageSource(src, allowExternalImages)) img.remove();
   });
   const styles = Array.from(doc.querySelectorAll("head style"))
     .map((s) => s.outerHTML)
@@ -148,4 +185,26 @@ export function sanitizeHtml(html: string): string {
 
 export function sanitizeCss(css: string): string {
   return scrubCssText(css);
+}
+
+/**
+ * Return the `<img src>` values that the current policy would strip from an
+ * HTML fragment, so callers can warn the author *why* their image was removed
+ * instead of silently dropping it. `options` mirror `sanitizeHtml`.
+ */
+export function findDisallowedImageSources(
+  html: string,
+  options?: SanitizeOptions
+): string[] {
+  if (!html || !html.includes("<img")) return [];
+  const allowExternalImages = options?.allowExternalImages ?? false;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const bad: string[] = [];
+  doc.querySelectorAll("img").forEach((img) => {
+    const src = img.getAttribute("src") ?? "";
+    if (src && !isAllowedImageSource(src, allowExternalImages)) {
+      bad.push(src);
+    }
+  });
+  return bad;
 }

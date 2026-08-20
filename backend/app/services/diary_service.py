@@ -125,6 +125,8 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
         "is_bookmarked": is_bookmarked,
         "is_owner": is_owner,
         "content_warnings": diary.get("content_warnings", []),
+        "fixed_width": diary.get("fixed_width"),
+        "fixed_height": diary.get("fixed_height"),
         "created_at": fmt_dt(diary.get("created_at")),
         "updated_at": fmt_dt(diary.get("updated_at")),
         "published_at": fmt_dt(diary.get("published_at")),
@@ -187,6 +189,19 @@ def _validate_emotion(emotion: str | None) -> str | None:
     return emotion
 
 
+def _validate_fixed_size(fixed_width: int | None, fixed_height: int | None) -> None:
+    """Validate the optional fixed layout size. Both must be set or neither.
+    Width 320-2000 px, height 240-2000 px."""
+    if fixed_width is None and fixed_height is None:
+        return
+    if fixed_width is None or fixed_height is None:
+        raise ValidationException("Fixed width and height must both be set together")
+    if not (320 <= fixed_width <= 2000):
+        raise ValidationException("Fixed width must be between 320 and 2000 pixels")
+    if not (240 <= fixed_height <= 2000):
+        raise ValidationException("Fixed height must be between 240 and 2000 pixels")
+
+
 async def create_diary(user: dict, data: dict) -> dict:
     user_repo = UserRepository()
     diary_repo = DiaryRepository()
@@ -237,6 +252,10 @@ async def create_diary(user: dict, data: dict) -> dict:
         w.lower().strip() for w in content_warnings if w.lower().strip() in VALID_WARNINGS
     ]
 
+    fixed_width = data.get("fixed_width")
+    fixed_height = data.get("fixed_height")
+    _validate_fixed_size(fixed_width, fixed_height)
+
     now = datetime.now(UTC)
     if privacy == "private":
         diary_doc = {
@@ -252,6 +271,8 @@ async def create_diary(user: dict, data: dict) -> dict:
             "comments_enabled": False,
             "comments_locked": False,
             "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
+            "fixed_width": fixed_width,
+            "fixed_height": fixed_height,
             "year": now.year,
             "month": now.month,
             "created_at": now,
@@ -271,6 +292,8 @@ async def create_diary(user: dict, data: dict) -> dict:
             "comments_enabled": data.get("comments_enabled", True),
             "comments_locked": False,
             "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
+            "fixed_width": fixed_width,
+            "fixed_height": fixed_height,
             "year": now.year,
             "month": now.month,
             "created_at": now,
@@ -354,6 +377,13 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
             set_fields["privacy"] = new_privacy
             if new_privacy == "public" and diary.get("published_at") is None:
                 set_fields["published_at"] = datetime.now(UTC)
+
+    if "fixed_width" in updates or "fixed_height" in updates:
+        fw = updates.get("fixed_width")
+        fh = updates.get("fixed_height")
+        _validate_fixed_size(fw, fh)
+        set_fields["fixed_width"] = fw
+        set_fields["fixed_height"] = fh
 
     if current_privacy == "private":
         if "encrypted_data" in updates and updates["encrypted_data"] is not None:

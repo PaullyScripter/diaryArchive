@@ -22,6 +22,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             <Link href="/policy/terms" className="hover:text-foreground transition-colors">
               Terms of Service
             </Link>
+            <Link href="/policy/advanced-editor" className="hover:text-foreground transition-colors">
+              Advanced Editor
+            </Link>
           </nav>
         </div>
       </footer>

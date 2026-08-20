@@ -6,15 +6,18 @@ import type { Editor } from "@tiptap/react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Eye, Lock, Shield, Maximize2, Minimize2 } from "lucide-react";
+import { ExternalImagesWarning } from "@/components/editor/external-images-warning";
+import { SanitizationWarning, detectSanitizationIssues, type SanitizationIssue } from "@/components/editor/sanitization-warning";
 
 import { useCreateDiary, useUpdateDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useDiary } from "@/hooks/use-diaries";
 import { useMasterKey } from "@/hooks/use-master-key";
-import { useMediaUpload } from "@/hooks/use-media";
+import { useMediaUpload, type MediaItem } from "@/hooks/use-media";
 import { showToast } from "@/components/shared/toast";
 import { validateImageFile } from "@/lib/media-validator";
-import { sanitizeHtml, sanitizeCss } from "@/lib/sanitize";
+import { sanitizeHtml, sanitizeCss, findDisallowedImageSources } from "@/lib/sanitize";
 import { IsolatedDiary } from "@/components/diary/isolated-diary";
+import { ResizableDiaryWindow } from "@/components/diary/resizable-diary-window";
 import { splitHtmlCss } from "@/lib/html-css";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
@@ -95,11 +98,88 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [setupInput, setSetupInput] = useState("");
   const [setupError, setSetupError] = useState("");
   const [keySetupStep, setKeySetupStep] = useState<"explain" | "password">("explain");
-  const [previewWidth, setPreviewWidth] = useState<"mobile" | "tablet" | "full">("full");
+  const [previewWidth, setPreviewWidth] = useState<"mobile" | "tablet" | "full" | "custom">("full");
+  const [customPreviewW, setCustomPreviewW] = useState(390);
+  const [customPreviewH, setCustomPreviewH] = useState(600);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [previewTheme, setPreviewTheme] = useState<"system" | "light" | "dark">("system");
+  const [previewNaturalWidth, setPreviewNaturalWidth] = useState<number | null>(null);
+  const handlePreviewContentWidth = useCallback((w: number) => setPreviewNaturalWidth(w), []);
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
+  const [blockedExternalImages, setBlockedExternalImages] = useState<string[]>([]);
+  const [imagesWarningDismissed, setImagesWarningDismissed] = useState(false);
+  const [sanitizationIssues, setSanitizationIssues] = useState<SanitizationIssue[]>([]);
+  const [sanitizationWarningDismissed, setSanitizationWarningDismissed] = useState(false);
   const saveRef = useRef<() => Promise<void>>(async () => {});
+  const sourceEditorInsertRef = useRef<((text: string) => void) | null>(null);
+  const previewRowRef = useRef<HTMLDivElement | null>(null);
+  const [codeSplit, setCodeSplit] = useState(55);
+  const [cssSplit, setCssSplit] = useState(65);
+  const [fixedEnabled, setFixedEnabled] = useState(false);
+  const [fixedWidth, setFixedWidth] = useState(720);
+  const [fixedHeight, setFixedHeight] = useState(800);
+
+  // Resizable panes for the fullscreen source editor: a vertical divider
+  // between the code panes and the live preview, and a horizontal divider
+  // between the HTML and CSS editors.
+  const startVerticalDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const container = e.currentTarget.parentElement as HTMLElement;
+    const rect = container.getBoundingClientRect();
+    const startPct = codeSplit;
+    const onMove = (ev: PointerEvent) => {
+      const delta = ((ev.clientX - startX) / rect.width) * 100;
+      setCodeSplit(Math.min(85, Math.max(15, startPct + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [codeSplit]);
+
+  // Given a desired preview pane width in pixels, move the vertical divider so
+  // the preview pane (and thus the diary) matches that width.
+  const setPreviewWidthPx = useCallback((px: number) => {
+    if (!px || px <= 0) return;
+    const row = previewRowRef.current;
+    if (!row) return;
+    const avail = row.clientWidth;
+    // Preview pane width is calc(100% - codeSplit% - 1.5rem); the 1.5rem
+    // divider is 24px. Solve for codeSplit so the pane equals `px`.
+    const target = Math.max(320, Math.min(avail - 24, px));
+    const codePct = 100 - ((target + 24) / avail) * 100;
+    setCodeSplit(Math.min(85, Math.max(15, codePct)));
+  }, []);
+
+  const startHorizontalDrag = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const container = e.currentTarget.parentElement as HTMLElement;
+    const rect = container.getBoundingClientRect();
+    const startPct = cssSplit;
+    const onMove = (ev: PointerEvent) => {
+      const delta = ((ev.clientY - startY) / rect.height) * 100;
+      // Dragging up (negative delta) grows the CSS pane, so subtract.
+      setCssSplit(Math.min(90, Math.max(25, startPct - delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  }, [cssSplit]);
 
   // A diary is "HTML/CSS" when it ships its own <style> block (either via the
   // separate Custom CSS box or inline in the HTML source. Such diaries must be
@@ -130,6 +210,48 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
     [uploadMedia, privacy],
   );
 
+  const handleSourceImageFiles = useCallback(
+    async (files: File[], insertAt: (text: string) => void) => {
+      for (const file of files) {
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+          showToast(validation.error || "Invalid file");
+          continue;
+        }
+        try {
+          const result = await uploadMedia.mutateAsync({
+            file,
+            isPrivate: privacy === "private",
+          });
+          // Insert a full <img> tag pointing at the uploaded media's own
+          // relative /api/v1/media/<id> URL (resolved to the full origin at
+          // render time), at the user's cursor.
+          insertAt(
+            `<img src="${resolveMediaUrl(result.url) ?? result.url}" alt="">`
+          );
+        } catch {
+          // toast already shown by hook
+        }
+      }
+    },
+    [uploadMedia, privacy],
+  );
+
+  const handleSourceGalleryInsert = useCallback(
+    (item: MediaItem) => {
+      // In source mode, insert into the Monaco HTML/CSS editor at the cursor;
+      // otherwise fall back to the Tiptap editor's default image insertion.
+      const insertAt = sourceEditorInsertRef.current;
+      const src = resolveMediaUrl(item.url) ?? item.url;
+      if (sourceMode && insertAt) {
+        insertAt(`<img src="${src}" alt="">`);
+      } else if (editor) {
+        editor.chain().focus().setResizableImage({ src }).run();
+      }
+    },
+    [sourceMode, editor],
+  );
+
   const { draft, hasRecoveredDraft, discard: discardDraft, clear: clearDraft } = useDraft();
 
   useEffect(() => {
@@ -144,6 +266,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       setEmotion(existingDiary.emotion ?? "");
       setCommentsEnabled(existingDiary.comments_enabled);
       setContentWarnings(existingDiary.content_warnings ?? []);
+      if (existingDiary.fixed_width && existingDiary.fixed_height) {
+        setFixedEnabled(true);
+        setFixedWidth(existingDiary.fixed_width);
+        setFixedHeight(existingDiary.fixed_height);
+      } else {
+        setFixedEnabled(false);
+      }
     } else if (!isEditMode && !hasRecoveredDraft) {
       // new diary, no recovered draft
       setCommentsEnabled(true);
@@ -210,12 +339,30 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   };
 
   // Debounce the live preview so sanitize doesn't re-run on every keystroke.
+  // External https: images are allowed only for non-private (public/draft)
+  // diaries; private diaries strip every external image (privacy: a reader's
+  // IP/referrer must never leak to a third-party image host from a diary the
+  // author marked private).
+  const allowExternalImages = privacy !== "private";
   useEffect(() => {
     const raw = customCss
       ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
       : contentHtml;
-    const t = window.setTimeout(() => setLivePreviewHtml(sanitizeHtml(resolveMediaUrlsInHtml(raw))), 160);
+    const t = window.setTimeout(() => {
+      const resolved = resolveMediaUrlsInHtml(raw);
+      setLivePreviewHtml(sanitizeHtml(resolved, { allowExternalImages }));
+      setBlockedExternalImages(findDisallowedImageSources(resolved, { allowExternalImages }));
+    }, 160);
     return () => window.clearTimeout(t);
+  }, [contentHtml, customCss, allowExternalImages]);
+
+  // Detect content that will be sanitized so we can warn the user.
+  useEffect(() => {
+    const issues = detectSanitizationIssues(contentHtml, customCss);
+    setSanitizationIssues(issues);
+    if (issues.length > 0) {
+      setSanitizationWarningDismissed(false);
+    }
   }, [contentHtml, customCss]);
 
   const renderSourceEditor = (fullscreen: boolean) => (
@@ -233,6 +380,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         height={fullscreen ? "100%" : 360}
         dark={editorDark}
         ariaLabel="HTML source editor"
+        onImageFiles={handleSourceImageFiles}
+        onApiReady={(api) => {
+          sourceEditorInsertRef.current = api.insertAt;
+        }}
       />
     </div>
   );
@@ -254,6 +405,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const doSave = async (publishPrivacy?: string) => {
     const finalPrivacy = publishPrivacy ?? privacy;
     setSaveStatus("saving");
+    // Strip external images when saving anything private (and never for the
+    // encrypted payload — the browser is the only sanitizer for E2E data).
+    // Non-private diaries may keep https: external images.
+    const finalAllowExternalImages = finalPrivacy !== "private";
+    const sanitizedContent = sanitizeHtml(
+      customCss
+        ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+        : contentHtml,
+      { allowExternalImages: finalAllowExternalImages }
+    );
     try {
       let payload: Record<string, unknown>;
       if (finalPrivacy === "private") {
@@ -265,9 +426,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         const encryptedPayload = await encryptDiary(
           {
             title: title.trim() || "Untitled",
-            contentHtml: customCss
-              ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-              : contentHtml,
+            contentHtml: sanitizedContent,
             tags,
           },
           masterKey
@@ -277,19 +436,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           encrypted_data: encryptedPayload,
           tags,
           emotion: emotion || null,
+          fixed_width: fixedEnabled ? fixedWidth : null,
+          fixed_height: fixedEnabled ? fixedHeight : null,
         };
       } else {
         payload = {
           privacy: finalPrivacy,
           title: title.trim() || null,
-          content_html: customCss
-            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-            : contentHtml,
+          content_html: sanitizedContent,
           content_text: contentText,
           tags,
           emotion: emotion || null,
           comments_enabled: commentsEnabled,
           content_warnings: contentWarnings,
+          fixed_width: fixedEnabled ? fixedWidth : null,
+          fixed_height: fixedEnabled ? fixedHeight : null,
         };
       }
       if (isEditMode && diaryId) {
@@ -454,13 +615,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         <p className="text-xs text-subtle">
           Writing in whole-diary mode - start a chapter with an H1 heading.
         </p>
-        <button
-          type="button"
-          onClick={() => setShowTemplatePicker(true)}
-          className="text-xs text-link hover:underline cursor-pointer"
-        >
-          Need an idea?
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/policy/advanced-editor"
+            className="text-xs text-link hover:underline cursor-pointer"
+          >
+            About the Advanced Editor
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowTemplatePicker(true)}
+            className="text-xs text-link hover:underline cursor-pointer"
+          >
+            Need an idea?
+          </button>
+        </div>
       </div>
 
       <EditorToolbar
@@ -468,7 +637,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         sourceMode={sourceMode}
         onToggleSource={() => setSourceMode(!sourceMode)}
         onImageUpload={(file) => {
-          if (editor) handleImageUpload(file, editor);
+          if (sourceMode) handleSourceImageFiles([file], (text) => sourceEditorInsertRef.current?.(text));
+          else if (editor) handleImageUpload(file, editor);
         }}
         onOpenGallery={() => setShowGallery(true)}
         onOpenTemplates={() => setShowTemplatePicker(true)}
@@ -489,6 +659,21 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             </button>
             <FloatingToolbar editor={editor} />
             {sourceMode ? renderSourceEditor(false) : renderRichEditor()}
+            {!imagesWarningDismissed && (
+              <ExternalImagesWarning
+                count={blockedExternalImages.length}
+                isPrivate={privacy === "private"}
+                onDismiss={() => setImagesWarningDismissed(true)}
+                className="mt-2"
+              />
+            )}
+            {!sanitizationWarningDismissed && sanitizationIssues.length > 0 && (
+              <SanitizationWarning
+                issues={sanitizationIssues}
+                onDismiss={() => setSanitizationWarningDismissed(true)}
+                className="mt-2"
+              />
+            )}
           </div>
         </div>
         {!sourceMode && <ChapterManager editor={editor} />}
@@ -529,25 +714,52 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               sourceMode={sourceMode}
               onToggleSource={() => setSourceMode(!sourceMode)}
               onImageUpload={(file) => {
-                if (editor) handleImageUpload(file, editor);
+                if (sourceMode) handleSourceImageFiles([file], (text) => sourceEditorInsertRef.current?.(text));
+                else if (editor) handleImageUpload(file, editor);
               }}
               onOpenGallery={() => setShowGallery(true)}
               onOpenTemplates={() => setShowTemplatePicker(true)}
             />
           </div>
-          <div className={`flex-1 min-h-0 flex p-4 gap-4 ${sourceMode ? "flex-row" : "flex-col"}`}>
-            <div className="flex flex-col gap-4 flex-1 min-h-0 min-w-0">
+          <div className={`flex-1 min-h-0 flex p-4 ${sourceMode ? "flex-row gap-0" : "flex-col gap-4"}`} ref={previewRowRef}>
+            <div className="flex flex-col gap-4 min-h-0 min-w-0" style={sourceMode ? { width: `${codeSplit}%` } : { flex: 1 }}>
               <div className="relative flex-1 min-h-0 overflow-auto rounded-md border border-border">
                 <FloatingToolbar editor={editor} />
                 {sourceMode ? renderSourceEditor(true) : renderRichEditor()}
               </div>
+              {!imagesWarningDismissed && (
+                <ExternalImagesWarning
+                  count={blockedExternalImages.length}
+                  isPrivate={privacy === "private"}
+                  onDismiss={() => setImagesWarningDismissed(true)}
+                  className="mt-1"
+                />
+              )}
+              {!sanitizationWarningDismissed && sanitizationIssues.length > 0 && (
+                <SanitizationWarning
+                  issues={sanitizationIssues}
+                  onDismiss={() => setSanitizationWarningDismissed(true)}
+                  className="mt-1"
+                />
+              )}
               {sourceMode && (
-                <div className="h-1/3 min-h-[160px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden">
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
+                <div
+                  className="shrink-0 flex flex-col border border-border rounded-md overflow-hidden"
+                  style={{ height: `${cssSplit}%`, minHeight: 160 }}
+                >
+                  <div
+                    className="group relative flex items-center justify-between px-3 py-2 border-b border-border shrink-0 cursor-row-resize"
+                    onPointerDown={startHorizontalDrag}
+                    title="Drag to resize the HTML/CSS editors"
+                  >
                     <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                       Custom CSS{" "}
                       <span className="text-subtle font-normal">(advanced)</span>
                     </h3>
+                    <div className="flex items-center gap-1.5 text-[10px] text-subtle">
+                      <div className="h-1 w-5 rounded-full bg-border" />
+                      drag to resize
+                    </div>
                   </div>
                   <div className="flex-1 min-h-0">
                     <CodeEditor
@@ -563,7 +775,16 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               )}
             </div>
             {sourceMode && (
-              <div className={`${isHtmlCss ? "w-[65%]" : "w-1/2"} min-w-[320px] shrink-0 flex flex-col border border-border rounded-md overflow-hidden bg-background`}>
+              <div
+                className="group relative self-stretch w-1.5 shrink-0 cursor-col-resize rounded hover:bg-accent/30 active:bg-accent/40"
+                onPointerDown={startVerticalDrag}
+                title="Drag to resize the code editor and live preview"
+                role="separator"
+                aria-orientation="vertical"
+              />
+            )}
+            {sourceMode && (
+              <div className="flex flex-col min-w-[320px] shrink-0 border border-border rounded-md overflow-hidden bg-background" style={{ width: `calc(100% - ${codeSplit}% - 1.5rem)` }}>
                 <div className="relative z-10 flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0">
                   <h3 className="text-xs font-medium text-muted uppercase tracking-wider">
                     Live Preview
@@ -582,6 +803,35 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                         </button>
                       ))}
                     </div>
+                    <div className="flex items-center gap-1 text-[10px] text-muted" title="Custom preview size in pixels">
+                      <input
+                        type="number"
+                        min={120}
+                        max={2000}
+                        value={customPreviewW}
+                        onChange={(e) => {
+                          const v = Number(e.target.value) || 0;
+                          setCustomPreviewW(v);
+                          setPreviewWidth("custom");
+                          setPreviewWidthPx(v);
+                        }}
+                        className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        aria-label="Custom preview width in pixels"
+                      />
+                      <span>&times;</span>
+                      <input
+                        type="number"
+                        min={120}
+                        max={2000}
+                        value={customPreviewH}
+                        onChange={(e) => {
+                          setCustomPreviewH(Number(e.target.value) || 0);
+                          setPreviewWidth("custom");
+                        }}
+                        className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        aria-label="Custom preview height in pixels"
+                      />
+                    </div>
                     <span className="text-[10px] text-subtle">updates as you type</span>
                   </div>
                 </div>
@@ -591,8 +841,18 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                     className={`min-h-full p-2 bg-background ${previewTheme === "dark" ? "preview-dark" : previewTheme === "light" ? "preview-light" : ""}`}
                   >
                     <div
-                      style={{ width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : "100%" }}
-                      className="mx-auto"
+                      style={
+                        fixedEnabled
+                          ? {
+                              width: fixedWidth,
+                              height: fixedHeight,
+                            }
+                          : {
+                              width: previewWidth === "mobile" ? 390 : previewWidth === "tablet" ? 768 : previewWidth === "custom" ? customPreviewW : "100%",
+                              minHeight: previewWidth === "custom" ? customPreviewH : undefined,
+                            }
+                      }
+                      className={`mx-auto ${fixedEnabled ? "overflow-auto" : previewWidth === "custom" ? "overflow-y-auto" : ""}`}
                     >
                       {isHtmlCss ? (
                         <IsolatedDiary html={livePreviewHtml} />
@@ -635,6 +895,13 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             hasMasterKey={isMasterKeyAvailable}
             isEditMode={isEditMode}
             onSetupEncryption={() => setShowKeySetup(true)}
+            isHtmlCss={isHtmlCss}
+            fixedEnabled={fixedEnabled}
+            fixedWidth={fixedWidth}
+            fixedHeight={fixedHeight}
+            setFixedEnabled={setFixedEnabled}
+            setFixedWidth={setFixedWidth}
+            setFixedHeight={setFixedHeight}
           />
 
           <div className="mt-6">
@@ -783,15 +1050,19 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
 
               <div style={{ zoom: previewZoom / 100 } as React.CSSProperties}>
                 {isHtmlCss ? (
-                  <IsolatedDiary
-                    html={sanitizeHtml(
-                      resolveMediaUrlsInHtml(
-                        customCss
-                          ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                          : contentHtml
-                      )
-                    )}
-                  />
+                  <ResizableDiaryWindow naturalWidth={previewNaturalWidth}>
+                    <IsolatedDiary
+                      html={sanitizeHtml(
+                        resolveMediaUrlsInHtml(
+                          customCss
+                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+                            : contentHtml
+                        ),
+                        { allowExternalImages }
+                      )}
+                      onContentWidth={handlePreviewContentWidth}
+                    />
+                  </ResizableDiaryWindow>
                 ) : (
                   <article
                     className={`${PROSE_CLASSES} max-w-none overflow-x-auto`}
@@ -801,7 +1072,8 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                           customCss
                             ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
                             : contentHtml
-                        )
+                        ),
+                        { allowExternalImages }
                       ),
                     }}
                   />
@@ -921,6 +1193,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editor={editor}
         isOpen={showGallery}
         onClose={() => setShowGallery(false)}
+        onInsertItem={handleSourceGalleryInsert}
       />
       <TemplatePicker
         isOpen={showTemplatePicker}

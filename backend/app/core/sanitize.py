@@ -245,13 +245,18 @@ def _sanitize_style_attr(value: str):
 
 
 def _is_allowed_image_src(value: str) -> bool:
-    """Only allow images that the app itself can serve or that come from an
-    allowlisted public media origin.
+    """Only allow images the app can serve or that are safe for a *public*
+    diary's readers.
 
-    Loading remote <img> content can be used to track readers (pixel beacons)
-    or probe internal resources. So absolute URLs are restricted to the
-    configured media/API origins; anything else is dropped. Relative URLs
-    (the self-hosted media proxy and bundled assets) are always allowed.
+    Loading remote <img> content can track readers (pixel beacons) or probe
+    internal resources, so arbitrary http: hosts are dropped. https: images
+    from any host are allowed, matching the frontend's public-diaries policy
+    (reader-IP exposure is an explicit author choice for public diaries).
+
+    Note: private diaries are end-to-end encrypted and their content_html is
+    never sent to the backend, so this sanitizer only ever sees public/draft
+    content — no privacy flag is needed here. Relative URLs (the self-hosted
+    media proxy and bundled assets) are always allowed.
     """
     v = (value or "").strip()
     if not v:
@@ -263,6 +268,9 @@ def _is_allowed_image_src(value: str) -> bool:
         # bundled assets. Never attacker-controlled remote content.
         return True
     parsed = urllib.parse.urlparse(v)
+    if parsed.scheme == "https":
+        # Secure external images: allowed for public diaries.
+        return True
     if parsed.scheme not in ("http", "https"):
         return False
     host = (parsed.hostname or "").lower()

@@ -162,6 +162,15 @@ export default function TermsPage() {
           on data retention, your rights (including access, correction, export,
           and deletion), and the security measures we employ.
         </p>
+        <p className="text-sm leading-relaxed text-muted mt-3">
+          <strong className="text-foreground">Privacy cannot be changed after
+          creation.</strong> When you create a diary, you choose whether it is
+          Public, Private, or a Draft. That choice is final and cannot be changed
+          later. In particular, a diary created as Public remains visible to
+          everyone, and a diary created as Private remains end-to-end encrypted.
+          Please choose the privacy level of each diary carefully before saving it
+          for the first time.
+        </p>
       </Section>
 
       <Section title="6. End-to-End Encryption and Data Loss">

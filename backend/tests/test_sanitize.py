@@ -187,7 +187,7 @@ def test_external_image_from_arbitrary_host_dropped(monkeypatch):
 
     monkeypatch.setattr(settings, "public_media_base_url", None)
     monkeypatch.setattr(settings, "public_api_url", None)
-    html = '<img src="https://tracker.example/pixel.gif"><p>hi</p>'
+    html = '<img src="http://tracker.example/pixel.gif"><p>hi</p>'
     result = sanitize.sanitize_html(html)
     assert "tracker.example" not in result
     assert "src=" not in result
@@ -206,11 +206,15 @@ def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
         '<img src="/api/v1/media/file/abc?v=original">'
         '<img src="https://media.diaryarchive.com/x.png">'
         '<img src="https://evil.example/y.png">'
+        '<img src="http://evil.example/z.png">'
     )
     result = sanitize.sanitize_html(html)
     assert "/api/v1/media/file/abc" in result
     assert "media.diaryarchive.com" in result
-    assert "evil.example" not in result
+    # Secure https: external images are allowed for public diaries.
+    assert "evil.example/y.png" in result
+    # Plain http: external images remain blocked.
+    assert "evil.example/z.png" not in result
 
 
 def test_external_href_link_kept():

@@ -457,17 +457,23 @@ export default function DiaryReaderPage() {
       )}
 
       {(!isPrivate || (isPrivate && isOwner && decrypted)) && (
-        <ResizableDiaryWindow naturalWidth={naturalWidth}>
+        <ResizableDiaryWindow
+          naturalWidth={naturalWidth}
+          fixedWidth={diary.fixed_width}
+          fixedHeight={diary.fixed_height}
+        >
           {hasCustomCss ? (
             <IsolatedDiary
-              html={sanitizeHtml(displayHtml)}
+              html={sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate })}
               className="mt-6"
               onContentWidth={handleContentWidth}
             />
           ) : (
             <article
               className={`mt-6 ${PROSE_CLASSES} [&_hr]:border-border [&_hr]:my-4 max-w-prose`}
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayHtml) }}
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate }),
+              }}
             />
           )}
         </ResizableDiaryWindow>

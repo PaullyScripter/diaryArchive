@@ -25,6 +25,8 @@ class DiaryCreate(BaseModel):
     emotion: str | None = None
     comments_enabled: bool = True
     content_warnings: list[str] = Field(default_factory=list)
+    fixed_width: int | None = Field(None, ge=320, le=2000)
+    fixed_height: int | None = Field(None, ge=240, le=2000)
 
 
 class DiaryUpdate(BaseModel):
@@ -37,6 +39,8 @@ class DiaryUpdate(BaseModel):
     emotion: str | None = None
     comments_enabled: bool | None = None
     content_warnings: list[str] | None = None
+    fixed_width: int | None = Field(None, ge=320, le=2000)
+    fixed_height: int | None = Field(None, ge=240, le=2000)
 
 
 class DiaryStats(BaseModel):
@@ -68,6 +72,8 @@ class DiaryResponse(BaseModel):
     is_bookmarked: bool = False
     is_owner: bool = False
     content_warnings: list[str] = []
+    fixed_width: int | None = None
+    fixed_height: int | None = None
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None = None
