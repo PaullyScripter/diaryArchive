@@ -29,6 +29,8 @@ export interface DiaryData {
   is_bookmarked: boolean;
   is_owner: boolean;
   content_warnings: string[];
+  fixed_width: number | null;
+  fixed_height: number | null;
   created_at: string;
   updated_at: string;
   published_at: string | null;

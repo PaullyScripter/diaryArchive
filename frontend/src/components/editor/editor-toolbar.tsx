@@ -198,42 +198,40 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUploa
               <btn.icon className="w-3.5 h-3.5" />
             </button>
           ))}
+        </>
+      )}
 
-          <div className="w-px h-5 bg-border mx-1" />
-
-          {onImageUpload && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                className="hidden"
-                onChange={handleFileChange}
-                aria-label="Upload image"
-              />
-              <button
-                type="button"
-                onClick={handleImageClick}
-                title="Insert image"
-                aria-label="Insert image"
-                className={`${btnBase} ${btnNormal}`}
-              >
-                <Image className="w-3.5 h-3.5" />
-              </button>
-              {onOpenGallery && (
-                <button
-                  type="button"
-                  onClick={onOpenGallery}
-                  title="Media gallery"
-                  aria-label="Open media gallery"
-                  className={`${btnBase} ${btnNormal}`}
-                >
-                  <Images className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <div className="w-px h-5 bg-border mx-1" />
-            </>
+      {onImageUpload && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-label="Upload image"
+          />
+          <button
+            type="button"
+            onClick={handleImageClick}
+            title="Insert image"
+            aria-label="Insert image"
+            className={`${btnBase} ${btnNormal}`}
+          >
+            <Image className="w-3.5 h-3.5" />
+          </button>
+          {onOpenGallery && (
+            <button
+              type="button"
+              onClick={onOpenGallery}
+              title="Media gallery"
+              aria-label="Open media gallery"
+              className={`${btnBase} ${btnNormal}`}
+            >
+              <Images className="w-3.5 h-3.5" />
+            </button>
           )}
+          <div className="w-px h-5 bg-border mx-1" />
         </>
       )}
 

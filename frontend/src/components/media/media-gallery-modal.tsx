@@ -11,9 +11,19 @@ interface MediaGalleryModalProps {
   editor: Editor | null;
   isOpen: boolean;
   onClose: () => void;
+  /**
+   * When provided, clicking a media item calls this instead of inserting into
+   * the Tiptap `editor` (used to insert into the Monaco HTML/CSS editor).
+   */
+  onInsertItem?: (item: MediaItem) => void;
 }
 
-export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModalProps) {
+export function MediaGalleryModal({
+  editor,
+  isOpen,
+  onClose,
+  onInsertItem,
+}: MediaGalleryModalProps) {
   const perPage = 12;
   const { data, isLoading, fetchNextPage, hasNextPage } = useMediaGallery(perPage);
   const deleteMedia = useDeleteMedia();
@@ -51,6 +61,11 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
   };
 
   const handleInsert = (item: MediaItem) => {
+    if (onInsertItem) {
+      onInsertItem(item);
+      onClose();
+      return;
+    }
     if (editor) {
       editor.chain().focus().setResizableImage({ src: resolveMediaUrl(item.url) ?? item.url }).run();
       onClose();
@@ -119,11 +134,18 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
             <>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {items.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    className="group relative aspect-square rounded-md border border-border bg-overlay/5 overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent"
+                    role="button"
+                    tabIndex={0}
+                    className="group relative aspect-square rounded-md border border-border bg-overlay/5 overflow-hidden focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
                     onClick={() => handleInsert(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleInsert(item);
+                      }
+                    }}
                     aria-label={`Insert ${item.filename}`}
                   >
                     {item.mime_type.startsWith("image/") ? (
@@ -152,7 +174,7 @@ export function MediaGalleryModal({ editor, isOpen, onClose }: MediaGalleryModal
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
 

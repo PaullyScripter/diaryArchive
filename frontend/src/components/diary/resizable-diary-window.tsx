@@ -11,6 +11,13 @@ interface ResizableDiaryWindowProps {
    * available space. The user can still drag narrower or wider in both cases.
    */
   naturalWidth?: number | null;
+  /**
+   * When a fixed size is set, the diary renders at exactly this width/height
+   * and scrolls inside its own window (so a tall HTML/CSS diary never floods
+   * the whole page). Width resizing is disabled in this mode.
+   */
+  fixedWidth?: number | null;
+  fixedHeight?: number | null;
 }
 
 /**
@@ -19,16 +26,23 @@ interface ResizableDiaryWindowProps {
  * can be dragged via the right-edge handle. Height is left to the content (no
  * clipping), so full-page designs render naturally. Horizontal scrolling kicks
  * in when the content overflows the chosen width.
+ *
+ * When a fixed width/height is supplied, the window is locked to that size and
+ * scrolls vertically inside itself, keeping the diary page compact.
  */
 export function ResizableDiaryWindow({
   children,
   naturalWidth,
+  fixedWidth,
+  fixedHeight,
 }: ResizableDiaryWindowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number | null>(null);
   const draggingRef = useRef(false);
   const userResizedRef = useRef(false);
   const appliedNaturalRef = useRef(false);
+
+  const isFixed = !!fixedWidth && !!fixedHeight;
 
   // Adopt the diary's natural width once, before any user drag, so an
   // author-declared max-width is respected while resizing stays enabled.
@@ -61,6 +75,23 @@ export function ResizableDiaryWindow({
   const stopDragging = () => {
     draggingRef.current = false;
   };
+
+  if (isFixed) {
+    return (
+      <div
+        ref={containerRef}
+        className="relative mt-6"
+        style={{ width: fixedWidth ? `min(${fixedWidth}px, 100%)` : "100%" }}
+      >
+        <div
+          className="overflow-auto"
+          style={{ height: fixedHeight ?? undefined }}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

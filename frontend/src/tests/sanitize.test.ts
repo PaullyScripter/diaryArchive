@@ -189,15 +189,27 @@ describe("sanitizeHtml", () => {
     expect(() => sanitizeHtml(undefined as unknown as string)).not.toThrow();
   });
 
-  it("keeps external https: images (author preference)", () => {
+  it("keeps external https: images only when opted in (public diaries)", () => {
     const input =
       '<p>hi</p><img src="https://images.unsplash.com/photo-123.jpg" alt="p">';
-    const result = sanitizeHtml(input);
+    // Default (private): stripped.
+    expect(sanitizeHtml(input)).not.toContain("images.unsplash.com");
+    expect(sanitizeHtml(input)).not.toContain("<img");
+    // Public: https: external kept.
+    const result = sanitizeHtml(input, { allowExternalImages: true });
     expect(result).toContain("images.unsplash.com");
     expect(result).toContain("<img");
   });
 
-  it("keeps same-origin relative media images", () => {
+  it("strips ALL external images in private diaries, including https:", () => {
+    const input =
+      '<p>hi</p><img src="https://images.unsplash.com/photo-123.jpg" alt="p">';
+    const result = sanitizeHtml(input); // no allowExternalImages -> private
+    expect(result).not.toContain("images.unsplash.com");
+    expect(result).not.toContain("<img");
+  });
+
+  it("keeps same-origin relative media images even when private", () => {
     const input = '<img src="/api/v1/media/file/abc?v=original" alt="m">';
     const result = sanitizeHtml(input);
     expect(result).toContain("/api/v1/media/file/abc");
@@ -211,6 +223,18 @@ describe("sanitizeHtml", () => {
         '<img src="https://api.diaryarchive.com/api/v1/media/file/x?v=original">';
       const result = sanitizeHtml(input);
       expect(result).toContain("api.diaryarchive.com");
+    } finally {
+      process.env.NEXT_PUBLIC_API_URL = prev;
+    }
+  });
+
+  it("keeps app media on the API origin even when it is http (local dev)", () => {
+    const prev = process.env.NEXT_PUBLIC_API_URL;
+    process.env.NEXT_PUBLIC_API_URL = "http://localhost:8000/api/v1";
+    try {
+      const input = '<img src="http://localhost:8000/api/v1/media/file/x?v=original">';
+      const result = sanitizeHtml(input);
+      expect(result).toContain("localhost:8000/api/v1/media/file/x");
     } finally {
       process.env.NEXT_PUBLIC_API_URL = prev;
     }

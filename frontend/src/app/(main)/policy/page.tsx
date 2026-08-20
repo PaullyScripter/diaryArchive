@@ -24,6 +24,7 @@ const SECTIONS = [
   "13. Content Moderation",
   "14. Changes to This Policy",
   "15. Open Source - Verify Everything",
+  "16. Advanced Editor",
 ];
 
 export default function PolicyPage() {
@@ -149,6 +150,13 @@ export default function PolicyPage() {
             { label: "IP address", value: "System only - rate limiting, abuse prevention - 30 days" },
           ]}
         />
+        <p className="text-sm leading-relaxed text-muted mt-3">
+          <strong className="text-foreground">Privacy cannot be changed after
+          creation.</strong> The visibility of a diary is fixed when it is first
+          saved: a Public diary stays public, and a Private diary stays
+          end-to-end encrypted. There is no way to change a diary&apos;s privacy
+          later, by design.
+        </p>
       </Section>
 
       <Section title="5. Data Retention">
@@ -394,6 +402,41 @@ export default function PolicyPage() {
             Every line of code that handles your data is public.
           </p>
         </InfoCard>
+      </Section>
+
+      <Section title="16. Advanced Editor">
+        <p className="text-sm leading-relaxed text-muted mb-4">
+          The Advanced Editor lets you write the raw HTML and CSS that shape a
+          single diary page. Because this code is rendered for readers, it is
+          processed to keep your diary and our readers safe.
+        </p>
+        <DataTable
+          rows={[
+            { label: "What you can write", value: "HTML and CSS only, using a documented set of safe tags and properties" },
+            { label: "Scripts", value: "JavaScript, embedded scripts, and event handlers are removed for security" },
+            { label: "External images in Public diaries", value: "Allowed only over https:, served from third-party hosts at your discretion" },
+            { label: "External images in Private diaries", value: "Blocked entirely - reader data must never leak to a third-party host" },
+            { label: "Images overall", value: "Uploaded media from your library is always allowed and served from DiaryArchive" },
+            { label: "Rendering", value: "Isolated per-page sandbox so your code cannot affect the rest of the site" },
+          ]}
+        />
+        <p className="text-sm leading-relaxed text-muted mt-4">
+          In a Private diary, no content is ever uploaded as plaintext, so the
+          sanitization that protects Public readers happens entirely in your
+          browser before encryption. This means external images are stripped from
+          Private diaries on your own device, and the server never receives them.
+        </p>
+        <p className="text-sm leading-relaxed text-muted mt-3">
+          The full list of supported tags, properties, and limitations is
+          described on the
+          <a
+            href="/policy/advanced-editor"
+            className="text-link hover:text-link-hover font-medium"
+          >
+            Advanced Editor
+          </a>{" "}
+          page.
+        </p>
       </Section>
 
       <div className="border-t border-border pt-8 mt-4">
