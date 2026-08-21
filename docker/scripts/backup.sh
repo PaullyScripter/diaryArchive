@@ -8,6 +8,13 @@
 #   - Meilisearch is NOT backed up: it is a rebuildable index and is reindexed
 #     from MongoDB after a restore (see docs/ops/backup-restore.md).
 #
+# Off-site upload:
+#   If BACKUP_REMOTE is set (e.g. "s3:bucket-name"), encrypted artifacts are
+#   uploaded via rclone after local backup. Set BACKUP_REMOTE_PATH to control
+#   the remote subdirectory (default: "diaryarchive"). If rclone is not
+#   installed or the upload fails, local backup remains intact and the error
+#   is logged with a non-zero exit status.
+#
 # Encryption key: BACKUP_ENCRYPTION_KEY (>=32 chars, random). It is READ FROM
 # THE ENVIRONMENT / .env.production and never committed to the repository.
 #
@@ -17,6 +24,8 @@
 # Env (from .env.production unless overridden):
 #   BACKUP_ENCRYPTION_KEY  AES-256-CBC passphrase (base64-able, any length)
 #   BACKUP_RETENTION_DAILY, _WEEKLY, _MONTHLY   counts to retain
+#   BACKUP_REMOTE          rclone remote (e.g. "s3:my-bucket"). Empty = skip.
+#   BACKUP_REMOTE_PATH     remote subdirectory (default: "diaryarchive")
 set -euo pipefail
 
 BACKUP_ROOT="${1:-./backups}"
@@ -58,12 +67,46 @@ docker exec "$MINIO_CONTAINER" tar -C /data -cf - . \
       -pass env:BACKUP_ENCRYPTION_KEY \
       -out "$BACKUP_DIR/minio.tar.enc"
 
+# ---- Checksum ----------------------------------------------------------------
+echo "==> Calculating checksums"
+sha256sum "$BACKUP_DIR"/*.enc > "$BACKUP_DIR/checksums.sha256"
+
 echo "$STAMP" > "$BACKUP_DIR/backup-timestamp.txt"
 echo "DiaryArchive backup complete: $BACKUP_DIR"
 
+# ---- Off-site upload ---------------------------------------------------------
+BACKUP_REMOTE="${BACKUP_REMOTE:-}"
+BACKUP_REMOTE_PATH="${BACKUP_REMOTE_PATH:-diaryarchive}"
+
+if [[ -n "$BACKUP_REMOTE" ]]; then
+  if ! command -v rclone &>/dev/null; then
+    echo "WARNING: BACKUP_REMOTE is set but rclone is not installed. Skipping off-site upload." >&2
+  else
+    echo "==> Uploading encrypted backup to $BACKUP_REMOTE/$BACKUP_REMOTE_PATH/$STAMP"
+    REMOTE_UPLOAD_FAILED=0
+    for f in "$BACKUP_DIR"/*.enc "$BACKUP_DIR"/checksums.sha256 "$BACKUP_DIR"/backup-timestamp.txt; do
+      if [[ -f "$f" ]]; then
+        if ! rclone copyto "$f" "$BACKUP_REMOTE/$BACKUP_REMOTE_PATH/$STAMP/$(basename "$f")" --progress; then
+          echo "ERROR: Failed to upload $(basename "$f") to remote." >&2
+          REMOTE_UPLOAD_FAILED=1
+        fi
+      fi
+    done
+
+    if [[ "$REMOTE_UPLOAD_FAILED" -eq 0 ]]; then
+      echo "==> Off-site upload complete: $BACKUP_REMOTE/$BACKUP_REMOTE_PATH/$STAMP"
+    else
+      echo "ERROR: Off-site upload partially failed. Local backup is intact." >&2
+      exit 1
+    fi
+  fi
+else
+  echo "==> No BACKUP_REMOTE configured; skipping off-site upload."
+fi
+
 # ---- Retention / rotation --------------------------------------------------
 RETAIN_DAILY="${BACKUP_RETENTION_DAILY:-14}"
-RETAIN_WEEKLY="${BACKUP_RETENTION_WEEKLY:-8}"
+_RETAIN_WEEKLY="${BACKUP_RETENTION_WEEKLY:-8}"
 RETAIN_MONTHLY="${BACKUP_RETENTION_MONTHLY:-6}"
 
 # Newest backup is always kept. We rotate by date-name prefix semantics:
@@ -83,7 +126,7 @@ _prune() {
 }
 
 _prune "${STAMP%????????}-*" "$RETAIN_DAILY"
-_prune "$(date +%Y%m%d)-*" "$RETAIN_WEEKLY"
+_prune "$(date +%Y%m%d)-*" "$_RETAIN_WEEKLY"
 _prune "$(date +%Y%m)-*" "$RETAIN_MONTHLY"
 
-echo "==> Backup rotation done (daily=$RETAIN_DAILY weekly=$RETAIN_WEEKLY monthly=$RETAIN_MONTHLY)."
+echo "==> Backup rotation done (daily=$RETAIN_DAILY weekly=$_RETAIN_WEEKLY monthly=$RETAIN_MONTHLY)."

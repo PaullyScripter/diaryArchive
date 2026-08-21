@@ -179,6 +179,8 @@ export function NavBar() {
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="text-sm text-muted hover:text-foreground cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                 type="button"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
               >
                 {user?.username ?? "me"}
               </button>

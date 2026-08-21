@@ -24,8 +24,10 @@ services:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/certs:/etc/nginx/certs:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
     deploy:
       resources:
         limits:
@@ -54,10 +56,9 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    command:
-      - /bin/sh
-      - -c
-      - redis-server --appendonly yes --appendfsync everysec --requirepass "$${REDIS_PASSWORD:?set REDIS_PASSWORD}"
+    volumes:
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/entrypoint.sh"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     deploy:
@@ -109,6 +110,12 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/api/v1/health'); r.raise_for_status()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     deploy:
       # NOTE: This architecture deliberately operates as a SINGLE backend
       # instance. `deploy.replicas` is IGNORED by plain `docker compose up`
