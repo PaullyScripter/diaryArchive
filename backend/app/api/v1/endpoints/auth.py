@@ -24,6 +24,7 @@ from app.core.security import (
     get_client_ip,
     hash_password_async,
     hash_token,
+    invalidate_all_user_tokens,
     is_locked_out,
     record_failed_attempt,
     verify_password_async,
@@ -323,7 +324,7 @@ async def login(
     _check_age_achievement(str(user["_id"]))
 
     access_token = create_access_token(
-        str(user["_id"]), user["username"], user.get("is_admin", False)
+        str(user["_id"]), user["username"]
     )
 
     await _generate_tokens(response, str(user["_id"]))
@@ -381,7 +382,7 @@ async def refresh(
         raise PermissionDeniedException("Your account has been banned")
 
     access_token = create_access_token(
-        str(user["_id"]), user["username"], user.get("is_admin", False)
+        str(user["_id"]), user["username"]
     )
     await _generate_tokens(response, str(user["_id"]))
 
@@ -400,6 +401,7 @@ async def logout(
         refresh_repo = RefreshTokenRepository()
         await refresh_repo.delete_by_hash(token_hash)
 
+    await invalidate_all_user_tokens(str(current_user["_id"]))
     _clear_refresh_cookie(response)
     return Response(status_code=204)
 
@@ -445,6 +447,7 @@ async def change_password(
 
     refresh_repo = RefreshTokenRepository()
     revoked = await refresh_repo.delete_all_for_user(str(current_user["_id"]))
+    await invalidate_all_user_tokens(str(current_user["_id"]))
     logger.info(
         "Changed password for user %s, revoked %d sessions",
         current_user["username"],
@@ -536,6 +539,7 @@ async def reset_password(
 
     refresh_repo = RefreshTokenRepository()
     await refresh_repo.delete_all_for_user(str(user["_id"]))
+    await invalidate_all_user_tokens(str(user["_id"]))
 
     await _write_auth_audit(
         actor=user["username"],

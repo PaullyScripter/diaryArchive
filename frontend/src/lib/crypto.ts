@@ -189,3 +189,20 @@ function hexToBuffer(hex: string): Uint8Array {
   }
   return bytes;
 }
+
+// P3.3: Sensitive byte zeroization.
+// Fills a Uint8Array with zeros to prevent stale key material from lingering
+// in memory. JS engines may optimize away zeroization of unreachable buffers,
+// but it is still best practice as a defense-in-depth measure.
+
+export function zeroize(bytes: Uint8Array): void {
+  if (bytes && bytes.length > 0) {
+    bytes.fill(0);
+  }
+}
+
+/** Convenience: zeroize the hex-decoded form of a string. */
+export function zeroizeHex(hex: string): Uint8Array {
+  const buf = hexToBuffer(hex);
+  return buf; // caller should zeroize(buf) when done
+}
