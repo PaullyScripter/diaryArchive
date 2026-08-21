@@ -32,7 +32,7 @@ export default function PolicyPage() {
     <LegalDocShell
       title="Privacy Policy"
       subtitle="How DiaryArchive handles your data, privacy, security, and your rights."
-      updated="July 4, 2026"
+      updated="August 20, 2026"
       sections={SECTIONS}
     >
       <Section title="1. What We Collect">
@@ -90,10 +90,11 @@ export default function PolicyPage() {
             </p>
           </InfoCard>
           <InfoCard>
-            <h3 className="text-sm font-semibold text-foreground mb-2">Email (optional)</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Data Integrity</h3>
             <p className="text-sm leading-relaxed text-muted">
-              AES-256-GCM encrypted at rest. Used only for recovery and security
-              notices. Never displayed publicly. Never shared.
+              Your data is stored on a replicated database with automatic failover.
+              Regular off-site backups with checksums ensure your data can be
+              restored even in the event of hardware failure.
             </p>
           </InfoCard>
         </div>
@@ -179,9 +180,10 @@ export default function PolicyPage() {
           <InfoCard>
             <h3 className="text-sm font-semibold text-foreground mb-2">Access and Export</h3>
             <p className="text-sm leading-relaxed text-muted">
-              Download all your data anytime via Settings. Public diaries as
-              JSON/Markdown, private diaries as encrypted JSON with decryption
-              instructions, profile data as JSON.
+              Download all your data anytime via Settings. Includes your profile,
+              all diaries, comments, likes, bookmarks, follows, notifications,
+              achievements, tickets, and media files (photos, audio, video) as a
+              downloadable archive.
             </p>
           </InfoCard>
           <InfoCard>
@@ -214,13 +216,16 @@ export default function PolicyPage() {
           {[
             { label: "E2E Encryption", desc: "AES-256-GCM per-diary keys" },
             { label: "Password Hashing", desc: "Argon2id - 64 MB memory" },
-            { label: "Auth Tokens", desc: "JWT 15-min + revocable refresh" },
+            { label: "Auth Tokens", desc: "JWT 15-min + revoked on logout/password change" },
             { label: "Transport", desc: "HTTPS + HSTS preload" },
             { label: "Rate Limiting", desc: "IP + per-user windows" },
             { label: "XSS Prevention", desc: "Server-side HTML sanitization" },
             { label: "CSRF Protection", desc: "SameSite Strict cookies" },
             { label: "File Validation", desc: "Magic-byte inspection" },
             { label: "Audit Logging", desc: "Immutable admin action trail" },
+            { label: "Session Invalidation", desc: "All sessions killed on password change" },
+            { label: "Inactivity Clearing", desc: "Encryption key cleared after 15 min idle" },
+            { label: "Health Monitoring", desc: "Startup, liveness, and readiness probes" },
           ].map((item) => (
             <div key={item.label} className="rounded-md border border-border bg-background p-3">
               <p className="text-xs font-semibold text-foreground mb-0.5">{item.label}</p>
@@ -299,14 +304,16 @@ export default function PolicyPage() {
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
           {["User profile", "All diaries", "All comments", "Likes & bookmarks",
-            "Follow relationships", "Notifications", "Uploaded media"].map((item) => (
+            "Follow relationships", "Notifications", "Uploaded media (MinIO objects)",
+            "Refresh tokens", "Verification tokens"].map((item) => (
             <span key={item} className="inline-flex items-center rounded-full bg-overlay/10 px-3 py-1 text-xs text-muted">
               {item}
             </span>
           ))}
         </div>
         <p className="text-xs text-subtle">
-          Audit logs are retained anonymized for legal compliance.
+          A structured audit log entry is recorded with timestamps and deletion
+          counts for legal compliance. Logs are retained anonymized.
         </p>
       </Section>
 
@@ -360,7 +367,7 @@ export default function PolicyPage() {
         <p className="text-sm leading-relaxed text-muted">
           Material changes will be announced via a notice on the homepage.
           Continued use after changes constitutes acceptance. Last updated
-          July 4, 2026.
+          August 20, 2026.
         </p>
       </Section>
 
