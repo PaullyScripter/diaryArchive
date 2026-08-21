@@ -24,7 +24,7 @@ from app.core.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
-_SWEEP_BATCH = 10000
+_BATCH_SIZE = 1000
 
 
 def _db():
@@ -42,58 +42,65 @@ async def _valid_ids(collection, ids: list[ObjectId]) -> set[ObjectId]:
 async def sweep_orphaned_likes() -> dict:
     db = _db()
     removed = 0
-    cursor = db.likes.find({}, {"user_id": 1, "diary_id": 1}).batch_size(1000)
-    batch: list[ObjectId] = []
-    user_ids: set[ObjectId] = set()
-    diary_ids: set[ObjectId] = set()
-    docs = await cursor.to_list(length=_SWEEP_BATCH)
-    for like in docs:
-        user_ids.add(like["user_id"])
-        diary_ids.add(like["diary_id"])
-        batch.append(like["_id"])
-    valid_users = await _valid_ids(db.users, list(user_ids))
-    valid_diaries = await _valid_ids(db.diaries, list(diary_ids))
-    orphan_ids = [
-        like["_id"]
-        for like in docs
-        if like["user_id"] not in valid_users or like["diary_id"] not in valid_diaries
-    ]
-    if orphan_ids:
-        res = await db.likes.delete_many({"_id": {"$in": orphan_ids}})
-        removed = res.deleted_count
+    cursor = db.likes.find({}, {"user_id": 1, "diary_id": 1}).batch_size(_BATCH_SIZE)
+    while True:
+        docs = await cursor.to_list(length=_BATCH_SIZE)
+        if not docs:
+            break
+        user_ids = {d["user_id"] for d in docs}
+        diary_ids = {d["diary_id"] for d in docs}
+        valid_users = await _valid_ids(db.users, list(user_ids))
+        valid_diaries = await _valid_ids(db.diaries, list(diary_ids))
+        orphan_ids = [
+            d["_id"]
+            for d in docs
+            if d["user_id"] not in valid_users or d["diary_id"] not in valid_diaries
+        ]
+        if orphan_ids:
+            res = await db.likes.delete_many({"_id": {"$in": orphan_ids}})
+            removed += res.deleted_count
     return {"orphans_removed": removed}
 
 
 async def sweep_orphaned_bookmarks() -> dict:
     db = _db()
-    docs = await db.bookmarks.find({}, {"user_id": 1, "diary_id": 1}).to_list(length=_SWEEP_BATCH)
-    valid_users = await _valid_ids(db.users, list({d["user_id"] for d in docs}))
-    valid_diaries = await _valid_ids(db.diaries, list({d["diary_id"] for d in docs}))
-    orphan_ids = [
-        d["_id"]
-        for d in docs
-        if d["user_id"] not in valid_users or d["diary_id"] not in valid_diaries
-    ]
     removed = 0
-    if orphan_ids:
-        removed = (await db.bookmarks.delete_many({"_id": {"$in": orphan_ids}})).deleted_count
+    cursor = db.bookmarks.find({}, {"user_id": 1, "diary_id": 1}).batch_size(_BATCH_SIZE)
+    while True:
+        docs = await cursor.to_list(length=_BATCH_SIZE)
+        if not docs:
+            break
+        valid_users = await _valid_ids(db.users, list({d["user_id"] for d in docs}))
+        valid_diaries = await _valid_ids(db.diaries, list({d["diary_id"] for d in docs}))
+        orphan_ids = [
+            d["_id"]
+            for d in docs
+            if d["user_id"] not in valid_users or d["diary_id"] not in valid_diaries
+        ]
+        if orphan_ids:
+            res = await db.bookmarks.delete_many({"_id": {"$in": orphan_ids}})
+            removed += res.deleted_count
     return {"orphans_removed": removed}
 
 
 async def sweep_orphaned_follows() -> dict:
     db = _db()
-    docs = await db.follows.find({}, {"follower_id": 1, "following_id": 1}).to_list(
-        length=_SWEEP_BATCH
-    )
-    valid = await _valid_ids(
-        db.users, list({i for d in docs for i in (d["follower_id"], d["following_id"])})
-    )
-    orphan_ids = [
-        d["_id"] for d in docs if d["follower_id"] not in valid or d["following_id"] not in valid
-    ]
     removed = 0
-    if orphan_ids:
-        removed = (await db.follows.delete_many({"_id": {"$in": orphan_ids}})).deleted_count
+    cursor = db.follows.find({}, {"follower_id": 1, "following_id": 1}).batch_size(_BATCH_SIZE)
+    while True:
+        docs = await cursor.to_list(length=_BATCH_SIZE)
+        if not docs:
+            break
+        all_ids = list({i for d in docs for i in (d["follower_id"], d["following_id"])})
+        valid = await _valid_ids(db.users, all_ids)
+        orphan_ids = [
+            d["_id"]
+            for d in docs
+            if d["follower_id"] not in valid or d["following_id"] not in valid
+        ]
+        if orphan_ids:
+            res = await db.follows.delete_many({"_id": {"$in": orphan_ids}})
+            removed += res.deleted_count
     return {"orphans_removed": removed}
 
 
@@ -101,36 +108,130 @@ async def sweep_orphaned_comments() -> dict:
     """Remove comment_likes whose comment is gone, and comments whose parent
     diary or author is gone."""
     db = _db()
-    docs = await db.comments.find({}, {"user_id": 1, "diary_id": 1}).to_list(length=_SWEEP_BATCH)
-    valid_users = await _valid_ids(db.users, list({d["user_id"] for d in docs}))
-    valid_diaries = await _valid_ids(db.diaries, list({d["diary_id"] for d in docs}))
-    orphan_comment_ids = [
-        d["_id"]
-        for d in docs
-        if d["user_id"] not in valid_users or d["diary_id"] not in valid_diaries
-    ]
     removed_comments = 0
     removed_comment_likes = 0
-    if orphan_comment_ids:
-        removed_comment_likes = (
-            await db.comment_likes.delete_many({"comment_id": {"$in": orphan_comment_ids}})
-        ).deleted_count
-        removed_comments = (
-            await db.comments.delete_many({"_id": {"$in": orphan_comment_ids}})
-        ).deleted_count
-    # comment_likes pointing at already-hard-deleted comments (that the comment
-    # sweep above could not see because the comment doc is gone).
-    cl_docs = await db.comment_likes.find({}, {"comment_id": 1}).to_list(length=_SWEEP_BATCH)
-    valid_comments = await _valid_ids(db.comments, list({c["comment_id"] for c in cl_docs}))
-    cl_orphan_ids = [c["_id"] for c in cl_docs if c["comment_id"] not in valid_comments]
-    if cl_orphan_ids:
-        removed_comment_likes += (
-            await db.comment_likes.delete_many({"_id": {"$in": cl_orphan_ids}})
-        ).deleted_count
+
+    # Sweep comments in batches.
+    cursor = db.comments.find({}, {"user_id": 1, "diary_id": 1}).batch_size(_BATCH_SIZE)
+    all_orphan_comment_ids: list[ObjectId] = []
+    while True:
+        docs = await cursor.to_list(length=_BATCH_SIZE)
+        if not docs:
+            break
+        valid_users = await _valid_ids(db.users, list({d["user_id"] for d in docs}))
+        valid_diaries = await _valid_ids(db.diaries, list({d["diary_id"] for d in docs}))
+        orphan_ids = [
+            d["_id"]
+            for d in docs
+            if d["user_id"] not in valid_users or d["diary_id"] not in valid_diaries
+        ]
+        all_orphan_comment_ids.extend(orphan_ids)
+
+    if all_orphan_comment_ids:
+        # Batch-delete in chunks to avoid huge $in operators.
+        for i in range(0, len(all_orphan_comment_ids), _BATCH_SIZE):
+            chunk = all_orphan_comment_ids[i : i + _BATCH_SIZE]
+            removed_comment_likes += (
+                await db.comment_likes.delete_many({"comment_id": {"$in": chunk}})
+            ).deleted_count
+            removed_comments += (
+                await db.comments.delete_many({"_id": {"$in": chunk}})
+            ).deleted_count
+
+    # Sweep comment_likes pointing at already-hard-deleted comments.
+    cl_cursor = db.comment_likes.find({}, {"comment_id": 1}).batch_size(_BATCH_SIZE)
+    all_cl_orphan_ids: list[ObjectId] = []
+    while True:
+        docs = await cl_cursor.to_list(length=_BATCH_SIZE)
+        if not docs:
+            break
+        valid_comments = await _valid_ids(db.comments, list({c["comment_id"] for c in docs}))
+        all_cl_orphan_ids.extend(
+            c["_id"] for c in docs if c["comment_id"] not in valid_comments
+        )
+    if all_cl_orphan_ids:
+        for i in range(0, len(all_cl_orphan_ids), _BATCH_SIZE):
+            chunk = all_cl_orphan_ids[i : i + _BATCH_SIZE]
+            removed_comment_likes += (
+                await db.comment_likes.delete_many({"_id": {"$in": chunk}})
+            ).deleted_count
+
     return {
         "orphan_comments_removed": removed_comments,
         "orphan_comment_likes_removed": removed_comment_likes,
     }
+
+
+async def sweep_orphaned_notifications() -> dict:
+    """Remove notifications whose recipient user no longer exists, or whose
+    referenced target (diary, comment, user) has been deleted."""
+    db = _db()
+    removed = 0
+    cursor = db.notifications.find(
+        {}, {"user_id": 1, "actor_id": 1, "target_id": 1, "target_type": 1}
+    ).batch_size(_BATCH_SIZE)
+    while True:
+        docs = await cursor.to_list(length=_BATCH_SIZE)
+        if not docs:
+            break
+        # Collect all referenced user IDs.
+        user_ids = set()
+        for d in docs:
+            user_ids.add(d["user_id"])
+            if d.get("actor_id"):
+                user_ids.add(d["actor_id"])
+        valid_users = await _valid_ids(db.users, list(user_ids))
+
+        # Collect target IDs by type for existence checks.
+        diary_targets = {
+            d["target_id"]
+            for d in docs
+            if d.get("target_type") == "diary" and d.get("target_id")
+        }
+        comment_targets = {
+            d["target_id"]
+            for d in docs
+            if d.get("target_type") == "comment" and d.get("target_id")
+        }
+        user_targets = {
+            d["target_id"]
+            for d in docs
+            if d.get("target_type") == "user" and d.get("target_id")
+        }
+
+        valid_diaries = await _valid_ids(db.diaries, list(diary_targets)) if diary_targets else set()
+        valid_comments = (
+            await _valid_ids(db.comments, list(comment_targets)) if comment_targets else set()
+        )
+        valid_target_users = (
+            await _valid_ids(db.users, list(user_targets)) if user_targets else set()
+        )
+
+        orphan_ids = []
+        for d in docs:
+            # Recipient must exist.
+            if d["user_id"] not in valid_users:
+                orphan_ids.append(d["_id"])
+                continue
+            # Actor must exist (for non-admin notifications).
+            if d.get("actor_id") and d["actor_id"] not in valid_users:
+                orphan_ids.append(d["_id"])
+                continue
+            # Target must exist if referenced.
+            target_id = d.get("target_id")
+            if target_id:
+                target_type = d.get("target_type", "diary")
+                if target_type == "diary" and target_id not in valid_diaries:
+                    orphan_ids.append(d["_id"])
+                elif target_type == "comment" and target_id not in valid_comments:
+                    orphan_ids.append(d["_id"])
+                elif target_type == "user" and target_id not in valid_target_users:
+                    orphan_ids.append(d["_id"])
+
+        if orphan_ids:
+            res = await db.notifications.delete_many({"_id": {"$in": orphan_ids}})
+            removed += res.deleted_count
+    return {"orphans_removed": removed}
 
 
 async def reconcile_diary_counters() -> dict:
@@ -216,6 +317,7 @@ async def run_cleanup() -> dict:
         summary["bookmarks"] = await sweep_orphaned_bookmarks()
         summary["follows"] = await sweep_orphaned_follows()
         summary["comments"] = await sweep_orphaned_comments()
+        summary["notifications"] = await sweep_orphaned_notifications()
         summary["diaries"] = await reconcile_diary_counters()
         summary["users"] = await reconcile_user_counters()
     except Exception:

@@ -85,10 +85,52 @@ async def _search_outbox_loop():
             logger.warning("Search outbox processing failed", exc_info=True)
 
 
+async def _init_replica_set():
+    """Initialize a single-member replica set if configured.
+
+    This enables MongoDB transactions. On a fresh database the first startup
+    performs ``rs.initiate``; subsequent startups detect the existing set and
+    skip. If the URI does not include ``replicaSet=``, this is a no-op.
+    """
+    try:
+        client = DatabaseManager._client
+        if client is None:
+            return
+        # Check whether the URI requests a replica set.
+        uri = settings.mongodb_uri
+        if "replicaSet=" not in uri:
+            return
+        admin_db = client.admin
+        status = await admin_db.command("replSetGetStatus").catch(
+            lambda _: None
+        )
+        if status and status.get("ok") == 1:
+            return
+        # Not yet initialized; initiate with the current member.
+        import re
+        match = re.search(r"replicaSet=([^&]+)", uri)
+        rs_name = match.group(1) if match else "diaryarchive"
+        # Derive the hostname:port from the URI (first host in the list).
+        host_part = uri.split("://", 1)[1].split("/")[0].split("?")[0]
+        # Strip credentials if present (host part is after @).
+        if "@" in host_part:
+            host_part = host_part.split("@", 1)[1]
+        host = host_part.split(",")[0]  # take first member
+        await admin_db.command("replSetInitiate", {
+            "_id": rs_name,
+            "members": [{"_id": 0, "host": host}],
+        })
+        logger.info("Replica set '%s' initialized with member %s", rs_name, host)
+    except Exception:
+        # Replica set may already be initialized or not configured; non-fatal.
+        logger.debug("Replica set init skipped or failed", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up...")
     await DatabaseManager.connect_mongo()
+    await _init_replica_set()
     await DatabaseManager.connect_redis()
     await create_indexes()
     await initialize_search_indexes()
@@ -108,6 +150,8 @@ async def lifespan(app: FastAPI):
     cleanup_task = asyncio.create_task(_cleanup_loop())
     outbox_task = asyncio.create_task(_search_outbox_loop())
 
+    from app.core.metrics import mark_startup_complete
+    mark_startup_complete()
     logger.info("Startup complete")
     yield
     logger.info("Shutting down...")
