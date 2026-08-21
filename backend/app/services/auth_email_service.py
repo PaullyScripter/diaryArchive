@@ -38,7 +38,7 @@ async def send_password_reset_email(user: dict, token_raw: str) -> bool:
         )
         return False
     username = user.get("username", "user")
-    url = f"{_public_base()}/reset-password?token={token_raw}"
+    url = f"{_public_base()}/reset-password#token={token_raw}"
     subject = "Reset your DiaryArchive password"
     body = (
         f"Hello {username},\n\n"
@@ -62,7 +62,7 @@ async def send_email_verification(user: dict, token_raw: str) -> bool:
         )
         return False
     username = user.get("username", "user")
-    url = f"{_public_base()}/verify-email?token={token_raw}"
+    url = f"{_public_base()}/verify-email#token={token_raw}"
     subject = "Verify your DiaryArchive email"
     body = (
         f"Hello {username},\n\n"

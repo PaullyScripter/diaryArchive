@@ -16,6 +16,21 @@ async def metrics(response: Response):
     return render_metrics()
 
 
+@router.get("/startup")
+async def startup_probe(response: Response):
+    """Kubernetes/Docker startup probe.
+
+    Returns 200 only after the backend has fully initialized (MongoDB, Redis,
+    Meilisearch, MinIO all reachable). Liveness/readiness probes should use
+    ``/health`` instead.
+    """
+    from app.core.metrics import _STARTUP_COMPLETE
+    if not _STARTUP_COMPLETE:
+        response.status_code = 503
+        return {"status": "initializing"}
+    return {"status": "ready"}
+
+
 @router.get("/health")
 async def health_check(response: Response):
     checks: dict[str, str] = {}

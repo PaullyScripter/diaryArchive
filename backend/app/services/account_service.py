@@ -4,21 +4,30 @@ Two user-facing capabilities built on the existing repository primitives:
 
 1. ``export_user_data`` returns a self-contained, GDPR-style snapshot of every
    piece of data an account owns (profile, diaries, comments, social rows,
-   notifications, achievements, tickets, tokens). It is deliberately read-only
-   and never touches private diary ciphertext (that stays opaque to the server).
+   notifications, achievements, tickets, tokens, media metadata and files).
+   It is deliberately read-only and never touches private diary ciphertext
+   (that stays opaque to the server).
 
 2. ``delete_account`` erases the account and all of its data across every
    collection that references the user, including MinIO objects for the user's
    media. It is best-effort: each step is guarded so a partial failure still
    removes as much as possible without leaving the process half-open.
+   A structured audit log entry is written for the deletion event.
 """
 
 import logging
+import re
+from datetime import UTC, datetime
+from io import BytesIO
+import tarfile
 
 from bson import ObjectId
 
+from app.core.config import settings
 from app.core.database import DatabaseManager
+from app.core.minio_client import get_minio_client
 from app.core.utils import fmt_dt
+from app.repositories.audit_log_repo import AuditLogRepository
 from app.repositories.diary_repo import DiaryRepository
 from app.services.media_service import _delete_object_async
 
@@ -76,6 +85,13 @@ async def export_user_data(user_id: str) -> dict:
         {"_id": 0},
     ).to_list(length=100000)
     tickets = await db.tickets.find({"user_id": uid}, {"_id": 0}).to_list(length=100000)
+
+    # P2.7: Include media metadata and download actual files from MinIO.
+    media_records = await db.media.find(
+        {"user_id": uid},
+        {"_id": 0},
+    ).to_list(length=100000)
+    media_tar_bytes = await _download_media_files(uid, media_records)
 
     return {
         "profile": {
@@ -154,12 +170,36 @@ async def export_user_data(user_id: str) -> dict:
             }
             for t in tickets
         ],
+        "media": [
+            {
+                "id": str(m.get("_id", "")) if m.get("_id") else None,
+                "filename": m.get("filename"),
+                "mime_type": m.get("mime_type"),
+                "size_bytes": m.get("size_bytes"),
+                "is_private": m.get("is_private", False),
+                "diary_id": str(m["diary_id"]) if m.get("diary_id") else None,
+                "created_at": fmt_dt(m.get("created_at")),
+            }
+            for m in media_records
+        ],
+        "media_files": media_tar_bytes,
+        "export_metadata": {
+            "exported_at": datetime.now(UTC).isoformat(),
+            "format_version": 2,
+            "includes_media_files": media_tar_bytes is not None,
+        },
     }
 
 
-async def delete_account(user_id: str) -> bool:
+async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     db = _db()
     uid = _oid(user_id)
+
+    # Capture counts before deletion for audit logging.
+    diary_count = await db.diaries.count_documents({"user_id": uid})
+    comment_count = await db.comments.count_documents({"user_id": uid})
+    like_count = await db.likes.count_documents({"user_id": uid})
+    media_count = await db.media.count_documents({"user_id": uid})
 
     # Diaries (cascade removes comments, likes, bookmarks, notifications,
     # reports and MinIO objects for each diary).
@@ -226,4 +266,59 @@ async def delete_account(user_id: str) -> bool:
         logger.warning("PHASE 9: failed to refresh banned-user cache", exc_info=True)
 
     result = await db.users.delete_one({"_id": uid})
+
+    # P2.8: Structured audit log entry for account deletion.
+    try:
+        username = user.get("username", "unknown") if user else "unknown"
+        audit_repo = AuditLogRepository()
+        await audit_repo.create(
+            admin_id="system",
+            admin_username="system",
+            action="account_deletion",
+            target_type="user",
+            target_id=user_id,
+            details={
+                "username": username,
+                "reason": reason,
+                "diaries_deleted": diary_count,
+                "comments_deleted": comment_count,
+                "likes_deleted": like_count,
+                "media_deleted": media_count,
+                "deletion_timestamp": datetime.now(UTC).isoformat(),
+            },
+        )
+    except Exception:
+        logger.warning("PHASE 9: failed to write account deletion audit log for user %s", user_id)
+
     return result.deleted_count > 0
+
+
+async def _download_media_files(uid: ObjectId, media_records: list[dict]) -> bytes | None:
+    """Download all media files for a user from MinIO and return as a tar.gz."""
+    if not media_records:
+        return None
+    try:
+        client = get_minio_client()
+        bucket = settings.minio_bucket
+        tar_buffer = BytesIO()
+        with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+            for m in media_records:
+                for key in (m.get("stored_path"), m.get("standard_path"), m.get("thumbnail_path")):
+                    if not key:
+                        continue
+                    try:
+                        response = client.get_object(bucket, key)
+                        data = response.read()
+                        response.close()
+                        response.release_conn()
+                        safe_name = re.sub(r"[^\w.\-/]", "_", key)
+                        info = tarfile.TarInfo(name=safe_name)
+                        info.size = len(data)
+                        tar.addfile(info, BytesIO(data))
+                    except Exception:
+                        logger.warning("Failed to download MinIO object %s", key)
+        tar_buffer.seek(0)
+        return tar_buffer.getvalue() if tar_buffer.tell() > 0 else None
+    except Exception:
+        logger.warning("Failed to connect to MinIO for media export", exc_info=True)
+        return None

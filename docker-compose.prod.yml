@@ -6,6 +6,14 @@
 #   - image pins, resource limits, restart policies, healthchecks
 #   - build-time NEXT_PUBLIC_API_URL (inlined by Next.js at build time)
 #   - frontend NOT exposed on a public host port (all traffic through Nginx)
+#   - P3.8: Docker log rotation to prevent disk exhaustion
+#
+# x-logging: &default-logging  (YAML anchor applied to all services)
+#   logging:
+#     driver: json-file
+#     options:
+#       max-size: "10m"
+#       max-file: "5"
 services:
   nginx:
     image: nginx:1.27-alpine
@@ -13,6 +21,11 @@ services:
       - "80:80"
       - "443:443"
     read_only: true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     tmpfs:
       - /var/run
       - /var/cache/nginx
@@ -46,6 +59,11 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
     deploy:
       resources:
         limits:
@@ -61,6 +79,11 @@ services:
     entrypoint: ["/bin/sh", "/usr/local/bin/entrypoint.sh"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     deploy:
       resources:
         limits:
@@ -80,6 +103,11 @@ services:
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     deploy:
       resources:
         limits:
@@ -94,6 +122,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     deploy:
       resources:
         limits:
@@ -110,6 +143,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/api/v1/health'); r.raise_for_status()"]
       interval: 30s
@@ -133,7 +171,7 @@ services:
     restart: always
     environment:
       DEBUG: "false"
-      MONGODB_URI: mongodb://${MONGO_ROOT_USER:?set MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}@mongodb:27017/diaryarchive?authSource=admin
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:?set MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}@mongodb:27017/diaryarchive?authSource=admin&replicaSet=diaryarchive
       REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
@@ -151,6 +189,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     build:
       context: ./frontend
       dockerfile: Dockerfile

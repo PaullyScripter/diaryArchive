@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.database import DatabaseManager
 from app.core.exceptions import AuthenticationException, PermissionDeniedException
-from app.core.security import decode_access_token
+from app.core.security import decode_access_token, validate_access_token
 from app.repositories.user_repo import UserRepository
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ async def _optional_user(
         return None
     try:
         token = authorization.split(" ", 1)[1]
-        payload = decode_access_token(token)
+        payload = await validate_access_token(token)
         user_id = payload.get("sub")
         if user_id:
             user_repo = UserRepository()
@@ -55,7 +55,7 @@ async def get_current_user(
         raise AuthenticationException("Not authenticated")
 
     token = authorization.split(" ", 1)[1]
-    payload = decode_access_token(token)
+    payload = await validate_access_token(token)
     user_id = payload.get("sub")
 
     repo = UserRepository()
