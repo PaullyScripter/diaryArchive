@@ -46,7 +46,8 @@ export function CommentSection({ diaryId, highlightCommentId }: { diaryId: strin
               placeholder="Write a comment..."
               maxLength={2000}
               rows={2}
-              className="w-full border border-border rounded-md bg-background px-3 py-2 text-sm text-foreground placeholder:text-subtle resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Write a comment"
+              className="w-full border border-border rounded-md bg-background px-3 py-2 text-sm text-foreground placeholder:text-subtle resize-y focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

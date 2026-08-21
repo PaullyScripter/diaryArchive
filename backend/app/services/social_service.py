@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import UTC, datetime
 
 from app.core.exceptions import (
@@ -24,18 +25,26 @@ class _ToggleLocks:
     (two likes -> liked; two unlikes -> unliked). This matches the single-
     backend production architecture (see MED-7); a multi-replica deployment
     would additionally rely on the DB unique indexes already in place.
+
+    Locks are evicted after ``_LOCK_TTL`` seconds of inactivity to prevent
+    unbounded memory growth.
     """
 
+    _LOCK_TTL = 300  # 5 minutes
+
     def __init__(self):
-        self._locks: dict[tuple, asyncio.Lock] = {}
+        self._locks: dict[tuple, tuple[asyncio.Lock, float]] = {}
         self._guard = asyncio.Lock()
 
     async def get(self, key: tuple) -> asyncio.Lock:
         async with self._guard:
-            lock = self._locks.get(key)
-            if lock is None:
-                lock = asyncio.Lock()
-                self._locks[key] = lock
+            now = time.monotonic()
+            # Evict stale entries while holding the guard.
+            stale = [k for k, (_, ts) in self._locks.items() if now - ts > self._LOCK_TTL]
+            for k in stale:
+                del self._locks[k]
+            lock, _ = self._locks.get(key, (asyncio.Lock(), now))
+            self._locks[key] = (lock, now)
             return lock
 
 
