@@ -64,13 +64,13 @@ docker compose "${COMPOSE_ARGS[@]}" up -d
 # ---------------------------------------------------------------------------
 echo "==> Waiting for backend health..."
 for i in $(seq 1 60); do
-  if curl -fsS --retry 1 http://localhost/api/v1/health >/dev/null 2>&1; then
+  if curl -fsSk --retry 1 --max-time 5 https://localhost/api/v1/health >/dev/null 2>&1; then
     break
   fi
   sleep 5
 done
 
-if curl -fsS --retry 1 http://localhost/api/v1/health >/dev/null 2>&1; then
+if curl -fsSk --retry 1 --max-time 5 https://localhost/api/v1/health >/dev/null 2>&1; then
   echo "$(git rev-parse --short HEAD)" > .last-deployed-sha
   echo "==> Deploy SUCCESS (tag $TAG)."
 else
@@ -83,7 +83,7 @@ else
     git checkout "$PREV_SHA" --force
     docker compose "${COMPOSE_ARGS[@]}" build
     docker compose "${COMPOSE_ARGS[@]}" up -d
-    if curl -fsS --retry 3 http://localhost/api/v1/health >/dev/null 2>&1; then
+    if curl -fsSk --retry 3 --max-time 5 https://localhost/api/v1/health >/dev/null 2>&1; then
       echo "==> Rollback SUCCESS. A broken release was not left serving traffic."
     else
       echo "CRITICAL: rollback also failed. Manual intervention required." >&2

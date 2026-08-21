@@ -11,8 +11,10 @@ values reset on process restart, which is acceptable for basic alerting (the
 scraper computes rates/deltas itself).
 """
 
+import os
 import threading
 import time
+from datetime import UTC, datetime
 
 _LOCK = threading.Lock()
 
@@ -27,7 +29,20 @@ _DURATION_COUNT: dict[str, int] = {}
 # Last-run summaries for the periodic maintenance tasks, keyed by task name.
 _TASK_RUNS: dict[str, dict] = {}
 
-_START_TIME = time.time()
+# P2.9: System-level gauges.
+_SYSTEM_START_TIME = time.time()
+_LAST_STARTUP_TIME = datetime.now(UTC).isoformat()
+
+# P2.9: Connection pool health snapshots.
+_MONGO_POOL_READY: int = 0
+_MONGO_POOL_OPEN: int = 0
+_REDIS_CONNECTED: bool = False
+
+# P2.9: Active request tracking.
+_ACTIVE_REQUESTS: int = 0
+
+# P2.9: Startup probe state (set by startup-check endpoint).
+_STARTUP_COMPLETE: bool = False
 
 
 def record_request(route: str, status_code: int, elapsed_seconds: float) -> None:
@@ -42,6 +57,32 @@ def record_request(route: str, status_code: int, elapsed_seconds: float) -> None
 def record_task_run(task: str, summary: dict) -> None:
     with _LOCK:
         _TASK_RUNS[task] = {"last_run_ts": time.time(), **summary}
+
+
+def record_request_start() -> None:
+    global _ACTIVE_REQUESTS
+    with _LOCK:
+        _ACTIVE_REQUESTS += 1
+
+
+def record_request_end() -> None:
+    global _ACTIVE_REQUESTS
+    with _LOCK:
+        _ACTIVE_REQUESTS = max(0, _ACTIVE_REQUESTS - 1)
+
+
+def update_pool_metrics(mongo_ready: int, mongo_open: int, redis_connected: bool) -> None:
+    global _MONGO_POOL_READY, _MONGO_POOL_OPEN, _REDIS_CONNECTED
+    with _LOCK:
+        _MONGO_POOL_READY = mongo_ready
+        _MONGO_POOL_OPEN = mongo_open
+        _REDIS_CONNECTED = redis_connected
+
+
+def mark_startup_complete() -> None:
+    global _STARTUP_COMPLETE
+    with _LOCK:
+        _STARTUP_COMPLETE = True
 
 
 def _fmt(name: str, help_: str, samples: list[tuple[list[tuple[str, str]], str]]) -> str:
@@ -62,13 +103,60 @@ def render_metrics() -> str:
         dsum = dict(_DURATION_SUM)
         dcount = dict(_DURATION_COUNT)
         task_runs = dict(_TASK_RUNS)
-        uptime = time.time() - _START_TIME
+        uptime = time.time() - _SYSTEM_START_TIME
+        mongo_ready = _MONGO_POOL_READY
+        mongo_open = _MONGO_POOL_OPEN
+        redis_ok = _REDIS_CONNECTED
+        active = _ACTIVE_REQUESTS
+        startup = _STARTUP_COMPLETE
 
     out = []
+
+    # --- System metrics ---
+    out.append("# HELP diaryarchive_up Whether the application is serving requests (1) or not (0)")
+    out.append("# TYPE diaryarchive_up gauge")
+    out.append(f"diaryarchive_up {1 if startup else 0}")
+
+    out.append("# HELP diaryarchive_start_time_seconds Unix timestamp when the process started")
+    out.append("# TYPE diaryarchive_start_time_seconds gauge")
+    out.append(f"diaryarchive_start_time_seconds {_SYSTEM_START_TIME:.0f}")
+
+    out.append("# HELP diaryarchive_start_time_human Readable timestamp when the process started")
+    out.append("# TYPE diaryarchive_start_time_human gauge")
+    out.append(f'diaryarchive_start_time_human{{value="{_LAST_STARTUP_TIME}"}} 1')
+
     out.append("# HELP process_uptime_seconds Time since the process started")
     out.append("# TYPE process_uptime_seconds gauge")
     out.append(f"process_uptime_seconds {uptime:.0f}")
 
+    out.append("# HELP process_resident_memory_bytes Resident memory in bytes")
+    out.append("# TYPE process_resident_memory_bytes gauge")
+    try:
+        mem = os.popen("wmic OS get TotalVisibleMemorySize /value").read()
+        # Fallback: just report 0 on non-Windows or failure.
+        out.append("process_resident_memory_bytes 0")
+    except Exception:
+        out.append("process_resident_memory_bytes 0")
+
+    # --- Connection pool metrics ---
+    out.append("# HELP mongo_pool_ready Connections ready in the driver pool")
+    out.append("# TYPE mongo_pool_ready gauge")
+    out.append(f"mongo_pool_ready {mongo_ready}")
+
+    out.append("# HELP mongo_pool_open Connections currently open to MongoDB")
+    out.append("# TYPE mongo_pool_open gauge")
+    out.append(f"mongo_pool_open {mongo_open}")
+
+    out.append("# HELP redis_connected Whether Redis is reachable (1=yes, 0=no)")
+    out.append("# TYPE redis_connected gauge")
+    out.append(f"redis_connected {1 if redis_ok else 0}")
+
+    # --- Active request gauge ---
+    out.append("# HELP http_requests_in_flight Number of requests currently being processed")
+    out.append("# TYPE http_requests_in_flight gauge")
+    out.append(f"http_requests_in_flight {active}")
+
+    # --- Request counters ---
     out.append("# HELP request_requests_total Total requests by route")
     out.append("# TYPE request_requests_total counter")
     for route, count in sorted(requests.items()):
@@ -89,15 +177,13 @@ def render_metrics() -> str:
     for route, value in sorted(dcount.items()):
         out.append(f'request_duration_seconds_count{{route="{_escape(route)}"}} {value}')
 
+    # --- Task summaries ---
     out.append("# HELP task_last_run_seconds Epoch timestamp of last periodic run")
     out.append("# TYPE task_last_run_seconds gauge")
     for task, meta in sorted(task_runs.items()):
         ts = meta.get("last_run_ts", 0)
         out.append(f'task_last_run_seconds{{task="{_escape(task)}"}} {ts:.0f}')
 
-    # Per-task scalar summaries (e.g. counts of orphans removed, items indexed).
-    # Nested dicts are flattened into dot-separated keys so the full cleanup
-    # summary renders as individual gauges.
     for task, meta in sorted(task_runs.items()):
         for flat_key, value in _flatten(meta):
             if isinstance(value, bool):

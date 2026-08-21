@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,16 @@ import { apiClient } from "@/lib/api/client";
 
 function VerifyEmailForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const [token, setToken] = useState("");
+
+  // P3.4: Read token from URL fragment (#token=...) instead of query parameter.
+  // Fragments are never sent to the server in Referer headers or access logs.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith("#token=")) {
+      setToken(hash.slice(7));
+    }
+  }, []);
 
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
   const [message, setMessage] = useState("");

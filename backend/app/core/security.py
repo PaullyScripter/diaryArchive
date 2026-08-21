@@ -36,12 +36,11 @@ async def verify_password_async(plain: str, hashed: str) -> bool:
     return await asyncio.to_thread(verify_password, plain, hashed)
 
 
-def create_access_token(user_id: str, username: str, is_admin: bool = False) -> str:
+def create_access_token(user_id: str, username: str) -> str:
     now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "username": username,
-        "is_admin": is_admin,
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
         "iat": now,
         "jti": secrets.token_hex(16),
@@ -56,6 +55,18 @@ def decode_access_token(token: str) -> dict:
     except JWTError:
         from app.core.exceptions import AuthenticationException
         raise AuthenticationException("Invalid or expired access token")
+
+
+async def validate_access_token(token: str) -> dict:
+    """Decode and validate a token, including revocation check."""
+    from app.core.exceptions import AuthenticationException
+    payload = decode_access_token(token)
+    user_id = payload.get("sub")
+    iat = payload.get("iat")
+    if user_id and iat:
+        if await _is_token_invalidated(user_id, iat):
+            raise AuthenticationException("Token has been revoked")
+    return payload
 
 
 def generate_refresh_token() -> str:
@@ -198,3 +209,52 @@ async def check_rate_limit(
     if count > max_attempts:
         return True, remaining
     return False, remaining
+
+
+# ---------------------------------------------------------------------------
+# Token invalidation (P2.1)
+# ---------------------------------------------------------------------------
+# Strategy: user-level invalidation timestamp stored in Redis.
+# All tokens issued before the timestamp are rejected.
+# More scalable than per-JTI blocklisting and covers all scenarios:
+#   - password change / reset
+#   - logout / logout-all
+#   - admin security action
+#   - account compromise
+
+_TOKEN_INVALIDATION_PREFIX = "auth:invalid_before:"
+
+
+async def invalidate_all_user_tokens(user_id: str) -> None:
+    """Set a timestamp that invalidates all access tokens for this user."""
+    try:
+        redis: Redis = DatabaseManager.get_redis()
+    except RuntimeError:
+        logger.warning("Redis unavailable; cannot invalidate tokens for user %s", user_id)
+        return
+    try:
+        key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
+        # Expire the invalidation entry after 2x the max token lifetime
+        # (tokens can't live longer than access_token_expire_minutes anyway).
+        max_ttl = settings.access_token_expire_minutes * 2 * 60
+        await redis.set(key, int(time.time()), ex=max_ttl)
+    except Exception:
+        logger.exception("Failed to invalidate tokens for user %s", user_id)
+
+
+async def _is_token_invalidated(user_id: str, token_iat: datetime) -> bool:
+    """Check whether a token was issued before the user's invalidation timestamp."""
+    try:
+        redis: Redis = DatabaseManager.get_redis()
+    except RuntimeError:
+        # Redis down: fail-open for availability (token is short-lived anyway).
+        return False
+    try:
+        key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
+        invalid_before = await redis.get(key)
+        if invalid_before is None:
+            return False
+        invalid_ts = datetime.fromtimestamp(int(invalid_before), tz=UTC)
+        return token_iat < invalid_ts
+    except Exception:
+        return False

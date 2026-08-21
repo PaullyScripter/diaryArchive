@@ -15,7 +15,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 text-xs text-muted">
           <span>DiaryArchive - Privacy is a human right</span>
-          <nav className="flex gap-4">
+          <nav className="flex gap-4" aria-label="Footer navigation">
             <Link href="/policy" className="hover:text-foreground transition-colors">
               Privacy Policy
             </Link>

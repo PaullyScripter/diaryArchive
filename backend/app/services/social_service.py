@@ -1,6 +1,8 @@
 import asyncio
+import time
 from datetime import UTC, datetime
 
+from app.core.database import DatabaseManager
 from app.core.exceptions import (
     NotFoundException,
     PermissionDeniedException,
@@ -24,18 +26,26 @@ class _ToggleLocks:
     (two likes -> liked; two unlikes -> unliked). This matches the single-
     backend production architecture (see MED-7); a multi-replica deployment
     would additionally rely on the DB unique indexes already in place.
+
+    Locks are evicted after ``_LOCK_TTL`` seconds of inactivity to prevent
+    unbounded memory growth.
     """
 
+    _LOCK_TTL = 300  # 5 minutes
+
     def __init__(self):
-        self._locks: dict[tuple, asyncio.Lock] = {}
+        self._locks: dict[tuple, tuple[asyncio.Lock, float]] = {}
         self._guard = asyncio.Lock()
 
     async def get(self, key: tuple) -> asyncio.Lock:
         async with self._guard:
-            lock = self._locks.get(key)
-            if lock is None:
-                lock = asyncio.Lock()
-                self._locks[key] = lock
+            now = time.monotonic()
+            # Evict stale entries while holding the guard.
+            stale = [k for k, (_, ts) in self._locks.items() if now - ts > self._LOCK_TTL]
+            for k in stale:
+                del self._locks[k]
+            lock, _ = self._locks.get(key, (asyncio.Lock(), now))
+            self._locks[key] = (lock, now)
             return lock
 
 
@@ -44,6 +54,19 @@ _toggle_locks = _ToggleLocks()
 
 async def _toggle_guard(key: tuple):
     return await _toggle_locks.get(key)
+
+
+async def _run_in_transaction(operation):
+    """Run a coroutine inside a MongoDB transaction.
+
+    The replica set must be configured (P2.3). If the operation fails, the
+    transaction is aborted. Background side-effects (notifications, search
+    indexing) should be fired AFTER the transaction commits.
+    """
+    db = DatabaseManager.get_db()
+    async with await db.client.start_session() as session:
+        async with session.start_transaction():
+            return await operation(session)
 
 
 async def _count_liked_public_diaries(collection, user_id: str, banned_ids: list) -> int:
@@ -241,9 +264,10 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
                 "follower_count": target["stats"]["follower_count"] if target else 0,
             }
 
-        added = await follow_repo.ensure_following(
-            follower_id, following_id, datetime.now(UTC)
-        )
+        # P3.1: Transactional follow + counter update.
+        added = await _run_in_transaction(lambda session: follow_repo.ensure_following(
+            follower_id, following_id, datetime.now(UTC), session=session
+        ))
         if added:
             await user_repo.update_stats(following_id, "follower_count", 1)
             await user_repo.update_stats(follower_id, "following_count", 1)

@@ -44,7 +44,7 @@ export default function TermsPage() {
     <LegalDocShell
       title="Terms of Service"
       subtitle="The agreement that governs your use of the DiaryArchive platform."
-      updated="August 13, 2026"
+      updated="August 20, 2026"
       sections={SECTIONS}
     >
       <WarningCard>
@@ -127,13 +127,14 @@ export default function TermsPage() {
               "You may have only one account unless we authorize additional accounts in writing.",
               "Passwords are stored as Argon2id one-way hashes; under no circumstances can we recover or reset a lost password without a recovery email on file (see Section 6).",
               "You must use a strong, unique password and not use the same password you use on other services.",
+              "Changing your password or resetting it automatically invalidates all other active sessions on your account.",
               "Accounts that are created, bought, sold, or transferred in violation of these Terms may be terminated.",
-          ].map((item) => (
-            <li key={item} className="flex gap-2">
-              <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
-              {item}
-            </li>
-          ))}
+            ].map((item) => (
+              <li key={item} className="flex gap-2">
+                <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
+                {item}
+              </li>
+            ))}
           </ul>
         </InfoCard>
         <p className="text-sm leading-relaxed text-muted">
@@ -370,6 +371,7 @@ export default function TermsPage() {
         </p>
         <ul className="space-y-2 text-sm leading-relaxed text-muted mb-3">
           {[
+            "The service runs health checks to detect and recover from infrastructure failures automatically.",
             "We may modify, suspend, or discontinue any feature or function at any time, with or without notice.",
             "We may perform scheduled maintenance that affects availability.",
             "We may change, limit, or remove functionality, and we are not liable for any resulting loss or inconvenience.",
@@ -618,7 +620,7 @@ export default function TermsPage() {
 
       <div className="border-t border-border pt-8 mt-4">
         <p className="text-sm text-muted leading-relaxed">
-          These Terms were last updated on August 13, 2026. If you have questions
+          These Terms were last updated on August 20, 2026. If you have questions
           about these Terms, please contact{" "}
           <a href="mailto:legal@diaryarchive.com" className="text-link hover:text-link-hover font-medium">
             legal@diaryarchive.com

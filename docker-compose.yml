@@ -6,6 +6,7 @@ services:
     # by docker-compose.infra.yml / docker-compose.override.yml.
     expose:
       - "27017"
+    command: ["mongod", "--replSet", "diaryarchive"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-dev-password}
