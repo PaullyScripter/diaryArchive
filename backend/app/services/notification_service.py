@@ -127,4 +127,9 @@ async def create_notification(
     result = await repo.create(doc)
     logger.info("Notification persisted: id=%s type=%s recipient=%s message=%s",
                  str(result), notification_type, recipient_id, message[:80])
+    try:
+        from app.core.cache import cache
+        await cache.delete(f"notifications:unread_count:{recipient_id}")
+    except Exception:
+        pass
     return str(result) if result else None

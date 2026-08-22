@@ -25,6 +25,11 @@ set -a; source "$ENV_FILE"; set +a
 
 echo "==> Deploying $(git rev-parse --short HEAD) ($GIT_REF)"
 
+# Export deployment metadata for health endpoint
+export APP_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.1.0')"
+export COMMIT_HASH="$(git rev-parse --short HEAD)"
+export DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
 # Save the current deployment SHA for rollback (best-effort).
 PREV_SHA="$(cat .last-deployed-sha 2>/dev/null || echo none)"
 echo "   previous deployment: $PREV_SHA"

@@ -43,6 +43,8 @@ function NavLinks({ vertical = false, onClick }: { vertical?: boolean; onClick?:
             key={link.href}
             href={link.href}
             onClick={onClick}
+            aria-current={isActive ? "page" : undefined}
+            role={vertical ? "menuitem" : undefined}
             className={`relative text-sm px-2 py-0.5 no-underline transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2 ${
               isActive
                 ? "text-foreground font-medium"
@@ -156,7 +158,7 @@ export function NavBar() {
               </text>
             </svg>
           </Link>
-          <nav className="hidden md:flex items-center h-9">
+          <nav className="hidden md:flex items-center h-9" aria-label="Main navigation">
             <NavLinks />
           </nav>
         </div>

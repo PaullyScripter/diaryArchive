@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from app.core.config import settings
-from app.core.metrics import record_request
+from app.core.metrics import record_request, record_request_end, record_request_start
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,7 @@ def _build_csp() -> str:
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         request_id = str(uuid.uuid4())
+        request.state.request_id = request_id
         response: Response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
@@ -83,6 +84,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Structured request logging with timing, method, path, status, and client IP."""
 
     async def dispatch(self, request: Request, call_next):
+        record_request_start()
         start = time.perf_counter()
         request_id = request.headers.get("X-Request-ID", "unknown")
         client_ip = getattr(request.client, "host", "unknown")
@@ -102,6 +104,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 elapsed_ms,
             )
             raise
+        finally:
+            record_request_end()
         elapsed_ms = (time.perf_counter() - start) * 1000
         record_request(request.url.path, response.status_code, elapsed_ms / 1000)
         logger.info(

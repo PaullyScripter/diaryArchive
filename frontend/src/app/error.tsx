@@ -8,7 +8,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="mx-auto max-w-sm pt-24 px-4 text-center">
+    <div className="mx-auto max-w-sm pt-24 px-4 text-center" role="alert" aria-live="assertive">
       <h1 className="font-serif text-xl mb-2">Something went wrong</h1>
       <p className="text-sm text-muted mb-6">
         We&apos;ve been notified. Please try again.

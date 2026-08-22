@@ -1,9 +1,11 @@
+import json
 import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import get_current_user
+from app.core.database import DatabaseManager
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
 from app.core.utils import fmt_dt
@@ -95,8 +97,21 @@ async def unread_count(
     )
     if is_limited:
         raise RateLimitException("Too many requests")
+    cache_key = f"notifications:unread_count:{current_user['_id']}"
+    try:
+        redis = DatabaseManager.get_redis()
+        cached = await redis.get(cache_key)
+        if cached is not None:
+            return {"data": {"unread_count": int(cached)}}
+    except Exception:
+        pass
     repo = NotificationRepository()
     count = await repo.count_unread(str(current_user["_id"]))
+    try:
+        redis = DatabaseManager.get_redis()
+        await redis.setex(cache_key, 30, count)
+    except Exception:
+        pass
     return {"data": {"unread_count": count}}
 
 
@@ -116,6 +131,11 @@ async def mark_read(
     if not updated:
         from app.core.exceptions import NotFoundException
         raise NotFoundException("Notification not found")
+    try:
+        redis = DatabaseManager.get_redis()
+        await redis.delete(f"notifications:unread_count:{current_user['_id']}")
+    except Exception:
+        pass
     return {"data": {"message": "Notification marked as read"}}
 
 
@@ -131,4 +151,9 @@ async def mark_all_read(
         raise RateLimitException("Too many requests")
     repo = NotificationRepository()
     count = await repo.mark_all_read(str(current_user["_id"]))
+    try:
+        redis = DatabaseManager.get_redis()
+        await redis.delete(f"notifications:unread_count:{current_user['_id']}")
+    except Exception:
+        pass
     return {"data": {"message": "All notifications marked as read", "count": count}}

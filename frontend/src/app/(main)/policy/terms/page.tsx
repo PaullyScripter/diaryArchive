@@ -44,7 +44,7 @@ export default function TermsPage() {
     <LegalDocShell
       title="Terms of Service"
       subtitle="The agreement that governs your use of the DiaryArchive platform."
-      updated="August 20, 2026"
+      updated="August 22, 2026"
       sections={SECTIONS}
     >
       <WarningCard>
@@ -372,6 +372,7 @@ export default function TermsPage() {
         <ul className="space-y-2 text-sm leading-relaxed text-muted mb-3">
           {[
             "The service runs health checks to detect and recover from infrastructure failures automatically.",
+            "To improve performance, publicly viewable content may be temporarily cached in memory for up to 30 seconds. Private content is never cached. See the Privacy Policy for details.",
             "We may modify, suspend, or discontinue any feature or function at any time, with or without notice.",
             "We may perform scheduled maintenance that affects availability.",
             "We may change, limit, or remove functionality, and we are not liable for any resulting loss or inconvenience.",
@@ -620,7 +621,7 @@ export default function TermsPage() {
 
       <div className="border-t border-border pt-8 mt-4">
         <p className="text-sm text-muted leading-relaxed">
-          These Terms were last updated on August 20, 2026. If you have questions
+          These Terms were last updated on August 22, 2026. If you have questions
           about these Terms, please contact{" "}
           <a href="mailto:legal@diaryarchive.com" className="text-link hover:text-link-hover font-medium">
             legal@diaryarchive.com
