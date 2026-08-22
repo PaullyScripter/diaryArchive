@@ -7,8 +7,25 @@ set -e
 CONF=/tmp/redis.conf
 
 cat > "$CONF" <<EOF
+# AOF persistence (primary)
 appendonly yes
 appendfsync everysec
+appenddirname "appendonlydir"
+
+# RDB snapshots (fallback)
+save 900 1
+save 300 10
+save 60 10000
+rdbcompression yes
+rdbchecksum yes
+dbfilename dump.rdb
+
+# Memory management
+maxmemory ${REDIS_MAXMEMORY:-128mb}
+maxmemory-policy allkeys-lru
+
+# Logging
+loglevel notice
 EOF
 
 if [ -n "$REDIS_PASSWORD" ]; then

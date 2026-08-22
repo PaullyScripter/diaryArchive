@@ -44,7 +44,6 @@ export function TagCloud({ tags, selectedTags, onToggleTag, maxTags = 50 }: TagC
           <button
             key={tag}
             onClick={() => onToggleTag(tag)}
-            role="listitem"
             aria-pressed={isSelected}
             className={`inline-block px-2 py-0.5 rounded-sm cursor-pointer transition-colors border ${
               isSelected

@@ -154,6 +154,17 @@ a:visited:hover {
   }
 }
 
+@media (prefers-contrast: more) {
+  :root {
+    --color-muted: #333;
+    --color-subtle: #555;
+  }
+  :root.dark, .dark {
+    --color-muted: #ccc;
+    --color-subtle: #aaa;
+  }
+}
+
 .ProseMirror {
   min-height: 300px;
   background: var(--color-background);
@@ -343,4 +354,16 @@ style { display: none; }
   font-weight: 400;
   font-display: swap;
   src: url("/fonts/librecaslon-italic-400-latin.woff2") format("woff2");
+}
+
+@layer utilities {
+  .page-enter {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  .page-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 200ms ease-out, transform 200ms ease-out;
+  }
 }

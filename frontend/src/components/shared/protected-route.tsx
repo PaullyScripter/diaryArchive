@@ -24,7 +24,7 @@ export function ProtectedRoute({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Loading">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
@@ -36,7 +36,7 @@ export function ProtectedRoute({
 
   if (adminOnly && !user?.is_admin) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center" role="alert">
         <p className="text-sm text-muted">Access denied. Admin only.</p>
       </div>
     );

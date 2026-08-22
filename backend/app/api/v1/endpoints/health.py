@@ -1,4 +1,7 @@
 import asyncio
+import os
+import time
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Response
 
@@ -8,6 +11,11 @@ from app.core.metrics import render_metrics
 from app.core.minio_client import get_minio_client
 
 router = APIRouter()
+
+_STARTUP_TIME = time.monotonic()
+_APP_VERSION = os.getenv("APP_VERSION", "0.1.0")
+_COMMIT_HASH = os.getenv("COMMIT_HASH", "unknown")
+_DEPLOYED_AT = os.getenv("DEPLOYED_AT", "")
 
 
 @router.get("/metrics")
@@ -72,7 +80,18 @@ async def health_check(response: Response):
     if overall != "healthy":
         response.status_code = 503
 
+    uptime_seconds = int(time.monotonic() - _STARTUP_TIME)
+    deployed_at = _DEPLOYED_AT
+    if not deployed_at:
+        deployed_at = datetime.fromtimestamp(
+            time.time() - uptime_seconds, tz=UTC
+        ).isoformat()
+
     return {
         "status": overall,
+        "version": _APP_VERSION,
+        "commit_hash": _COMMIT_HASH,
+        "deployed_at": deployed_at,
+        "uptime_seconds": uptime_seconds,
         "checks": checks,
     }

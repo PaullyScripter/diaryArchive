@@ -309,6 +309,12 @@ async def create_diary(user: dict, data: dict) -> dict:
         _index_diary_async(diary_doc)
         _check_achievements_async(str(user["_id"]))
 
+    try:
+        from app.core.cache import cache
+        await cache.delete_pattern("feed:*")
+    except Exception:
+        pass
+
     return {
         "id": str(diary_id),
         "created_at": fmt_dt(now),
@@ -342,10 +348,10 @@ async def get_diary(diary_id: str, current_user: dict | None = None) -> dict:
         from app.repositories.like_repo import LikeRepository
 
         user_id = str(current_user["_id"])
-        like = await LikeRepository().find_by_user_and_diary(user_id, diary_id)
-        bookmark = await BookmarkRepository().find_by_user_and_diary(user_id, diary_id)
-        is_liked = like is not None
-        is_bookmarked = bookmark is not None
+        likes = await LikeRepository().find_by_user_and_diary_ids(user_id, [diary_id])
+        bookmarks = await BookmarkRepository().find_by_user_and_diary_ids(user_id, [diary_id])
+        is_liked = len(likes) > 0
+        is_bookmarked = len(bookmarks) > 0
 
     result = _build_diary_response(diary, author, current_user)
     result["is_liked"] = is_liked
@@ -440,8 +446,18 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
 
     if updated_diary.get("privacy") == "public":
         _index_diary_async(updated_diary)
+        try:
+            from app.core.cache import cache
+            await cache.delete_pattern("feed:*")
+        except Exception:
+            pass
     elif "privacy" in updates and updates["privacy"] is not None:
         _remove_from_index_async(diary_id)
+        try:
+            from app.core.cache import cache
+            await cache.delete_pattern("feed:*")
+        except Exception:
+            pass
 
     return _build_diary_response(updated_diary, author, current_user)
 
@@ -487,6 +503,11 @@ async def delete_diary(
         await user_repo.update_stats(str(diary["user_id"]), "diary_count", -1)
         _remove_from_index_async(diary_id)
         _cascade_delete_media_async(diary_id)
+        try:
+            from app.core.cache import cache
+            await cache.delete_pattern("feed:*")
+        except Exception:
+            pass
 
 
 async def list_public_diaries(
@@ -500,6 +521,20 @@ async def list_public_diaries(
     year: int | None = None,
     month: int | None = None,
 ) -> dict:
+    import json
+
+    cache_key = f"feed:{page}:{per_page}:{sort}:{order}:{tags}:{emotion}:{year}:{month}"
+
+    if current_user is None:
+        try:
+            from app.core.database import DatabaseManager
+            redis = DatabaseManager.get_redis()
+            cached = await redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
     diary_repo = DiaryRepository()
     user_repo = UserRepository()
 
@@ -578,7 +613,7 @@ async def list_public_diaries(
         )
         data.append(_build_diary_list_item(diary, author, current_user))
 
-    return {
+    result = {
         "data": data,
         "meta": {
             "page": page,
@@ -588,6 +623,16 @@ async def list_public_diaries(
             "has_prev": page > 1,
         },
     }
+
+    if current_user is None:
+        try:
+            from app.core.database import DatabaseManager
+            redis = DatabaseManager.get_redis()
+            await redis.setex(cache_key, 30, json.dumps(result, default=str))
+        except Exception:
+            pass
+
+    return result
 
 
 async def get_random_diary(current_user: dict | None = None) -> dict | None:

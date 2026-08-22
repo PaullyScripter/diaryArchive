@@ -22,9 +22,10 @@ const SECTIONS = [
   "11. Account Deletion",
   "12. Children's Privacy",
   "13. Content Moderation",
-  "14. Changes to This Policy",
-  "15. Open Source - Verify Everything",
-  "16. Advanced Editor",
+  "14. Caching and Performance",
+  "15. Changes to This Policy",
+  "16. Open Source - Verify Everything",
+  "17. Advanced Editor",
 ];
 
 export default function PolicyPage() {
@@ -32,7 +33,7 @@ export default function PolicyPage() {
     <LegalDocShell
       title="Privacy Policy"
       subtitle="How DiaryArchive handles your data, privacy, security, and your rights."
-      updated="August 20, 2026"
+      updated="August 22, 2026"
       sections={SECTIONS}
     >
       <Section title="1. What We Collect">
@@ -363,15 +364,47 @@ export default function PolicyPage() {
         </InfoCard>
       </Section>
 
-      <Section title="14. Changes to This Policy">
+      <Section title="14. Caching and Performance">
+        <InfoCard>
+          <p className="text-sm leading-relaxed text-muted mb-4">
+            To keep the service fast and responsive, DiaryArchive uses
+            <strong className="text-foreground"> temporary in-memory caching</strong>.
+            This cache stores non-sensitive data briefly to reduce database load
+            and improve page load times.
+          </p>
+          <DataTable
+            rows={[
+              { label: "Public diary feed", value: "Cached for 30 seconds for anonymous visitors - expires automatically" },
+              { label: "Notification counts", value: "Cached for 30 seconds per user - updates on read or new notification" },
+              { label: "Private diary content", value: "Never cached - always fetched fresh from encrypted storage" },
+              { label: "User-specific data", value: "Likes, bookmarks, and follow status are computed fresh for each request" },
+            ]}
+          />
+          <p className="text-sm leading-relaxed text-muted mt-4">
+            <strong className="text-foreground">What this means for you:</strong> If
+            you delete a public diary, it may remain visible to anonymous visitors
+            for up to 30 seconds before the cache expires. Authenticated users
+            always see current data. Private diaries are never cached and are
+            always fetched fresh.
+          </p>
+          <p className="text-sm leading-relaxed text-muted mt-3">
+            Caching is performed entirely on our self-hosted infrastructure. No
+            cached data is sent to third-party services. If the cache becomes
+            unavailable, the service continues to function normally by querying
+            the database directly.
+          </p>
+        </InfoCard>
+      </Section>
+
+      <Section title="15. Changes to This Policy">
         <p className="text-sm leading-relaxed text-muted">
           Material changes will be announced via a notice on the homepage.
           Continued use after changes constitutes acceptance. Last updated
-          August 20, 2026.
+          August 22, 2026.
         </p>
       </Section>
 
-      <Section title="15. Open Source - Verify Everything">
+      <Section title="16. Open Source - Verify Everything">
         <InfoCard>
           <p className="text-sm leading-relaxed text-muted mb-4">
             Every claim in this privacy policy is independently verifiable.
@@ -411,7 +444,7 @@ export default function PolicyPage() {
         </InfoCard>
       </Section>
 
-      <Section title="16. Advanced Editor">
+      <Section title="17. Advanced Editor">
         <p className="text-sm leading-relaxed text-muted mb-4">
           The Advanced Editor lets you write the raw HTML and CSS that shape a
           single diary page. Because this code is rendered for readers, it is

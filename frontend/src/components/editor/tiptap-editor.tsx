@@ -133,7 +133,7 @@ export function TiptapEditor({
   }, [content, editor]);
 
   return (
-    <div className="border border-border rounded-md bg-background overflow-hidden">
+    <div className="border border-border rounded-md bg-background overflow-hidden" aria-label="Rich text editor">
       <EditorContent editor={editor} />
     </div>
   );
