@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import MonacoWebpackPlugin from "monaco-editor-webpack-plugin";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 // The API/media origins the browser talks to. When the API lives on its own
 // origin (NEXT_PUBLIC_API_URL set to an absolute URL), CSP must allow it as an
@@ -131,6 +132,11 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
 };
 
-export default nextConfig;
+export default process.env.ANALYZE === "true"
+  ? bundleAnalyzer()(nextConfig)
+  : nextConfig;

@@ -24,7 +24,7 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
   const width = `${(score / 5) * 100}%`;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" aria-live="polite">
       <div
         className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
         role="progressbar"

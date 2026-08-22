@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "diaryarchive-backend"
+    metrics_path: "/api/v1/metrics"
+    static_configs:
+      - targets: ["backend:8000"]
+        labels:
+          service: "backend"
+
+  - job_name: "diaryarchive-nginx"
+    static_configs:
+      - targets: ["nginx:80"]
+        labels:
+          service: "nginx"
+
+  - job_name: "diaryarchive-mongodb"
+    static_configs:
+      - targets: ["mongodb:9216"]
+        labels:
+          service: "mongodb"
+
+  - job_name: "diaryarchive-redis"
+    static_configs:
+      - targets: ["redis:9121"]
+        labels:
+          service: "redis"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: "prometheus"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []

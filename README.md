@@ -21,12 +21,13 @@ DiaryArchive is a privacy-first diary platform with **client-side end-to-end enc
 |-------|-----------|
 | Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui-style components, Zustand, TanStack Query, Tiptap |
 | Backend | FastAPI, Pydantic v2, Motor (async MongoDB), Redis |
-| Databases | MongoDB 7 (authoritative store), Redis (rate limiting) |
+| Databases | MongoDB 7 (authoritative store), Redis (rate limiting + caching) |
 | Search | Meilisearch (`public_diaries` index) |
 | Object storage | MinIO (media files) |
 | Reverse proxy | Nginx (TLS, rate limiting, caching, security headers) |
-| Testing | pytest (backend), Vitest + Testing Library (frontend) |
-| CI/CD | GitHub Actions (lint, test, docker build, deploy) |
+| Monitoring | Prometheus, Grafana, Loki, Promtail (optional via compose overlay) |
+| Testing | pytest (backend), Vitest + Testing Library (frontend), k6 (load testing) |
+| CI/CD | GitHub Actions (lint, test, docker build, deploy, Slack notification) |
 
 ## Architecture
 
@@ -39,10 +40,13 @@ DiaryArchive is a privacy-first diary platform with **client-side end-to-end enc
         (Next.js)     (FastAPI)
               \         │
                └────┬───┘
-               Redis (rate limiting)
+               Redis (rate limiting + caching)
                MongoDB (store)
                Meilisearch (search)
                MinIO (media)
+
+  Optional monitoring stack:
+  Prometheus ──▶ Grafana ◀── Loki ◀── Promtail
 ```
 
 The repository is a monorepo:
@@ -52,7 +56,7 @@ diaryarchive/
 ├── backend/            # FastAPI application
 │   ├── app/
 │   │   ├── api/        # v1 route modules + FastAPI dependencies
-│   │   ├── core/       # config, security, middleware, database, sanitize, media validation
+│   │   ├── core/       # config, security, middleware, database, sanitize, media validation, cache, metrics
 │   │   ├── models/     # MongoDB document shapes
 │   │   ├── schemas/    # Pydantic request/response + MongoDB index definitions
 │   │   ├── repositories/  # Data access layer (one per collection)
@@ -68,12 +72,13 @@ diaryarchive/
 │       ├── lib/        # API client, crypto, sanitize, media validation, utils
 │       ├── store/      # Zustand stores (auth, explore)
 │       └── tests/      # Vitest unit tests
-├── docs/               # api.md, architecture.md, roadmap.md, milestone plans, skill guides
-├── docker/            # Nginx config + ops scripts (backup/restore/provision/loadtest)
-├── scripts/           # PowerShell dev scripts (Windows)
+├── docs/               # api.md, architecture.md, monitoring.md, security.md, milestone plans
+├── docker/             # Nginx, Redis, MongoDB, Loki, Promtail, Grafana configs + ops scripts
+├── scripts/            # PowerShell dev scripts + k6 load tests
 ├── docker-compose.yml            # Base full-stack compose
-├── docker-compose.infra.yml      # Dev-only infrastructure (MongoDB/Redis/Meilisearch/MinIO)
-└── docker-compose.prod.yml       # Production hardening overlay
+├── docker-compose.prod.yml       # Production hardening overlay
+├── docker-compose.monitoring.yml # Optional monitoring stack (Prometheus, Grafana, Loki)
+└── docker-compose.infra.yml      # Dev-only infrastructure (MongoDB/Redis/Meilisearch/MinIO)
 ```
 
 ## Quick Start (Development)
@@ -154,10 +159,12 @@ cd frontend && npm run typecheck
 - **End-to-end encryption** for private diaries (AES-256-GCM; PBKDF2 key derivation, HKDF per-diary keys, user-controlled master key). See `docs/architecture.md`.
 - **Field-level email encryption** (AES-256-GCM) plus hashed email lookup values so plaintext emails are never stored.
 - **Rate limiting** on all hot/auth endpoints (Redis sliding window with an in-process fail-closed fallback), policy centralized in `backend/app/core/config.py`.
+- **Redis caching** for public feeds and notification counts (30s TTL, private data never cached, graceful fallback if Redis is unavailable).
 - **Security headers + strict Content-Security-Policy** via middleware; reverse-proxy Nginx adds HSTS, rate-limit zones, and CORS controls.
 - **Content sanitization** (bleach / DOMPurify) with allow-lists of tags, attributes, and CSS.
 - **Media validation** - MIME magic-byte sniffing and size / dimension limits.
 - **Fail-closed secret validation** - the backend refuses to start in production with weak or committed default secrets.
+- **Health endpoint** exposes version, commit hash, deployment time, and uptime for monitoring.
 
 ## Deployment (Production)
 
@@ -168,28 +175,54 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml build
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
+With optional monitoring stack:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
+```
+
 The production overlay adds:
 
-- **Nginx** reverse proxy on 80/443 (TLS), gzip, client-body limits, and rate limiting per zone.
+- **Nginx** reverse proxy on 80/443 (TLS) with separate vhosts for `diaryarchive.com` and `api.diaryarchive.com`, gzip, client-body limits, and rate limiting per zone.
 - **Fail-closed required secrets** - startup aborts if `MONGO_ROOT_USER/PASSWORD`, `REDIS_PASSWORD`, `MEILI_MASTER_KEY`, `MINIO_ACCESS/SECRET_KEY`, `SECRET_KEY`, or `EMAIL_ENCRYPTION_KEY` are unset.
-- **Image pins**, resource limits/reservations, `restart: always`, healthchecks, and **2 backend replicas**.
-- **Redis with AOF persistence** and a `requirepass`; **Meilisearch in production mode**; frontend **not exposed** on a public host port (traffic goes through Nginx only).
+- **Image pins**, resource limits/reservations, `restart: always`, healthchecks.
+- **Redis** with AOF persistence, RDB snapshots, maxmemory (128MB), and `requirepass`.
+- **MongoDB** with keyfile authentication (auto-generated by provisioning script).
+- **Meilisearch** in production mode; frontend **not exposed** on a public host port (traffic goes through Nginx only).
+
+### Monitoring Stack (`docker-compose.monitoring.yml`)
+
+| Service | Purpose |
+|---------|---------|
+| Prometheus | Metrics collection (scrapes backend `/api/v1/metrics`) |
+| Grafana | Dashboards for system health, request rates, latency percentiles |
+| Loki | Log aggregation from Docker containers |
+| Promtail | Log collection and forwarding to Loki |
+
+### CI/CD Pipeline (`.github/workflows/ci-cd.yml`)
+
+| Job | Trigger | What it does |
+|-----|---------|--------------|
+| **test** | Every push/PR | Gitleaks secret scan, dependency audit, backend lint + tests, frontend lint + tests + build, Docker image build validation |
+| **deploy** | Push to `main` only | SSH deploy with auto-rollback on health check failure, Slack notification on success/failure |
 
 ### Provisioning & Operations Scripts (`docker/scripts/`)
 
 | Script | Purpose |
 |--------|---------|
-| `provision.sh` | One-time Ubuntu/Debian server provisioning (Docker install + first deploy) |
-| `backup.sh` | MongoDB (mongodump) + MinIO backup to a timestamped directory |
-| `restore.sh` | Restore MongoDB + MinIO from a backup |
-| `loadtest.sh` | Smoke + load test (Apache Bench) against the deployed stack |
-| `deploy.yml` (in `.github/workflows/`) | SSH-based deploy on push to `main` |
+| `provision.sh` | One-time Ubuntu/Debian server provisioning (Docker, UFW, MongoDB keyfile, first deploy) |
+| `deploy.sh` | Production-safe deployment with commit-SHA tagging, migration stage, health checks, and auto-rollback |
+| `backup.sh` | MongoDB (mongodump) + MinIO encrypted backup with rotation (daily/weekly/monthly) |
+| `restore.sh` | Restore MongoDB + MinIO from backup (with safety snapshot) |
+| `verify-restore.sh` | Verify backup integrity in isolated container |
+| `loadtest.sh` | Smoke + load test (Apache Bench) |
+| `loadtest.js` (in `scripts/`) | k6 load test (200 concurrent users, P95 <500ms, <1% errors) |
 
-TLS certificates are expected at `docker/nginx/certs/{fullchain,privkey}.pem` (e.g. obtain via `certbot --nginx`). Deploy automation requires the GitHub secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PORT` and variable `DEPLOY_DIR`.
+TLS certificates are expected at `docker/nginx/certs/{fullchain,privkey}.pem` (e.g. Cloudflare Origin CA). Deploy automation requires the GitHub secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PORT` and variable `DEPLOY_DIR`.
 
 ## Documentation
 
-The full REST API v1 reference is in [`docs/api.md`](docs/api.md). Architecture, database design, roadmap, milestone plans, and skill guides live under [`docs/`](docs/).
+The full REST API v1 reference is in [`docs/api.md`](docs/api.md). Architecture, database design, monitoring setup, security configuration, milestone plans, and skill guides live under [`docs/`](docs/).
 
 ## License
 
