@@ -2,16 +2,24 @@ from datetime import UTC, datetime, timedelta
 
 from app.repositories.base import BaseRepository
 
+# Absolute session lifetime: 30 days from original login.
+MAX_SESSION_LIFETIME_DAYS = 30
+
 
 class RefreshTokenRepository(BaseRepository):
     collection_name = "refresh_tokens"
 
-    async def create_token(self, user_id: str, token_hash: str, days: int = 7) -> str:
+    async def create_token(
+        self, user_id: str, token_hash: str, days: int = 7,
+        original_login_at: datetime | None = None,
+    ) -> str:
+        now = datetime.now(UTC)
         doc = {
             "user_id": user_id,
             "token_hash": token_hash,
-            "expires_at": datetime.now(UTC) + timedelta(days=days),
-            "created_at": datetime.now(UTC),
+            "expires_at": now + timedelta(days=days),
+            "original_login_at": original_login_at or now,
+            "created_at": now,
         }
         return str(await self.create(doc))
 
@@ -25,7 +33,7 @@ class RefreshTokenRepository(BaseRepository):
     async def find_one_and_delete(self, token_hash: str) -> dict | None:
         result = await self._collection.find_one_and_delete(
             {"token_hash": token_hash},
-            {"expires_at": 1, "user_id": 1},
+            {"expires_at": 1, "user_id": 1, "original_login_at": 1},
         )
         return result
 

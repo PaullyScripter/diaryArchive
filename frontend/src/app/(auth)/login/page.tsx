@@ -41,7 +41,8 @@ function LoginForm() {
           return;
         }
         const redirect = searchParams.get("redirect") || "/";
-        router.push(redirect);
+        const safeRedirect = redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/";
+        router.push(safeRedirect);
       } catch (err: unknown) {
         if (err && typeof err === "object" && "response" in err) {
           const response = (err as { response: { data?: { error?: { message?: string } } } }).response;

@@ -12,7 +12,7 @@
       "title": "Request Rate by Status",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "diaryarchive-prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -39,7 +39,7 @@
       "title": "Request Latency Distribution",
       "type": "heatmap",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "diaryarchive-prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "scheme", "scheme": "Oranges" },
@@ -60,7 +60,7 @@
       "title": "Top 10 Slowest Endpoints",
       "type": "table",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "diaryarchive-prometheus" },
       "fieldConfig": {
         "defaults": {
           "unit": "s"
@@ -80,7 +80,7 @@
       "title": "Request Duration Percentiles",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "type": "prometheus", "uid": "diaryarchive-prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
