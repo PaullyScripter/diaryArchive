@@ -523,9 +523,9 @@ async def admin_health(
         await db.command("ping")
         latency = round((time.monotonic() - t0) * 1000)
         checks["mongodb"] = {"status": "healthy", "latency_ms": latency}
-    except Exception as e:
+    except Exception:
         latency = round((time.monotonic() - t0) * 1000)
-        checks["mongodb"] = {"status": "unhealthy", "latency_ms": latency, "error": str(e)}
+        checks["mongodb"] = {"status": "unhealthy", "latency_ms": latency}
         healthy = False
 
     t0 = time.monotonic()
@@ -534,9 +534,9 @@ async def admin_health(
         await redis.ping()
         latency = round((time.monotonic() - t0) * 1000)
         checks["redis"] = {"status": "healthy", "latency_ms": latency}
-    except Exception as e:
+    except Exception:
         latency = round((time.monotonic() - t0) * 1000)
-        checks["redis"] = {"status": "unhealthy", "latency_ms": latency, "error": str(e)}
+        checks["redis"] = {"status": "unhealthy", "latency_ms": latency}
         healthy = False
 
     t0 = time.monotonic()
@@ -549,9 +549,9 @@ async def admin_health(
         await _asyncio.to_thread(client.health)
         latency = round((time.monotonic() - t0) * 1000)
         checks["meilisearch"] = {"status": "healthy", "latency_ms": latency}
-    except Exception as e:
+    except Exception:
         latency = round((time.monotonic() - t0) * 1000)
-        checks["meilisearch"] = {"status": "unhealthy", "latency_ms": latency, "error": str(e)}
+        checks["meilisearch"] = {"status": "unhealthy", "latency_ms": latency}
         healthy = False
 
     return {

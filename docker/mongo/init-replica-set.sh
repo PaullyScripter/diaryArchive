@@ -25,3 +25,7 @@ else
     --eval "rs.initiate({ _id: '$REPLICA_SET', members: [{ _id: 0, host: 'mongodb:27017' }] })"
   echo "   Replica set initialized."
 fi
+
+echo "==> Enabling MongoDB profiling for slow queries (threshold: 100ms)..."
+mongosh --quiet -u "$MONGO_USER" -p "$MONGO_PASS" --authenticationDatabase admin \
+  --eval "db.setProfilingLevel(1, { slowms: 100 })" 2>/dev/null || echo "   profiling setup skipped (may need standalone mode)"

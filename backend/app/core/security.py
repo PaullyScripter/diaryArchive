@@ -7,7 +7,6 @@ import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 
-from fastapi import Request
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from redis.asyncio import Redis
@@ -83,6 +82,7 @@ def create_email_verification_token(email: str) -> str:
 
 _fallback_lock = threading.Lock()
 _fallback_hits: dict[str, deque[int]] = defaultdict(deque)
+_MAX_FALLBACK_KEYS = 100000
 
 
 def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple[bool, int]:
@@ -90,14 +90,20 @@ def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple
     now_ms = int(time.time() * 1000)
     window_start = now_ms - (window_seconds * 1000)
     with _fallback_lock:
+        # Evict oldest keys if at capacity
+        if len(_fallback_hits) >= _MAX_FALLBACK_KEYS:
+            sorted_keys = sorted(
+                _fallback_hits.keys(),
+                key=lambda k: _fallback_hits[k][0] if _fallback_hits[k] else 0,
+            )
+            for k in sorted_keys[:10000]:
+                del _fallback_hits[k]
         hits = _fallback_hits[key]
         while hits and hits[0] < window_start:
             hits.popleft()
         if len(hits) >= max_attempts:
             return True, 0
         hits.append(now_ms)
-        # Prune the entry only once all its hits have fallen outside the window
-        # (avoids unbounded growth). An empty-but-present deque is harmless.
         if not hits:
             del _fallback_hits[key]
         return False, max(0, max_attempts - len(hits))
@@ -118,14 +124,39 @@ def _fallback_count(key: str, window_seconds: int) -> int:
         return len(hits)
 
 
+_TRUSTED_PROXIES = {"127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
+
+
+def _is_trusted_proxy(ip: str) -> bool:
+    """Check if an IP is a known private/trusted proxy address."""
+    if ip in ("127.0.0.1", "::1", "unknown"):
+        return True
+    # Check common Docker/internal ranges
+    private_prefixes = (
+        "10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.",
+        "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.",
+        "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.",
+    )
+    for prefix in private_prefixes:
+        if ip.startswith(prefix):
+            return True
+    return False
+
+
 def get_client_ip(request) -> str:
     """Return a client IP that is safe to use for security decisions (rate limits).
 
-    The proxy (nginx) is configured to overwrite X-Real-IP with the real
-    remote address, so it is authoritative. X-Forwarded-For is attacker
-    controllable, so never trust its leftmost entry; when used as a fallback
-    only the rightmost (proxy-appended) value is taken.
+    Only trusts X-Real-IP/X-Forwarded-For when the direct client is a trusted
+    proxy (e.g. nginx on the same host). Prevents rate limit bypass when the
+    backend is directly exposed.
     """
+    client_host = getattr(request, "client", None)
+    direct_ip = client_host.host if client_host else "unknown"
+
+    # If the direct connection is not from a trusted proxy, ignore proxy headers
+    if not _is_trusted_proxy(direct_ip):
+        return direct_ip
+
     real_ip = request.headers.get("x-real-ip")
     if real_ip and real_ip.strip():
         return real_ip.strip()
@@ -134,10 +165,7 @@ def get_client_ip(request) -> str:
         parts = [p.strip() for p in forwarded.split(",") if p.strip()]
         if parts:
             return parts[-1]
-    client = getattr(request, "client", None)
-    if client is not None and client.host:
-        return client.host
-    return "unknown"
+    return direct_ip
 
 
 async def record_failed_attempt(key: str, max_attempts: int, window_seconds: int) -> bool:
@@ -224,18 +252,29 @@ async def check_rate_limit(
 
 _TOKEN_INVALIDATION_PREFIX = "auth:invalid_before:"
 
+# In-memory fallback blocklist when Redis is unavailable.
+# Stores {user_id: unix_timestamp} for users whose tokens were revoked.
+_inmemory_token_blocklist: dict[str, float] = {}
+_blocklist_lock = threading.Lock()
+_MAX_BLOCKLIST_KEYS = 10000
+
 
 async def invalidate_all_user_tokens(user_id: str) -> None:
     """Set a timestamp that invalidates all access tokens for this user."""
     try:
         redis: Redis = DatabaseManager.get_redis()
     except RuntimeError:
-        logger.warning("Redis unavailable; cannot invalidate tokens for user %s", user_id)
+        logger.warning("Redis unavailable; using in-memory blocklist for user %s", user_id)
+        with _blocklist_lock:
+            if len(_inmemory_token_blocklist) >= _MAX_BLOCKLIST_KEYS:
+                # Evict oldest entries
+                oldest = sorted(_inmemory_token_blocklist.items(), key=lambda x: x[1])[:1000]
+                for k, _ in oldest:
+                    del _inmemory_token_blocklist[k]
+            _inmemory_token_blocklist[user_id] = time.time()
         return
     try:
         key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
-        # Expire the invalidation entry after 2x the max token lifetime
-        # (tokens can't live longer than access_token_expire_minutes anyway).
         max_ttl = settings.access_token_expire_minutes * 2 * 60
         await redis.set(key, int(time.time()), ex=max_ttl)
     except Exception:
@@ -247,12 +286,21 @@ async def _is_token_invalidated(user_id: str, token_iat: datetime) -> bool:
     try:
         redis: Redis = DatabaseManager.get_redis()
     except RuntimeError:
-        # Redis down: fail-open for availability (token is short-lived anyway).
+        # Redis down: check in-memory blocklist
+        with _blocklist_lock:
+            inv_ts = _inmemory_token_blocklist.get(user_id)
+            if inv_ts is not None:
+                return token_iat < datetime.fromtimestamp(inv_ts, tz=UTC)
         return False
     try:
         key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
         invalid_before = await redis.get(key)
         if invalid_before is None:
+            # Also check in-memory blocklist
+            with _blocklist_lock:
+                inv_ts = _inmemory_token_blocklist.get(user_id)
+                if inv_ts is not None:
+                    return token_iat < datetime.fromtimestamp(inv_ts, tz=UTC)
             return False
         invalid_ts = datetime.fromtimestamp(int(invalid_before), tz=UTC)
         return token_iat < invalid_ts

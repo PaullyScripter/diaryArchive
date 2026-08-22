@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "rules/*.yml"
+
 scrape_configs:
   - job_name: "diaryarchive-backend"
     metrics_path: "/api/v1/metrics"
@@ -15,18 +18,6 @@ scrape_configs:
       - targets: ["nginx:80"]
         labels:
           service: "nginx"
-
-  - job_name: "diaryarchive-mongodb"
-    static_configs:
-      - targets: ["mongodb:9216"]
-        labels:
-          service: "mongodb"
-
-  - job_name: "diaryarchive-redis"
-    static_configs:
-      - targets: ["redis:9121"]
-        labels:
-          service: "redis"
 
   - job_name: "prometheus"
     static_configs:

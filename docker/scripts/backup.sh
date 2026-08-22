@@ -126,7 +126,9 @@ _prune() {
 }
 
 _prune "${STAMP%????????}-*" "$RETAIN_DAILY"
-_prune "$(date +%Y%m%d)-*" "$_RETAIN_WEEKLY"
+# Weekly backups: match by ISO week prefix (YYYY-Wxx)
+_WEEK_NUM=$(date +%G-W%V)
+_prune "$(echo "$_WEEK_NUM" | cut -d- -f1)-*-W*" "$_RETAIN_WEEKLY"
 _prune "$(date +%Y%m)-*" "$RETAIN_MONTHLY"
 
 echo "==> Backup rotation done (daily=$RETAIN_DAILY weekly=$_RETAIN_WEEKLY monthly=$RETAIN_MONTHLY)."

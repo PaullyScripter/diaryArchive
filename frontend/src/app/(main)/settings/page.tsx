@@ -184,7 +184,16 @@ function SettingsContent() {
   };
 
   if (!user) {
-    return null;
+    return (
+      <div className="max-w-2xl mx-auto py-8 px-4" role="status" aria-label="Loading settings">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-32 bg-muted rounded" />
+          <div className="h-4 w-48 bg-muted rounded" />
+          <div className="h-64 bg-muted rounded" />
+        </div>
+        <span className="sr-only">Loading settings...</span>
+      </div>
+    );
   }
 
   return (
@@ -486,6 +495,7 @@ function SettingsContent() {
                       <button
                         type="button"
                         role="switch"
+                        aria-label={`Toggle ${label} notifications`}
                         aria-checked={
                           (user?.preferences?.[key as keyof typeof user.preferences] ?? key !== "notify_on_bookmark") as "true" | "false"
                         }

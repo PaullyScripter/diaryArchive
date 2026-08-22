@@ -11,7 +11,6 @@ values reset on process restart, which is acceptable for basic alerting (the
 scraper computes rates/deltas itself).
 """
 
-import os
 import threading
 import time
 from datetime import UTC, datetime
@@ -132,9 +131,18 @@ def render_metrics() -> str:
     out.append("# HELP process_resident_memory_bytes Resident memory in bytes")
     out.append("# TYPE process_resident_memory_bytes gauge")
     try:
-        mem = os.popen("wmic OS get TotalVisibleMemorySize /value").read()
-        # Fallback: just report 0 on non-Windows or failure.
-        out.append("process_resident_memory_bytes 0")
+        # Cross-platform: use resource module on Unix, psutil if available, else 0
+        try:
+            import resource
+            usage = resource.getrusage(resource.RUSAGE_SELF)
+            mem_bytes = usage.ru_maxrss * 1024  # Linux: bytes; macOS: already bytes
+        except (ImportError, AttributeError):
+            try:
+                import psutil
+                mem_bytes = psutil.Process().memory_info().rss
+            except ImportError:
+                mem_bytes = 0
+        out.append(f"process_resident_memory_bytes {mem_bytes}")
     except Exception:
         out.append("process_resident_memory_bytes 0")
 

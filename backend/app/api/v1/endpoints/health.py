@@ -3,12 +3,13 @@ import os
 import time
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from app.core.config import settings
 from app.core.database import DatabaseManager
 from app.core.metrics import render_metrics
 from app.core.minio_client import get_minio_client
+from app.core.security import check_rate_limit, get_client_ip
 
 router = APIRouter()
 
@@ -19,7 +20,31 @@ _DEPLOYED_AT = os.getenv("DEPLOYED_AT", "")
 
 
 @router.get("/metrics")
-async def metrics(response: Response):
+async def metrics(request: Request, response: Response):
+    is_limited, _ = await check_rate_limit(
+        "rate_limit:health:" + get_client_ip(request),
+        60,
+        60,
+    )
+    if is_limited:
+        response.status_code = 429
+        return {"error": "rate limit exceeded"}
+    # Update pool metrics before rendering
+    try:
+        from app.core.metrics import update_pool_metrics
+        db = DatabaseManager.get_db()
+        pool_info = db.client.get_io()["pool"]
+        mongo_ready = pool_info.get("ready_connections", 0) if isinstance(pool_info, dict) else 0
+        mongo_open = pool_info.get("open_connections", 0) if isinstance(pool_info, dict) else 0
+        try:
+            redis = DatabaseManager.get_redis()
+            await redis.ping()
+            redis_ok = True
+        except Exception:
+            redis_ok = False
+        update_pool_metrics(mongo_ready, mongo_open, redis_ok)
+    except Exception:
+        pass
     response.headers["Content-Type"] = "text/plain; version=0.0.4"
     return render_metrics()
 
@@ -40,7 +65,16 @@ async def startup_probe(response: Response):
 
 
 @router.get("/health")
-async def health_check(response: Response):
+async def health_check(request: Request, response: Response):
+    is_limited, _ = await check_rate_limit(
+        "rate_limit:health:" + get_client_ip(request),
+        60,
+        60,
+    )
+    if is_limited:
+        response.status_code = 429
+        return {"error": "rate limit exceeded"}
+
     checks: dict[str, str] = {}
 
     try:
@@ -90,7 +124,6 @@ async def health_check(response: Response):
     return {
         "status": overall,
         "version": _APP_VERSION,
-        "commit_hash": _COMMIT_HASH,
         "deployed_at": deployed_at,
         "uptime_seconds": uptime_seconds,
         "checks": checks,

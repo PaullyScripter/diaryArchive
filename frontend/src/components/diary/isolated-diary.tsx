@@ -35,7 +35,7 @@ export function IsolatedDiary({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const root = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    const root = host.shadowRoot ?? host.attachShadow({ mode: "closed" });
     root.innerHTML = scopeAuthorCss(html);
 
     const callback = onContentWidthRef.current;

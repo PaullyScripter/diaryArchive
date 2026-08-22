@@ -32,3 +32,17 @@ async def create_indexes() -> None:
             logger.warning(
                 "Failed to create indexes on %s: %s", collection_name, e
             )
+
+    # TTL indexes for token cleanup
+    ttl_collections = [
+        ("password_reset_tokens", "expires_at"),
+        ("email_verification_tokens", "expires_at"),
+    ]
+    for coll_name, field in ttl_collections:
+        try:
+            existing = await db[coll_name].index_information()
+            if f"{field}_1" not in existing:
+                await db[coll_name].create_index(field, expireAfterSeconds=0, name=f"{field}_ttl")
+                logger.info("Created TTL index on %s.%s", coll_name, field)
+        except Exception as e:
+            logger.warning("Failed to create TTL index on %s: %s", coll_name, e)

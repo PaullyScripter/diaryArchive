@@ -88,6 +88,10 @@ async def create_comment(
     if not content or len(content) > 2000:
         raise ValidationException("Comment must be between 1 and 2000 characters")
 
+    # Sanitize comment content to prevent XSS
+    from app.core.sanitize import sanitize_html
+    content = sanitize_html(content)
+
     comment_repo = CommentRepository()
     depth = 0
     root_id = None
