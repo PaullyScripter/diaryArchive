@@ -22,7 +22,7 @@ import { splitHtmlCss } from "@/lib/html-css";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { previewThemeStyle } from "@/lib/preview-theme";
-import { resolveMediaUrl, resolveMediaUrlsInHtml } from "@/lib/media-url";
+import { resolveMediaUrlsInHtml } from "@/lib/media-url";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { useTheme } from "@/components/providers/theme-provider";
 import { encryptDiary } from "@/lib/crypto";
@@ -201,7 +201,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editorInstance
           .chain()
           .focus()
-          .setResizableImage({ src: resolveMediaUrl(result.url) ?? result.url })
+          .setResizableImage({ src: result.url })
           .run();
       } catch {
         // toast already shown by hook
@@ -227,7 +227,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           // relative /api/v1/media/<id> URL (resolved to the full origin at
           // render time), at the user's cursor.
           insertAt(
-            `<img src="${resolveMediaUrl(result.url) ?? result.url}" alt="">`
+            `<img src="${result.url}" alt="">`
           );
         } catch {
           // toast already shown by hook
@@ -242,7 +242,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       // In source mode, insert into the Monaco HTML/CSS editor at the cursor;
       // otherwise fall back to the Tiptap editor's default image insertion.
       const insertAt = sourceEditorInsertRef.current;
-      const src = resolveMediaUrl(item.url) ?? item.url;
+      const src = item.url;
       if (sourceMode && insertAt) {
         insertAt(`<img src="${src}" alt="">`);
       } else if (editor) {
