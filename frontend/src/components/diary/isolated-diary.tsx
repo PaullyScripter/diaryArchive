@@ -29,13 +29,17 @@ export function IsolatedDiary({
   onContentWidth,
 }: IsolatedDiaryProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<ShadowRoot | null>(null);
   const onContentWidthRef = useRef(onContentWidth);
   onContentWidthRef.current = onContentWidth;
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const root = host.shadowRoot ?? host.attachShadow({ mode: "closed" });
+    if (!rootRef.current) {
+      rootRef.current = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    }
+    const root = rootRef.current;
     root.innerHTML = scopeAuthorCss(html);
 
     const callback = onContentWidthRef.current;
