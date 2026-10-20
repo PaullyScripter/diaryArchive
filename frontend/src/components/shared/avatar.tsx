@@ -39,15 +39,19 @@ export function Avatar({ src, alt, size = "md", className }: AvatarProps) {
 
   if (src) {
     return (
-      <img
-        src={src}
-        alt={alt}
-        className={cn(
-          "rounded-full object-cover border border-border",
-          sizeClasses[size],
-          className,
-        )}
-      />
+      <>
+        {/* Avatar URLs may be user-uploaded, API-relative, or blob-backed. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={alt}
+          className={cn(
+            "rounded-full object-cover border border-border",
+            sizeClasses[size],
+            className,
+          )}
+        />
+      </>
     );
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { useAuthStore } from "@/store/auth-store";
@@ -26,8 +26,10 @@ function MyDiariesContent() {
     isFetchingNextPage,
   } = useMyDiaries(privacy);
 
-  const allDiaries: DiaryCardData[] =
-    data?.pages.flatMap((page) => page.data ?? []) ?? [];
+  const allDiaries = useMemo<DiaryCardData[]>(
+    () => data?.pages.flatMap((page) => page.data ?? []) ?? [],
+    [data?.pages],
+  );
 
   const [decryptedTitles, setDecryptedTitles] = useState<Record<string, string | null>>({});
 

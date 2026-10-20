@@ -7,6 +7,10 @@ import { Paperclip, X } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
 import { useAuthStore } from "@/store/auth-store";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaLink,
+} from "@/components/media/authenticated-media";
 
 interface TicketMessage {
   id: string;
@@ -67,10 +71,10 @@ export default function AdminTicketDetailPage() {
     refetchInterval: 5000,
   });
 
-  const invalidate = () => {
+  const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["admin", "ticket", ticketId] });
     queryClient.invalidateQueries({ queryKey: ["admin", "tickets"] });
-  };
+  }, [queryClient, ticketId]);
 
   const takeMutation = useMutation({
     mutationFn: async () => {
@@ -171,7 +175,7 @@ export default function AdminTicketDetailPage() {
         setSending(false);
       }
     },
-    [reply, ticketId],
+    [invalidate, pendingMedia, reply, ticketId],
   );
 
   const isAssignedToMe = ticket?.assigned_admin_id === currentUser?.id;
@@ -360,9 +364,15 @@ export default function AdminTicketDetailPage() {
             {msg.media_url && (
               <div className="mt-2">
                 {msg.media_type?.startsWith("image/") ? (
-                  <img src={msg.media_url} alt="attachment" className="max-w-full max-h-80 rounded border border-border object-contain" />
+                  <AuthenticatedMediaImage
+                    src={msg.media_url}
+                    alt="attachment"
+                    className="max-w-full max-h-80 rounded border border-border object-contain"
+                  />
                 ) : (
-                  <a href={msg.media_url} target="_blank" rel="noreferrer" className="text-xs text-link hover:underline">View attachment</a>
+                  <AuthenticatedMediaLink src={msg.media_url} className="text-xs text-link hover:underline">
+                    View attachment
+                  </AuthenticatedMediaLink>
                 )}
               </div>
             )}

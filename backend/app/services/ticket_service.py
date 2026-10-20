@@ -1,5 +1,4 @@
 import logging
-from datetime import timedelta
 
 from bson import ObjectId
 
@@ -171,25 +170,12 @@ async def add_message(
         media_repo = MediaRepository()
         media = await media_repo.get_by_id(media_id)
         if media and str(media["user_id"]) == sender_id:
-            import asyncio
-
-            from app.core.config import settings
-            from app.core.minio_client import get_minio_client
-
-            stored_path = media["stored_path"]
             msg_doc["media_id"] = media_id
             msg_doc["media_type"] = media.get("mime_type", "")
-            if media.get("is_private"):
-                client = get_minio_client()
-                msg_doc["media_url"] = await asyncio.to_thread(
-                    lambda: client.presigned_get_object(
-                        settings.minio_bucket, stored_path, expires=timedelta(hours=24)
-                    )
-                )
-            else:
-                msg_doc["media_url"] = (
-                    f"{settings.minio_endpoint}/{settings.minio_bucket}/{stored_path}"
-                )
+            # Persist only a stable media identifier. Signed MinIO URLs expire
+            # and cannot be repaired after a ticket is reopened; the proxy
+            # re-checks the ticket participant/admin authorization at read time.
+            msg_doc["media_url"] = f"/api/v1/media/file/{media_id}"
 
     success = await ticket_repo.add_message(ticket_id, msg_doc)
     if not success:

@@ -29,9 +29,8 @@ function buildContentSecurityPolicy(): string {
   // data:/blob: stay so the app's own avatars and media previews keep working.
   const imgSrc = ["'self'", "data:", "blob:", "https:", ...extra].join(" ");
   const connectSrc = ["'self'", ...extra].join(" ");
-  // Next.js injects inline scripts/styles for hydration; 'unsafe-inline' is
-  // kept for style and (guarded by Next) script, consistent with the nginx edge
-  // CSP. External resource loads remain blocked.
+  // Production must not allow arbitrary inline scripts. Development retains
+  // the eval allowance required by the Next dev server only.
   // 'unsafe-eval' is required only in development, where Next.js dev mode uses
   // eval-based source maps and hot-module-reload. Production builds do not emit
   // eval, so it stays locked down there. This keeps local testing functional
@@ -39,7 +38,7 @@ function buildContentSecurityPolicy(): string {
   const scriptSrc =
     process.env.NODE_ENV === "development"
       ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-      : "script-src 'self' 'unsafe-inline'";
+      : "script-src 'self'";
   return [
     "default-src 'self'",
     scriptSrc,
