@@ -112,6 +112,7 @@ async def get_signed_url(
     media_id: str,
     current_user: dict = Depends(get_current_user),
 ):
+    """Return a stable media URL in the legacy response shape."""
     result = await get_media_signed_url(media_id, current_user)
     return {"data": result}
 

@@ -94,7 +94,6 @@ def _permanent_media_url(
 
 def _build_media_response(
     media: dict,
-    include_signed_url: bool = False,
     effective_is_private: bool | None = None,
 ) -> dict:
     # Missing privacy metadata is treated as private. This is fail-closed for
@@ -336,7 +335,7 @@ async def upload_media(
     if result is None:
         raise NotFoundException("Media record not found after creation")
 
-    return _build_media_response(result, include_signed_url=effective_is_private)
+    return _build_media_response(result, effective_is_private=effective_is_private)
 
 
 async def delete_media(media_id: str, current_user: dict) -> None:
@@ -420,6 +419,7 @@ async def get_media_detail(media_id: str, current_user: dict) -> dict:
 
 
 async def get_media_signed_url(media_id: str, current_user: dict) -> dict:
+    """Return the legacy URL response shape using stable media references."""
     repo = MediaRepository()
     media = await repo.get_by_id(media_id)
     if media is None:

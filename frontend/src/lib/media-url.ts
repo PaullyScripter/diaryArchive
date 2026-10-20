@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api/client";
 
 /**
- * Media URLs returned by the API are absolute paths under /api/v1/... (or a
- * CDN / signed URL). A bare relative path like `/api/v1/media/file/<id>`
+ * Media URLs returned by the API are stable paths under /api/v1/... (or a
+ * configured public CDN URL). A bare relative path like `/api/v1/media/file/<id>`
  * resolves against the page origin, which (when the API lives on its own
  * origin via NEXT_PUBLIC_API_URL) does not serve those requests, so images
  * render as broken. Resolve such paths to the API origin the browser actually
