@@ -24,15 +24,22 @@ const FALLBACKS: Record<string, string> = {
   bronze: "#8B6914", silver: "#A8A8A8", gold: "#DAA520", diamond: "#87CEEB", gradient: "#9B59B6",
 };
 
-const BUG_DARK = "#166534";
-const BUG_LIGHT = "#BBF7D0";
+// "Bug Catcher" icon. Keep the simple original silhouette; only the leg
+// motion is animated, with the lower legs placed slightly higher to prevent
+// their thick strokes from crossing past the body while they move.
+const BUG_BODY =
+  "M12 7c3.3 0 6 2.4 6 5.6V14c0 3-2.7 5.2-6 5.2S6 17 6 14v-1.4C6 9.4 8.7 7 12 7z";
+const BUG_HEAD = "M12 4.6a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z";
+const BUG_ANTENNA = "M10.8 4.6 8.4 2.2 M13.2 4.6 15.6 2.2";
+const BUG_ANTENNA_TIPS =
+  "M8.4 2.2m-0.7 0a0.7 0.7 0 1 0 1.4 0 0.7 0 1 0-1.4 0 M15.6 2.2m-0.7 0a0.7 0.7 0 1 0 1.4 0 0.7 0 1 0-1.4 0";
 const BUG_LEGS: { d: string; pair: "front" | "middle" | "back" }[] = [
-  { d: "M7.1 10.8 3.1 9.7", pair: "front" },
-  { d: "M6.8 13.6 2.6 13.3", pair: "middle" },
-  { d: "M7.2 16.2 3.2 17.4", pair: "back" },
-  { d: "M16.9 10.8 20.9 9.7", pair: "front" },
-  { d: "M17.2 13.6 21.4 13.3", pair: "middle" },
-  { d: "M16.8 16.2 20.8 17.4", pair: "back" },
+  { d: "M7.5 11 3 10.2", pair: "front" },
+  { d: "M7.2 14 2.8 13.6", pair: "middle" },
+  { d: "M7.5 16.5 3 17", pair: "back" },
+  { d: "M16.5 11 21 10.2", pair: "front" },
+  { d: "M16.8 14 21.2 13.6", pair: "middle" },
+  { d: "M16.5 16.5 21 17", pair: "back" },
 ];
 
 const BUG_LEG_DELAY: Record<"front" | "middle" | "back", string> = {
@@ -44,31 +51,21 @@ const BUG_LEG_DELAY: Record<"front" | "middle" | "back", string> = {
 function BugIcon({ color, className }: { color: string; className: string }) {
   return (
     <svg className={`${className} shrink-0`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="10.1" fill={color} opacity="0.12" />
-      <circle cx="12" cy="12" r="9.6" stroke={color} strokeWidth="0.75" opacity="0.42" />
-      <path d="M10.5 5.7 8.3 3.1M13.5 5.7l2.2-2.6" stroke={BUG_DARK} strokeWidth="1.15" strokeLinecap="round" />
-      <circle cx="8.15" cy="2.95" r="0.72" fill={BUG_DARK} />
-      <circle cx="15.85" cy="2.95" r="0.72" fill={BUG_DARK} />
+      <path d={BUG_ANTENNA} stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <path d={BUG_ANTENNA_TIPS} fill={color} />
       {BUG_LEGS.map((leg) => (
         <path
           key={leg.d}
           d={leg.d}
           className="badge-bug-legs"
           style={{ animationDelay: BUG_LEG_DELAY[leg.pair] }}
-          stroke={BUG_DARK}
-          strokeWidth="1.35"
+          stroke={color}
+          strokeWidth="1.8"
           strokeLinecap="round"
         />
       ))}
-      <path d="M11.25 8.1C8.1 7.5 6.45 9.55 6.45 12.75c0 2.1 1.1 3.7 2.55 4.45 1.05-.95 1.78-2.25 2.25-3.85Z" fill={BUG_LIGHT} stroke={BUG_DARK} strokeWidth="0.72" />
-      <path d="M12.75 8.1c3.15-.6 4.8 1.45 4.8 4.65 0 2.1-1.1 3.7-2.55 4.45-1.05-.95-1.78-2.25-2.25-3.85Z" fill={BUG_LIGHT} stroke={BUG_DARK} strokeWidth="0.72" />
-      <path d="M12 7.4c2.2 0 3.85 1.85 3.85 4.7v1.45c0 2.75-1.55 4.85-3.85 4.85s-3.85-2.1-3.85-4.85V12.1C8.15 9.25 9.8 7.4 12 7.4Z" fill={color} stroke={BUG_DARK} strokeWidth="0.82" />
-      <path d="M12 8v9.95" stroke={BUG_DARK} strokeWidth="0.72" strokeLinecap="round" opacity="0.8" />
-      <circle cx="10.55" cy="10.55" r="0.9" fill="#F0FDF4" />
-      <circle cx="13.45" cy="10.55" r="0.9" fill="#F0FDF4" />
-      <circle cx="10.55" cy="10.65" r="0.38" fill={BUG_DARK} />
-      <circle cx="13.45" cy="10.65" r="0.38" fill={BUG_DARK} />
-      <path d="M10.25 14.65h3.5" stroke={BUG_DARK} strokeWidth="0.68" strokeLinecap="round" opacity="0.8" />
+      <path d={BUG_HEAD} fill={color} />
+      <path d={BUG_BODY} fill={color} />
     </svg>
   );
 }
