@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -70,7 +70,7 @@ export function AvatarCropDialog({
   onCancel,
   onConfirm,
 }: AvatarCropDialogProps) {
-  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewElement, setPreviewElement] = useState<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -98,6 +98,8 @@ export function AvatarCropDialog({
     if (!file) {
       setObjectUrl(null);
       setImageDimensions(null);
+      setPreviewElement(null);
+      setPreviewSize(0);
       setImageError(null);
       setCropError(null);
       return;
@@ -130,20 +132,23 @@ export function AvatarCropDialog({
     };
   }, [file]);
 
+  const setPreviewRef = useCallback((node: HTMLDivElement | null) => {
+    setPreviewElement(node);
+  }, []);
+
   useEffect(() => {
-    const preview = previewRef.current;
-    if (!preview) return;
+    if (!previewElement) return;
 
     const updatePreviewSize = () => {
-      setPreviewSize(preview.clientWidth);
+      setPreviewSize(previewElement.clientWidth);
     };
     updatePreviewSize();
 
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(updatePreviewSize);
-    observer.observe(preview);
+    observer.observe(previewElement);
     return () => observer.disconnect();
-  }, [file]);
+  }, [previewElement]);
 
   useEffect(() => {
     if (!imageDimensions || previewSize === 0) return;
@@ -262,7 +267,7 @@ export function AvatarCropDialog({
 
         <div className="space-y-4">
           <div
-            ref={previewRef}
+            ref={setPreviewRef}
             role="img"
             aria-label="Profile picture crop preview"
             className={`relative mx-auto aspect-square w-full max-w-[280px] select-none overflow-hidden rounded-md bg-black/10 ${
