@@ -27,6 +27,7 @@ import {
   resolveMediaUrl,
   resolveMediaUrlsInHtml,
   stableMediaUrl,
+  useHydratedMediaHtml,
 } from "@/lib/media-url";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { useTheme } from "@/components/providers/theme-provider";
@@ -111,6 +112,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const [previewNaturalWidth, setPreviewNaturalWidth] = useState<number | null>(null);
   const handlePreviewContentWidth = useCallback((w: number) => setPreviewNaturalWidth(w), []);
   const [livePreviewHtml, setLivePreviewHtml] = useState("");
+  const hydratedLivePreviewHtml = useHydratedMediaHtml(livePreviewHtml);
   const [blockedExternalImages, setBlockedExternalImages] = useState<string[]>([]);
   const [imagesWarningDismissed, setImagesWarningDismissed] = useState(false);
   const [sanitizationIssues, setSanitizationIssues] = useState<SanitizationIssue[]>([]);
@@ -874,7 +876,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                       ) : (
                         <article
                           className={PROSE_CLASSES}
-                          dangerouslySetInnerHTML={{ __html: livePreviewHtml }}
+                          dangerouslySetInnerHTML={{ __html: hydratedLivePreviewHtml }}
                         />
                       )}
                     </div>

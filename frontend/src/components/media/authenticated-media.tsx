@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/api/client";
 import { resolveMediaUrl } from "@/lib/media-url";
 
-function useAuthenticatedMediaUrl(src: string) {
+export function useAuthenticatedMediaUrl(src: string) {
   const [resolved, setResolved] = useState(src);
 
   useEffect(() => {
