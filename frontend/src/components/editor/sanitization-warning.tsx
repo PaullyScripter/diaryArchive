@@ -58,9 +58,15 @@ export function detectSanitizationIssues(html: string, css: string): Sanitizatio
     }
   }
 
-  // data-* attributes
-  if (/data-[a-z-]+=/i.test(html)) {
-    add("attribute", "data-*");
+  // App-owned media references are intentionally retained so private diary
+  // images can be hydrated through the authenticated media endpoint. Warn on
+  // every other data-* attribute, since those are removed by the sanitizer.
+  const dataAttributePattern = /\b(data-[a-z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+  for (const match of html.matchAll(dataAttributePattern)) {
+    const name = match[1].toLowerCase();
+    const value = match[2] ?? match[3] ?? match[4] ?? "";
+    if (name === "data-media-id" && /^[a-f0-9]{24}$/i.test(value)) continue;
+    add("attribute", name === "data-media-id" ? name : "data-*");
   }
 
   // Blocked URI schemes in href/src

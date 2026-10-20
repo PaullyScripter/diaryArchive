@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { detectSanitizationIssues } from "@/components/editor/sanitization-warning";
 
 describe("sanitizeHtml", () => {
   it("removes script tags", () => {
@@ -213,6 +214,20 @@ describe("sanitizeHtml", () => {
     const input = '<img src="/api/v1/media/file/abc?v=original" alt="m">';
     const result = sanitizeHtml(input);
     expect(result).toContain("/api/v1/media/file/abc");
+  });
+
+  it("keeps the app-owned media id on uploaded images", () => {
+    const mediaId = "507f1f77bcf86cd799439011";
+    const input = `<img src="/api/v1/media/file/${mediaId}?v=original" data-media-id="${mediaId}" alt="photo">`;
+    const result = sanitizeHtml(input);
+    expect(result).toContain(`data-media-id="${mediaId}"`);
+    expect(detectSanitizationIssues(input, "")).toEqual([]);
+  });
+
+  it("still warns about unrecognized data attributes", () => {
+    expect(detectSanitizationIssues('<p data-tracking-id="abc">text</p>', "")).toEqual([
+      { type: "attribute", name: "data-*" },
+    ]);
   });
 
   it("keeps images from the configured API origin", () => {
