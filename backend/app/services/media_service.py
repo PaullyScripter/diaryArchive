@@ -2,7 +2,7 @@ import asyncio
 import io
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from bson import ObjectId
 
@@ -29,7 +29,6 @@ from app.services.image_service import process_image, get_image_dimensions
 
 logger = logging.getLogger(__name__)
 
-SIGNED_URL_EXPIRY = timedelta(minutes=15)
 _MAX_FILENAME_LEN = 255
 
 
@@ -39,16 +38,6 @@ def _sanitize_filename(filename: str) -> str:
     if not safe:
         safe = "untitled"
     return safe[:_MAX_FILENAME_LEN]
-
-
-def _generate_signed_url(stored_path: str) -> str:
-    client = get_minio_client()
-    url = client.presigned_get_object(
-        settings.minio_bucket,
-        stored_path,
-        expires=SIGNED_URL_EXPIRY,
-    )
-    return url
 
 
 async def _upload_object_async(stored_path: str, data: bytes, content_type: str) -> None:
@@ -86,7 +75,9 @@ async def _delete_object_async(stored_path: str) -> bool:
     return await asyncio.to_thread(_delete_object_sync, stored_path)
 
 
-def _permanent_media_url(media_id: str, stored_path: str, variant: str) -> str:
+def _permanent_media_url(
+    media_id: str, stored_path: str, variant: str, allow_public_base: bool = True
+) -> str:
     """Return a non-expiring, browser-resolvable URL for public media.
 
     Prefers a configured public/CDN base URL. When none is configured, falls
@@ -95,12 +86,23 @@ def _permanent_media_url(media_id: str, stored_path: str, variant: str) -> str:
     into diary HTML and then break).
     """
     base = settings.public_media_base_url
-    if base:
+    if base and allow_public_base:
         return f"{base.rstrip('/')}/{settings.minio_bucket}/{stored_path}"
     return f"/api/v1/media/file/{media_id}?v={variant}"
 
 
-def _build_media_response(media: dict, include_signed_url: bool = False) -> dict:
+def _build_media_response(
+    media: dict,
+    include_signed_url: bool = False,
+    effective_is_private: bool | None = None,
+) -> dict:
+    # Missing privacy metadata is treated as private. This is fail-closed for
+    # records created by older versions of the application.
+    stored_is_private = (
+        bool(media.get("is_private", True))
+        if effective_is_private is None
+        else effective_is_private
+    )
     result = {
         "id": str(media["_id"]),
         "user_id": str(media["user_id"]),
@@ -110,36 +112,36 @@ def _build_media_response(media: dict, include_signed_url: bool = False) -> dict
         "size_bytes": media["size_bytes"],
         "width": media.get("width"),
         "height": media.get("height"),
-        "is_private": media.get("is_private", False),
+        "is_private": stored_is_private,
         "created_at": fmt_dt(media.get("created_at")),
     }
     media_id = str(media["_id"])
     stored_path = media["stored_path"]
-    if include_signed_url or media.get("is_private"):
-        result["url"] = _generate_signed_url(stored_path)
-    else:
-        result["url"] = _permanent_media_url(media_id, stored_path, "original")
+    # Stable proxy URLs are returned for every media visibility. Private media
+    # cannot safely expose a MinIO signed URL to browser HTML, and the proxy
+    # performs the current authorization check at request time.
+    result["url"] = _permanent_media_url(
+        media_id, stored_path, "original", allow_public_base=not stored_is_private
+    )
 
     thumbnail_path = media.get("thumbnail_path")
     if thumbnail_path:
-        if include_signed_url or media.get("is_private"):
-            result["thumbnail_url"] = _generate_signed_url(thumbnail_path)
-        else:
-            result["thumbnail_url"] = _permanent_media_url(media_id, thumbnail_path, "thumb")
+        result["thumbnail_url"] = _permanent_media_url(
+            media_id, thumbnail_path, "thumb", allow_public_base=not stored_is_private
+        )
 
     standard_path = media.get("standard_path")
     if standard_path:
-        if include_signed_url or media.get("is_private"):
-            result["standard_url"] = _generate_signed_url(standard_path)
-        else:
-            result["standard_url"] = _permanent_media_url(media_id, standard_path, "standard")
+        result["standard_url"] = _permanent_media_url(
+            media_id, standard_path, "standard", allow_public_base=not stored_is_private
+        )
 
     return result
 
 
 async def resolve_media_file(
     media_id: str, variant: str, current_user: dict | None
-) -> tuple[dict, str]:
+) -> tuple[dict, str, bool]:
     """Resolve a media record + object path for the streaming proxy endpoint.
 
     Private media is only served to its owner or an admin; public media is
@@ -150,7 +152,13 @@ async def resolve_media_file(
     if media is None:
         raise NotFoundException("Media not found")
 
-    if media.get("is_private"):
+    effective_is_private = bool(media.get("is_private", True))
+    if media.get("diary_id"):
+        diary = await DiaryRepository().get_by_id(str(media["diary_id"]))
+        # An orphaned association must never become public.
+        effective_is_private = diary is None or diary.get("privacy") != "public"
+
+    if effective_is_private:
         is_owner = bool(current_user) and str(media["user_id"]) == str(current_user["_id"])
         is_admin = bool(current_user and current_user.get("is_admin"))
         if not is_owner and not is_admin:
@@ -165,7 +173,7 @@ async def resolve_media_file(
     if not path:
         raise NotFoundException("Media variant not found")
 
-    return media, path
+    return media, path, effective_is_private
 
 
 async def fetch_media_object(path: str):
@@ -199,11 +207,13 @@ async def upload_media(
             f"Media limit reached ({settings.max_media_per_user} files)"
         )
 
+    effective_is_private = True  # unattached/draft media is private by default
     if diary_id:
         diary_repo = DiaryRepository()
         diary = await diary_repo.get_by_id(diary_id)
         if diary is None or str(diary.get("user_id")) != str(user["_id"]):
             raise PermissionDeniedException("You do not own this diary")
+        effective_is_private = diary.get("privacy") != "public"
 
         diary_count = await repo.count_by_user(str(user["_id"]), diary_id=diary_id)
         if diary_count >= settings.max_media_per_diary:
@@ -287,7 +297,7 @@ async def upload_media(
             "size_bytes": size_bytes,
             "width": width,
             "height": height,
-            "is_private": is_private,
+            "is_private": effective_is_private,
             "created_at": now,
         }
     else:
@@ -304,7 +314,7 @@ async def upload_media(
             "size_bytes": len(file_data),
             "width": width,
             "height": height,
-            "is_private": is_private,
+            "is_private": effective_is_private,
             "created_at": now,
         }
 
@@ -326,7 +336,7 @@ async def upload_media(
     if result is None:
         raise NotFoundException("Media record not found after creation")
 
-    return _build_media_response(result, include_signed_url=is_private)
+    return _build_media_response(result, include_signed_url=effective_is_private)
 
 
 async def delete_media(media_id: str, current_user: dict) -> None:
@@ -374,7 +384,13 @@ async def get_media_gallery(
 
     data = []
     for m in media_list:
-        data.append(_build_media_response(m, include_signed_url=bool(m.get("is_private"))))
+        effective_is_private = bool(m.get("is_private", True))
+        if m.get("diary_id"):
+            diary = await DiaryRepository().get_by_id(str(m["diary_id"]))
+            effective_is_private = diary is None or diary.get("privacy") != "public"
+        data.append(
+            _build_media_response(m, effective_is_private=effective_is_private)
+        )
 
     return {
         "data": data,
@@ -399,7 +415,11 @@ async def get_media_detail(media_id: str, current_user: dict) -> dict:
     if not is_owner and not is_admin:
         raise NotFoundException("Media not found")
 
-    return _build_media_response(media, include_signed_url=bool(media.get("is_private")))
+    effective_is_private = bool(media.get("is_private", True))
+    if media.get("diary_id"):
+        diary = await DiaryRepository().get_by_id(str(media["diary_id"]))
+        effective_is_private = diary is None or diary.get("privacy") != "public"
+    return _build_media_response(media, effective_is_private=effective_is_private)
 
 
 async def get_media_signed_url(media_id: str, current_user: dict) -> dict:
@@ -412,17 +432,40 @@ async def get_media_signed_url(media_id: str, current_user: dict) -> dict:
     if not is_owner:
         raise PermissionDeniedException("You do not own this media")
 
-    url = _generate_signed_url(media["stored_path"])
+    diary = None
+    if media.get("diary_id"):
+        diary = await DiaryRepository().get_by_id(str(media["diary_id"]))
+    effective_is_private = bool(media.get("is_private", True))
+    if media.get("diary_id"):
+        effective_is_private = diary is None or diary.get("privacy") != "public"
+
+    url = _permanent_media_url(
+        str(media["_id"]),
+        media["stored_path"],
+        "original",
+        allow_public_base=not effective_is_private,
+    )
     result = {
         "url": url,
         "id": str(media["_id"]),
         "mime_type": media["mime_type"],
-        "expires_in_seconds": int(SIGNED_URL_EXPIRY.total_seconds()),
+        "expires_in_seconds": 0,
+        "is_private": effective_is_private,
     }
     if media.get("thumbnail_path"):
-        result["thumbnail_url"] = _generate_signed_url(media["thumbnail_path"])
+        result["thumbnail_url"] = _permanent_media_url(
+            str(media["_id"]),
+            media["thumbnail_path"],
+            "thumb",
+            allow_public_base=not effective_is_private,
+        )
     if media.get("standard_path"):
-        result["standard_url"] = _generate_signed_url(media["standard_path"])
+        result["standard_url"] = _permanent_media_url(
+            str(media["_id"]),
+            media["standard_path"],
+            "standard",
+            allow_public_base=not effective_is_private,
+        )
     return result
 
 
@@ -436,3 +479,10 @@ async def cascade_delete_diary_media(diary_id: str) -> int:
                 await _delete_object_async(path_val)
     deleted = await repo.delete_by_diary(diary_id)
     return deleted
+
+
+async def sync_diary_media_privacy(diary_id: str, diary_privacy: str) -> int:
+    """Persist the current diary privacy on every associated media record."""
+    return await MediaRepository().sync_diary_privacy(
+        diary_id, is_private=diary_privacy != "public"
+    )

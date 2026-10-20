@@ -17,7 +17,7 @@ from app.services.encryption_service import hash_email, legacy_email_hash, match
 
 
 class _FakeRequest:
-    def __init__(self, headers: dict | None = None, host: str = "1.2.3.4"):
+    def __init__(self, headers: dict | None = None, host: str = "127.0.0.1"):
         self._headers = headers or {}
         self.headers = self._headers
         self.client = type("C", (), {"host": host})()

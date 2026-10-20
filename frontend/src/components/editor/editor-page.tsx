@@ -22,7 +22,12 @@ import { splitHtmlCss } from "@/lib/html-css";
 import { PROSE_CLASSES } from "@/lib/prose";
 import { confirmDialog } from "@/components/ui/confirm-dialog";
 import { previewThemeStyle } from "@/lib/preview-theme";
-import { resolveMediaUrl, resolveMediaUrlsInHtml } from "@/lib/media-url";
+import {
+  normalizeMediaReferencesInHtml,
+  resolveMediaUrl,
+  resolveMediaUrlsInHtml,
+  stableMediaUrl,
+} from "@/lib/media-url";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { useTheme } from "@/components/providers/theme-provider";
 import { encryptDiary } from "@/lib/crypto";
@@ -202,7 +207,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           .chain()
           .focus()
           .setResizableImage({
-            src: resolveMediaUrl(result.url) ?? result.url,
+            src: resolveMediaUrl(stableMediaUrl(result.id)) ?? result.url,
             mediaId: result.id,
           })
           .run();
@@ -230,7 +235,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           // relative /api/v1/media/<id> URL (resolved to the full origin at
           // render time), at the user's cursor.
           insertAt(
-            `<img src="${resolveMediaUrl(result.url) ?? result.url}" data-media-id="${result.id}" alt="">`
+            `<img src="${resolveMediaUrl(stableMediaUrl(result.id)) ?? result.url}" data-media-id="${result.id}" alt="">`
           );
         } catch {
           // toast already shown by hook
@@ -245,7 +250,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       // In source mode, insert into the Monaco HTML/CSS editor at the cursor;
       // otherwise fall back to the Tiptap editor's default image insertion.
       const insertAt = sourceEditorInsertRef.current;
-      const src = resolveMediaUrl(item.url) ?? item.url;
+      const src = resolveMediaUrl(stableMediaUrl(item.id)) ?? item.url;
       if (sourceMode && insertAt) {
         insertAt(`<img src="${src}" data-media-id="${item.id}" alt="">`);
       } else if (editor) {
@@ -418,7 +423,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         : contentHtml,
       { allowExternalImages: finalAllowExternalImages }
     );
-    const stableContent = sanitizedContent;
+    const stableContent = normalizeMediaReferencesInHtml(sanitizedContent);
     const mediaIds = Array.from(
       stableContent.matchAll(/data-media-id=["']([a-f0-9]{24})["']/gi),
       (match) => match[1],

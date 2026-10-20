@@ -152,6 +152,9 @@ async def admin_hide_diary(
             "hidden_original_privacy": diary.get("privacy", "public"),
         },
     )
+    from app.services.media_service import sync_diary_media_privacy
+
+    await sync_diary_media_privacy(diary_id, "hidden")
 
     await log_audit(
         admin_id=str(current_admin["_id"]),
@@ -207,6 +210,9 @@ async def admin_unhide_diary(
             "hidden_original_privacy": None,
         },
     )
+    from app.services.media_service import sync_diary_media_privacy
+
+    await sync_diary_media_privacy(diary_id, original_privacy)
 
     await log_audit(
         admin_id=str(current_admin["_id"]),

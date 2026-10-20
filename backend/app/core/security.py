@@ -7,6 +7,7 @@ import time
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 
+from bson import ObjectId
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from redis.asyncio import Redis
@@ -63,7 +64,14 @@ async def validate_access_token(token: str) -> dict:
     user_id = payload.get("sub")
     iat = payload.get("iat")
     if user_id and iat:
-        if await _is_token_invalidated(user_id, iat):
+        try:
+            invalidated = await _is_token_invalidated(user_id, iat)
+        except Exception as exc:
+            # Revocation state is security-critical. A database outage must
+            # not turn token validation into a fail-open path.
+            logger.error("Token revocation lookup failed: %s", exc)
+            raise AuthenticationException("Token revocation state unavailable") from exc
+        if invalidated:
             raise AuthenticationException("Token has been revoked")
     return payload
 
@@ -252,57 +260,49 @@ async def check_rate_limit(
 
 _TOKEN_INVALIDATION_PREFIX = "auth:invalid_before:"
 
-# In-memory fallback blocklist when Redis is unavailable.
-# Stores {user_id: unix_timestamp} for users whose tokens were revoked.
-_inmemory_token_blocklist: dict[str, float] = {}
-_blocklist_lock = threading.Lock()
-_MAX_BLOCKLIST_KEYS = 10000
-
-
 async def invalidate_all_user_tokens(user_id: str) -> None:
-    """Set a timestamp that invalidates all access tokens for this user."""
+    """Persist a durable timestamp that invalidates all access tokens."""
+    invalidated_at = int(time.time())
+    db = DatabaseManager.get_db()
+    if not ObjectId.is_valid(user_id):
+        raise ValueError("Invalid user id")
+    result = await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"tokens_invalid_before": invalidated_at}},
+    )
+    if result.matched_count != 1:
+        raise RuntimeError(f"Cannot invalidate tokens for unknown user {user_id}")
+
+    # Redis is an optimization for deployments that need to avoid the Mongo
+    # read. The database field above remains the authoritative fallback.
     try:
         redis: Redis = DatabaseManager.get_redis()
     except RuntimeError:
-        logger.warning("Redis unavailable; using in-memory blocklist for user %s", user_id)
-        with _blocklist_lock:
-            if len(_inmemory_token_blocklist) >= _MAX_BLOCKLIST_KEYS:
-                # Evict oldest entries
-                oldest = sorted(_inmemory_token_blocklist.items(), key=lambda x: x[1])[:1000]
-                for k, _ in oldest:
-                    del _inmemory_token_blocklist[k]
-            _inmemory_token_blocklist[user_id] = time.time()
+        logger.warning("Redis unavailable; durable token invalidation stored in MongoDB")
         return
     try:
         key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
         max_ttl = settings.access_token_expire_minutes * 2 * 60
-        await redis.set(key, int(time.time()), ex=max_ttl)
+        await redis.set(key, invalidated_at, ex=max_ttl)
     except Exception:
-        logger.exception("Failed to invalidate tokens for user %s", user_id)
+        logger.warning("Redis token invalidation cache write failed; MongoDB remains authoritative")
 
 
-async def _is_token_invalidated(user_id: str, token_iat: datetime) -> bool:
+async def _is_token_invalidated(user_id: str, token_iat: datetime | int | float) -> bool:
     """Check whether a token was issued before the user's invalidation timestamp."""
-    try:
-        redis: Redis = DatabaseManager.get_redis()
-    except RuntimeError:
-        # Redis down: check in-memory blocklist
-        with _blocklist_lock:
-            inv_ts = _inmemory_token_blocklist.get(user_id)
-            if inv_ts is not None:
-                return token_iat < datetime.fromtimestamp(inv_ts, tz=UTC)
+    db = DatabaseManager.get_db()
+    if not ObjectId.is_valid(user_id):
+        return True
+    user = await db.users.find_one({"_id": ObjectId(user_id)}, {"tokens_invalid_before": 1})
+    if user is None:
+        return True
+    invalid_before = user.get("tokens_invalid_before")
+    if invalid_before is None:
         return False
-    try:
-        key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
-        invalid_before = await redis.get(key)
-        if invalid_before is None:
-            # Also check in-memory blocklist
-            with _blocklist_lock:
-                inv_ts = _inmemory_token_blocklist.get(user_id)
-                if inv_ts is not None:
-                    return token_iat < datetime.fromtimestamp(inv_ts, tz=UTC)
-            return False
-        invalid_ts = datetime.fromtimestamp(int(invalid_before), tz=UTC)
-        return token_iat < invalid_ts
-    except Exception:
-        return False
+
+    issued_at = (
+        token_iat.timestamp()
+        if isinstance(token_iat, datetime)
+        else float(token_iat)
+    )
+    return issued_at < float(invalid_before)

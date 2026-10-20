@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { apiClient } from "@/lib/api/client";
+
 /**
  * Media URLs returned by the API are absolute paths under /api/v1/... (or a
  * CDN / signed URL). A bare relative path like `/api/v1/media/file/<id>`
@@ -28,12 +31,125 @@ export function resolveMediaUrl(url?: string | null): string | undefined {
   return url;
 }
 
+const MEDIA_ID_RE = /^[a-f0-9]{24}$/i;
+
+/** Build a stable API reference that never contains a signed MinIO URL. */
+export function stableMediaUrl(
+  mediaId: string,
+  variant: "original" | "standard" | "thumb" = "original",
+): string {
+  if (!MEDIA_ID_RE.test(mediaId)) return "";
+  return "/api/v1/media/file/" + mediaId + "?v=" + variant;
+}
+
+function serializeHtmlDocument(doc: Document): string {
+  // DOMParser moves leading style blocks into <head>. Put them back because
+  // the diary renderer expects its author CSS in the fragment.
+  const styles = Array.from(doc.head.querySelectorAll("style"))
+    .map((style) => style.outerHTML)
+    .join("");
+  return styles + doc.body.innerHTML;
+}
+
+/**
+ * Replace uploaded-media URLs with stable media identifiers before content is
+ * saved or encrypted. This prevents signed URLs from becoming permanent
+ * diary references.
+ */
+export function normalizeMediaReferencesInHtml(html: string): string {
+  if (!html || typeof DOMParser === "undefined" || !html.includes("data-media-id")) {
+    return html;
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll<HTMLElement>("[data-media-id]").forEach((element) => {
+    const mediaId = element.getAttribute("data-media-id") || "";
+    if (!MEDIA_ID_RE.test(mediaId)) return;
+    const currentSrc = element.getAttribute("src") || "";
+    let variant: "original" | "standard" | "thumb" = "original";
+    try {
+      const parsed = new URL(currentSrc, window.location.origin);
+      const requested = parsed.searchParams.get("v");
+      if (requested === "standard" || requested === "thumb") variant = requested;
+    } catch {
+      // Signed or malformed legacy URLs use the original variant.
+    }
+    element.setAttribute("src", stableMediaUrl(mediaId, variant));
+  });
+  return serializeHtmlDocument(doc);
+}
+
+/**
+ * Fetch media through the authenticated API and replace image sources with
+ * browser object URLs. The API request carries the access token; an <img>
+ * request cannot. Public media also works anonymously.
+ */
+export async function hydrateMediaUrlsInHtml(
+  html: string,
+): Promise<{ html: string; objectUrls: string[] }> {
+  if (!html || typeof DOMParser === "undefined" || !html.includes("data-media-id")) {
+    return { html, objectUrls: [] };
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const objectUrls: string[] = [];
+  const elements = Array.from(doc.querySelectorAll<HTMLElement>("[data-media-id]"));
+
+  await Promise.all(
+    elements.map(async (element) => {
+      const mediaId = element.getAttribute("data-media-id") || "";
+      if (!MEDIA_ID_RE.test(mediaId)) return;
+      const stableUrl = stableMediaUrl(mediaId);
+      const resolvedUrl = resolveMediaUrl(stableUrl) || stableUrl;
+      try {
+        // apiClient already has /api/v1 as its base URL. Passing the full
+        // stable path here would duplicate that prefix in Axios.
+        const apiPath = stableUrl.replace(/^\/api\/v1/, "") || "/";
+        const response = await apiClient.get(apiPath, { responseType: "blob" });
+        const objectUrl = URL.createObjectURL(response.data as Blob);
+        objectUrls.push(objectUrl);
+        element.setAttribute("src", objectUrl);
+      } catch {
+        // Stable URL remains the fallback: public media can render it, while
+        // private media remains an authorization-checked 404.
+        element.setAttribute("src", resolvedUrl);
+      }
+    }),
+  );
+
+  return { html: serializeHtmlDocument(doc), objectUrls };
+}
+
+/** React lifecycle wrapper that revokes browser object URLs on replacement. */
+export function useHydratedMediaHtml(html: string): string {
+  const [hydratedHtml, setHydratedHtml] = useState(html);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrls: string[] = [];
+    setHydratedHtml(html);
+    hydrateMediaUrlsInHtml(html).then((result) => {
+      objectUrls = result.objectUrls;
+      if (active) {
+        setHydratedHtml(result.html);
+      } else {
+        objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      }
+    });
+    return () => {
+      active = false;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [html]);
+
+  return hydratedHtml;
+}
+
 /**
  * Rewrite relative /api/... URLs found in already-saved diary HTML (e.g.
  * `src`, `srcset`, `poster`) so legacy content keeps rendering after the media
  * proxy was introduced. Leaves absolute URLs untouched.
  */
 export function resolveMediaUrlsInHtml(html: string): string {
+  html = normalizeMediaReferencesInHtml(html);
   if (!html || !html.includes("/api/")) return html;
   const origin = apiOrigin();
   if (!origin) return html;
