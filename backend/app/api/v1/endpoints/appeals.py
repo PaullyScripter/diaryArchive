@@ -25,19 +25,19 @@ def _build_message_list(messages: list[dict], user_id: str) -> list[dict]:
     result = []
     for m in messages:
         sender_id = str(m.get("sender_id", "")) if m.get("sender_id") else ""
-        result.append({
-            "id": str(m.get("_id", "")),
-            "sender_username": m.get("sender_username", ""),
-            "message": m.get("message", ""),
-            "is_admin": sender_id != user_id,
-            "created_at": m.get("created_at"),
-        })
+        result.append(
+            {
+                "id": str(m.get("_id", "")),
+                "sender_username": m.get("sender_username", ""),
+                "message": m.get("message", ""),
+                "is_admin": sender_id != user_id,
+                "created_at": m.get("created_at"),
+            }
+        )
     return result
 
 
-async def _verify_credentials(
-    username: str, password: str, client_ip: str, action: str
-) -> dict:
+async def _verify_credentials(username: str, password: str, client_ip: str, action: str) -> dict:
     """Authenticate a banned user by username/password with per-account lockout.
 
     Every appeal endpoint shares this path so no account becomes a password
@@ -101,7 +101,9 @@ async def get_appeal_status(body: dict, request: Request):
                 "resolution": existing.get("resolution"),
                 "resolution_message": existing.get("resolution_message"),
                 "subject": existing.get("subject", ""),
-                "messages": _build_message_list(existing.get("messages", []) or [], str(user["_id"])),
+                "messages": _build_message_list(
+                    existing.get("messages", []) or [], str(user["_id"])
+                ),
                 "created_at": existing.get("created_at"),
                 "updated_at": existing.get("updated_at"),
                 "assigned_admin_username": existing.get("assigned_admin_username"),

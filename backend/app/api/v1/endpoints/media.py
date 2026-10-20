@@ -28,9 +28,7 @@ async def upload(
     is_private: bool = False,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:upload_media:{current_user['_id']}", 10, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:upload_media:{current_user['_id']}", 10, 60)
     if is_limited:
         raise RateLimitException("Too many upload attempts")
 
@@ -84,15 +82,14 @@ async def get_media_file(
     """Permanent, non-expiring media endpoint. Streams the stored object for
     public media (and private media for its owner/admin). Returned URLs are
     baked into diary HTML, so unlike signed URLs they never expire."""
-    media, path = await resolve_media_file(media_id, variant, current_user)
+    media, path, is_private = await resolve_media_file(media_id, variant, current_user)
     obj = await fetch_media_object(path)
 
     content_type = media.get("mime_type") or "application/octet-stream"
 
     def iter_chunks():
         try:
-            for chunk in obj.stream(64 * 1024):
-                yield chunk
+            yield from obj.stream(64 * 1024)
         finally:
             obj.close()
             obj.release_conn()
@@ -100,7 +97,7 @@ async def get_media_file(
     return StreamingResponse(
         iter_chunks(),
         media_type=content_type,
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": ("private, no-store" if is_private else "public, max-age=86400")},
     )
 
 
@@ -115,6 +112,7 @@ async def get_signed_url(
     media_id: str,
     current_user: dict = Depends(get_current_user),
 ):
+    """Return a stable media URL in the legacy response shape."""
     result = await get_media_signed_url(media_id, current_user)
     return {"data": result}
 

@@ -61,8 +61,11 @@ async def search_diaries(
             return {
                 "data": [],
                 "meta": {
-                    "page": 1, "per_page": per_page, "total": 0,
-                    "has_next": False, "has_prev": False,
+                    "page": 1,
+                    "per_page": per_page,
+                    "total": 0,
+                    "has_next": False,
+                    "has_prev": False,
                     "processing_time_ms": 0,
                 },
             }
@@ -80,8 +83,11 @@ async def search_diaries(
         return {
             "data": [],
             "meta": {
-                "page": 1, "per_page": per_page, "total": 0,
-                "has_next": False, "has_prev": False,
+                "page": 1,
+                "per_page": per_page,
+                "total": 0,
+                "has_next": False,
+                "has_prev": False,
                 "processing_time_ms": 0,
             },
         }
@@ -105,8 +111,11 @@ async def search_diaries(
         return {
             "data": [],
             "meta": {
-                "page": 1, "per_page": per_page, "total": 0,
-                "has_next": False, "has_prev": False,
+                "page": 1,
+                "per_page": per_page,
+                "total": 0,
+                "has_next": False,
+                "has_prev": False,
                 "processing_time_ms": 0,
             },
         }

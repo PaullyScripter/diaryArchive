@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body, Depends, Query, Request
 
-from app.api.deps import get_current_user, _optional_user
+from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import check_rate_limit
 from app.models.diary import DiaryCreate, DiaryDelete, DiaryUpdate
@@ -8,9 +8,7 @@ from app.services.diary_service import (
     create_diary,
     delete_diary,
     get_diary,
-    get_my_diaries_stats,
     get_random_diary,
-    list_my_diaries,
     list_public_diaries,
     update_diary,
 )
@@ -24,9 +22,7 @@ async def create(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:create_diary:{current_user['_id']}", 30, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:create_diary:{current_user['_id']}", 30, 60)
     if is_limited:
         raise RateLimitException("Too many diary creation attempts")
     result = await create_diary(current_user, body.model_dump())
@@ -83,9 +79,7 @@ async def update(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:update_diary:{current_user['_id']}", 30, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:update_diary:{current_user['_id']}", 30, 60)
     if is_limited:
         raise RateLimitException("Too many diary update attempts")
     updates = body.model_dump(exclude_unset=True, exclude_none=False)
@@ -100,9 +94,7 @@ async def delete(
     body: DiaryDelete = Body(None),
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:delete_diary:{current_user['_id']}", 10, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:delete_diary:{current_user['_id']}", 10, 60)
     if is_limited:
         raise RateLimitException("Too many diary deletion attempts")
     reason = body.admin_delete_reason if body else None

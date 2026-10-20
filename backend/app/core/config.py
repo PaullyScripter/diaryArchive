@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     minio_bucket: str = "diaryarchive"
     minio_region: str = "us-east-1"
     # Publicly reachable base URL for public media (e.g. a MinIO/nginx route that
-    # serves the bucket over HTTPS). When unset, public media is served via
-    # short-lived signed URLs rather than leaking the internal MinIO host.
+    # serves the bucket over HTTPS). When unset, responses use the stable
+    # same-origin media proxy; private media always uses that proxy.
     public_media_base_url: str | None = None
 
     meilisearch_url: str = "http://meilisearch:7700"
@@ -160,9 +160,7 @@ class Settings(BaseSettings):
                 raise ValueError("CORS_ORIGINS must not contain '*' in production")
             for origin in self.cors_origins:
                 if origin.startswith("http://") and "localhost" not in origin:
-                    raise ValueError(
-                        f"CORS_ORIGINS must not use http:// in production: {origin}"
-                    )
+                    raise ValueError(f"CORS_ORIGINS must not use http:// in production: {origin}")
 
         return self
 

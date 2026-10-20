@@ -1,11 +1,10 @@
 import io
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.core.database import DatabaseManager
-from app.core.minio_client import get_minio_client
 from app.main import app
 
 
@@ -28,7 +27,7 @@ async def client():
 async def _register_user(client: AsyncClient, username: str = "testuser") -> dict:
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": username, "password": "ValidPass123", "accepted_terms": True},
+        json={"username": username, "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json()
@@ -45,11 +44,13 @@ def _make_mock_minio():
 
 @pytest.fixture(autouse=True)
 def mock_minio():
-    with patch("app.services.media_service.get_minio_client", return_value=_make_mock_minio()), \
-         patch("app.services.image_service.Image.open", return_value=_make_mock_image()), \
-         patch("app.services.image_service.ImageOps.exif_transpose", side_effect=lambda x: x), \
-         patch("app.services.image_service._strip_exif", side_effect=lambda x: x), \
-         patch("app.services.image_service.get_image_dimensions", return_value=(800, 600)):
+    with (
+        patch("app.services.media_service.get_minio_client", return_value=_make_mock_minio()),
+        patch("app.services.image_service.Image.open", return_value=_make_mock_image()),
+        patch("app.services.image_service.ImageOps.exif_transpose", side_effect=lambda x: x),
+        patch("app.services.image_service._strip_exif", side_effect=lambda x: x),
+        patch("app.services.image_service.get_image_dimensions", return_value=(800, 600)),
+    ):
         yield
 
 
@@ -176,8 +177,12 @@ class TestMediaUpload:
 
         create_resp = await client.post(
             "/api/v1/diaries",
-            json={"privacy": "public", "title": "Test Diary",
-                  "content_html": "<p>Test</p>", "content_text": "Test"},
+            json={
+                "privacy": "public",
+                "title": "Test Diary",
+                "content_html": "<p>Test</p>",
+                "content_text": "Test",
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
         assert create_resp.status_code == 201
@@ -204,6 +209,29 @@ class TestMediaUpload:
         assert response.status_code == 201
         resp_data = response.json()
         assert resp_data["data"]["is_private"] is True
+
+    async def test_upload_to_private_diary_ignores_client_visibility(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+        diary_resp = await client.post(
+            "/api/v1/diaries",
+            json={
+                "privacy": "private",
+                "encrypted_data": {"ciphertext": "x", "iv": "y", "salt": "z"},
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert diary_resp.status_code == 201
+        diary_id = diary_resp.json()["data"]["id"]
+
+        files = {"file": ("private.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        response = await client.post(
+            f"/api/v1/media/upload?diary_id={diary_id}&is_private=false",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 201
+        assert response.json()["data"]["is_private"] is True
 
 
 class TestMediaGallery:
@@ -348,6 +376,7 @@ class TestMediaGet:
 class TestMediaFileStream:
     def _stub_stream(self):
         from unittest.mock import MagicMock
+
         import app.services.media_service as msvc
 
         fake = MagicMock()
@@ -361,9 +390,22 @@ class TestMediaFileStream:
         user = await _register_user(client)
         token = user["access_token"]
 
+        diary_resp = await client.post(
+            "/api/v1/diaries",
+            json={
+                "privacy": "public",
+                "title": "Public media diary",
+                "content_html": "<p>Photo</p>",
+                "content_text": "Photo",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert diary_resp.status_code == 201
+        diary_id = diary_resp.json()["data"]["id"]
+
         files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
         upload_resp = await client.post(
-            "/api/v1/media/upload",
+            f"/api/v1/media/upload?diary_id={diary_id}",
             files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -381,6 +423,7 @@ class TestMediaFileStream:
         assert resp.status_code == 200
         assert resp.content.startswith(b"\x52\x49\x46\x46")  # RIFF (webp) header
         assert "image/webp" in resp.headers["content-type"]
+        assert resp.headers["cache-control"] == "public, max-age=86400"
 
     async def test_private_media_requires_owner(self, client: AsyncClient):
         user = await _register_user(client)
@@ -407,6 +450,7 @@ class TestMediaFileStream:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert owner.status_code == 200
+        assert owner.headers["cache-control"] == "private, no-store"
 
 
 class TestCascadeDelete:
@@ -416,8 +460,12 @@ class TestCascadeDelete:
 
         create_resp = await client.post(
             "/api/v1/diaries",
-            json={"privacy": "public", "title": "Diary with Media",
-                  "content_html": "<p>Test</p>", "content_text": "Test"},
+            json={
+                "privacy": "public",
+                "title": "Diary with Media",
+                "content_html": "<p>Test</p>",
+                "content_text": "Test",
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
         diary_id = create_resp.json()["data"]["id"]
@@ -438,6 +486,7 @@ class TestCascadeDelete:
         assert delete_resp.status_code == 204
 
         from app.services.media_service import cascade_delete_diary_media
+
         await cascade_delete_diary_media(diary_id)
 
         get_resp = await client.get(
@@ -454,7 +503,8 @@ class TestMediaDetailAuthorization:
 
         files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
         upload_resp = await client.post(
-            "/api/v1/media/upload", files=files,
+            "/api/v1/media/upload",
+            files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
         media_id = upload_resp.json()["data"]["id"]
@@ -471,7 +521,8 @@ class TestMediaDetailAuthorization:
 
         files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
         upload_resp = await client.post(
-            "/api/v1/media/upload", files=files,
+            "/api/v1/media/upload",
+            files=files,
             headers={"Authorization": f"Bearer {user_a['access_token']}"},
         )
         media_id = upload_resp.json()["data"]["id"]
@@ -490,7 +541,8 @@ class TestSVGRejection:
         svg_data = b'<?xml version="1.0"?><svg></svg>' + b"\x00" * 50
         files = {"file": ("image.svg", io.BytesIO(svg_data), "image/svg+xml")}
         resp = await client.post(
-            "/api/v1/media/upload", files=files,
+            "/api/v1/media/upload",
+            files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code in (400, 422)
@@ -501,7 +553,8 @@ class TestSVGRejection:
         svg_data = b"<svg><script>alert(1)</script></svg>" + b"\x00" * 20
         files = {"file": ("evil.svg", io.BytesIO(svg_data), "image/png")}
         resp = await client.post(
-            "/api/v1/media/upload", files=files,
+            "/api/v1/media/upload",
+            files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code in (400, 422)
@@ -513,7 +566,8 @@ class TestFilenameSanitization:
         token = user["access_token"]
         files = {"file": ("<script>alert(1)</script>.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
         resp = await client.post(
-            "/api/v1/media/upload", files=files,
+            "/api/v1/media/upload",
+            files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 201
@@ -526,7 +580,8 @@ class TestFilenameSanitization:
         token = user["access_token"]
         files = {"file": ("test\x00null.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
         resp = await client.post(
-            "/api/v1/media/upload", files=files,
+            "/api/v1/media/upload",
+            files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 201
@@ -537,7 +592,8 @@ class TestFilenameSanitization:
 class TestDecompressionBomb:
     async def test_decompression_bomb_setting_applied(self):
         from PIL import Image
-        from app.services.image_service import MAX_PIXELS
+
         from app.core.media_validator import MAX_PIXELS as V_MAX
+
         assert Image.MAX_IMAGE_PIXELS == V_MAX
         assert Image.MAX_IMAGE_PIXELS == 64_000_000

@@ -91,8 +91,11 @@ class UserRepository(BaseRepository):
     async def count_admins(self) -> int:
         return await self.count({"is_admin": True})
 
-    async def set_ban_status(self, user_id: str, is_banned: bool, ban_reason: str | None = None) -> bool:
+    async def set_ban_status(
+        self, user_id: str, is_banned: bool, ban_reason: str | None = None
+    ) -> bool:
         from datetime import UTC, datetime
+
         update_doc: dict = {"is_banned": is_banned}
         if is_banned:
             update_doc["banned_at"] = datetime.now(UTC)

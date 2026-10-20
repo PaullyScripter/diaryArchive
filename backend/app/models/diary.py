@@ -2,11 +2,21 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
-VALID_EMOTIONS = frozenset({
-    "happy", "sad", "anxious", "angry", "excited", "grateful",
-    "lonely", "hopeful", "nostalgic", "reflective", "neutral",
-})
+VALID_EMOTIONS = frozenset(
+    {
+        "happy",
+        "sad",
+        "anxious",
+        "angry",
+        "excited",
+        "grateful",
+        "lonely",
+        "hopeful",
+        "nostalgic",
+        "reflective",
+        "neutral",
+    }
+)
 
 
 class EncryptedData(BaseModel):

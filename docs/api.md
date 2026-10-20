@@ -574,7 +574,6 @@ Update the current user's profile.
 **Request body:**
 ```json
 {
-  "avatar_path": null,
   "about": "Updated bio text",
   "favorite_quote": "New favorite quote",
   "currently_feeling": "grateful",
@@ -594,7 +593,6 @@ Update the current user's profile.
 
 | Field | Rules |
 |-------|-------|
-| `avatar_path` | Optional, nullable. Must reference an existing media entry owned by the user. |
 | `about` | Optional. Max 500 chars. |
 | `favorite_quote` | Optional. Max 300 chars. |
 | `currently_feeling` | Optional. Max 50 chars. |
@@ -604,6 +602,9 @@ Update the current user's profile.
 | `preferences.notify_on_*` | Booleans. |
 
 All fields are optional - only provided fields are updated.
+
+Profile pictures are uploaded through the gated endpoint below, not by setting
+`avatar_path` in this request.
 
 **Success (200):**
 ```json
@@ -625,6 +626,42 @@ All fields are optional - only provided fields are updated.
 |------|--------|-----------|
 | `unauthorized` | 401 | Missing or invalid access token |
 | `validation_error` | 422 | Invalid field values |
+
+---
+
+### POST /api/v1/users/me/avatar
+
+Upload or replace the current user's profile picture.
+
+**Auth:** Bearer access token
+**Requirement:** The user must have at least 50 diaries, including private and draft diaries.
+**Rate limit:** 5 attempts per minute
+
+**Request:** `multipart/form-data`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | binary | Yes | JPEG, PNG, WebP, GIF, or AVIF image |
+
+The image is normalized through the media pipeline and served through a stable
+public media URL. The response stores that URL in `avatar_path`.
+
+**Success (201):**
+```json
+{
+  "data": {
+    "avatar_path": "/api/v1/media/file/666c1d2e3f4a5b6c7d8e9f0a?v=thumb"
+  }
+}
+```
+
+**Errors:**
+
+| Code | Status | Condition |
+|------|--------|-----------|
+| `forbidden` | 403 | User has fewer than 50 diaries |
+| `validation_error` | 422 | Empty, invalid, or non-image upload |
+| `rate_limited` | 429 | Too many avatar upload attempts |
 
 ---
 

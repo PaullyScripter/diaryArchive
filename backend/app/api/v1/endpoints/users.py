@@ -1,8 +1,7 @@
-
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, UploadFile
 
 from app.api.deps import _optional_user, get_current_user
-from app.core.exceptions import NotFoundException, RateLimitException
+from app.core.exceptions import NotFoundException, RateLimitException, ValidationException
 from app.core.security import check_rate_limit
 from app.core.utils import fmt_dt
 from app.models.user import EmailUpdate, EncryptionKeyUpdate, UserUpdate
@@ -15,6 +14,7 @@ from app.services.user_service import (
     update_encryption_key,
     update_user_email,
     update_user_profile,
+    upload_user_avatar,
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -43,6 +43,31 @@ async def update_my_profile(
     update_dict = body.model_dump(exclude_unset=True, exclude_none=False)
     profile = await update_user_profile(str(current_user["_id"]), update_dict)
     return {"data": profile}
+
+
+@router.post("/me/avatar", status_code=201)
+async def upload_my_avatar(
+    file: UploadFile,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:upload_avatar:{current_user['_id']}", 5, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many profile picture upload attempts")
+
+    file_data = await file.read()
+    if not file_data:
+        raise ValidationException("Empty file not allowed")
+
+    result = await upload_user_avatar(
+        user=current_user,
+        file_data=file_data,
+        original_filename=file.filename or "avatar",
+        content_type_header=file.content_type,
+    )
+    return {"data": result}
 
 
 @router.put("/me/email")

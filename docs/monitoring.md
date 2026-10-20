@@ -41,12 +41,14 @@ This document describes the monitoring stack for DiaryArchive production deploym
 - **Purpose:** Log collection from Docker containers
 - **Port:** 9080 (internal only)
 - **Config:** `docker/promtail/config.yaml`
-- **Sources:** Docker container logs, system logs, Nginx access logs
+- **Sources:** Docker JSON log files, system logs, Nginx access logs. Promtail
+  does not mount or access the Docker daemon socket.
 
 ### Grafana
 - **Purpose:** Visualization dashboards
-- **Port:** 3001 (exposed for admin access)
-- **Default URL:** `https://diaryarchive.com:3001`
+- **Port:** 3000 inside the monitoring network; it is not published directly.
+- **Access:** use the authenticated internal reverse proxy or an SSH tunnel.
+  Never expose Grafana directly to the public internet.
 - **Credentials:** Set via `GRAFANA_PASSWORD` env var
 
 ## Dashboards

@@ -31,14 +31,14 @@ async def client():
 async def registered_user(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+        json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json()
     return {
         "id": data.get("id") or data.get("data", {}).get("id"),
         "username": "testuser",
-        "password": "ValidPass123",
+        "password": "ValidPass123!",
         "access_token": data.get("access_token") or data.get("data", {}).get("access_token"),
     }
 
@@ -47,7 +47,7 @@ class TestRegister:
     async def test_register_success(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "newuser", "password": "StrongPass1", "accepted_terms": True},
+            json={"username": "newuser", "password": "StrongPass1!", "accepted_terms": True},
         )
         assert response.status_code == 201
         body = response.json()
@@ -59,7 +59,7 @@ class TestRegister:
     async def test_register_duplicate_username(self, client: AsyncClient, registered_user: dict):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "testuser", "password": "OtherPass1", "accepted_terms": True},
+            json={"username": "testuser", "password": "OtherPass1!", "accepted_terms": True},
         )
         assert response.status_code == 409
         body = response.json()
@@ -85,7 +85,7 @@ class TestRegister:
             "/api/v1/auth/register",
             json={
                 "username": "user1",
-                "password": "ValidPass1",
+                "password": "ValidPass1!",
                 "email": "same@test.com",
                 "accepted_terms": True,
             },
@@ -94,7 +94,7 @@ class TestRegister:
             "/api/v1/auth/register",
             json={
                 "username": "user2",
-                "password": "ValidPass1",
+                "password": "ValidPass1!",
                 "email": "same@test.com",
                 "accepted_terms": True,
             },
@@ -107,21 +107,21 @@ class TestRegister:
         # Confirm the second account was NOT created.
         login = await client.post(
             "/api/v1/auth/login",
-            json={"username": "user2", "password": "ValidPass1"},
+            json={"username": "user2", "password": "ValidPass1!"},
         )
         assert login.status_code == 401
 
     async def test_register_invalid_username(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "ab", "password": "ValidPass1"},
+            json={"username": "ab", "password": "ValidPass1!"},
         )
         assert response.status_code == 422
 
     async def test_register_requires_accepted_terms(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "notermsuser", "password": "ValidPass1", "accepted_terms": False},
+            json={"username": "notermsuser", "password": "ValidPass1!", "accepted_terms": False},
         )
         assert response.status_code == 422
         body = response.json()
@@ -131,7 +131,7 @@ class TestRegister:
     async def test_register_rejects_missing_accepted_terms(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/auth/register",
-            json={"username": "notermsuser2", "password": "ValidPass1"},
+            json={"username": "notermsuser2", "password": "ValidPass1!"},
         )
         assert response.status_code == 422
 
@@ -140,7 +140,7 @@ class TestLogin:
     async def test_login_success(self, client: AsyncClient, registered_user: dict):
         response = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
         )
         assert response.status_code == 200
         body = response.json()
@@ -170,7 +170,7 @@ class TestLogin:
 
         response = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
         )
         assert response.status_code == 403
 
@@ -205,7 +205,7 @@ class TestLoginLockoutAndEnumeration:
             headers={"X-Real-IP": "10.0.0.99"},
             json={
                 "username": "testuser",
-                "password": "ValidPass123",
+                "password": "ValidPass123!",
                 "accepted_terms": True,
             },
         )
@@ -230,15 +230,13 @@ class TestLoginLockoutAndEnumeration:
             headers={"X-Real-IP": "10.1.0.99"},
             json={
                 "username": "testuser",
-                "password": "ValidPass123",
+                "password": "ValidPass123!",
                 "accepted_terms": True,
             },
         )
         assert resp.status_code == 429
 
-    async def test_nonexistent_user_locks_out_identically_to_existing(
-        self, client: AsyncClient
-    ):
+    async def test_nonexistent_user_locks_out_identically_to_existing(self, client: AsyncClient):
         # Non-existent account: 5 failed logins (each unique IP) must produce
         # the same lockout behaviour as an existing account, so an attacker
         # cannot infer which usernames exist.
@@ -294,7 +292,7 @@ class TestRefresh:
     async def test_refresh_token(self, client: AsyncClient, registered_user: dict):
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
         )
         cookies = login_resp.cookies
         refresh_cookie = cookies.get("refresh_token")
@@ -315,7 +313,7 @@ class TestRefresh:
     async def test_refresh_rotated(self, client: AsyncClient, registered_user: dict):
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
         )
         cookies = login_resp.cookies
         refresh_cookie = cookies.get("refresh_token")
@@ -336,7 +334,7 @@ class TestLogout:
     async def test_logout(self, client: AsyncClient, registered_user: dict):
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
         )
         cookies = login_resp.cookies
         refresh_cookie = cookies.get("refresh_token")
@@ -389,13 +387,13 @@ class TestChangePassword:
         response = await client.put(
             "/api/v1/auth/change-password",
             headers={"Authorization": f"Bearer {registered_user['access_token']}"},
-            json={"current_password": "ValidPass123", "new_password": "NewValidPass1"},
+            json={"current_password": "ValidPass123!", "new_password": "NewValidPass1!"},
         )
         assert response.status_code == 200
 
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "NewValidPass1", "accepted_terms": True},
+            json={"username": "testuser", "password": "NewValidPass1!", "accepted_terms": True},
         )
         assert login_resp.status_code == 200
 
@@ -403,7 +401,7 @@ class TestChangePassword:
         response = await client.put(
             "/api/v1/auth/change-password",
             headers={"Authorization": f"Bearer {registered_user['access_token']}"},
-            json={"current_password": "WrongPass123", "new_password": "NewValidPass1"},
+            json={"current_password": "WrongPass123!", "new_password": "NewValidPass1!"},
         )
         assert response.status_code == 401
 
@@ -411,7 +409,7 @@ class TestChangePassword:
         response = await client.put(
             "/api/v1/auth/change-password",
             headers={"Authorization": f"Bearer {registered_user['access_token']}"},
-            json={"current_password": "ValidPass123", "new_password": "short"},
+            json={"current_password": "ValidPass123!", "new_password": "short"},
         )
         assert response.status_code == 422
 
@@ -434,20 +432,19 @@ class TestPasswordReset:
             "/api/v1/auth/register",
             json={
                 "username": "mailuser",
-                "password": "ValidPass1",
+                "password": "ValidPass1!",
                 "email": "mailuser@test.com",
                 "accepted_terms": True,
             },
         )
         sent = {}
-        from app.api.v1.endpoints.auth import send_password_reset_email
+
         async def fake_send(user, token_raw):
             sent["user_id"] = str(user["_id"])
             sent["token_raw"] = token_raw
             return True
-        monkeypatch.setattr(
-            "app.api.v1.endpoints.auth.send_password_reset_email", fake_send
-        )
+
+        monkeypatch.setattr("app.api.v1.endpoints.auth.send_password_reset_email", fake_send)
 
         response = await client.post(
             "/api/v1/auth/request-password-reset",
@@ -460,6 +457,7 @@ class TestPasswordReset:
         tokens = await db.password_reset_tokens.find({"user_id": sent["user_id"]}).to_list(10)
         assert len(tokens) == 1
         from app.core.security import hash_token
+
         assert tokens[0]["token_hash"] == hash_token(sent["token_raw"])
 
     async def test_request_reset_requires_username(self, client: AsyncClient):
@@ -472,22 +470,24 @@ class TestPasswordReset:
 
         from app.core.security import hash_token
         from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
+
         reset_repo = PasswordResetTokenRepository()
 
         from app.core.security import generate_refresh_token
+
         token_raw = generate_refresh_token()
         token_hash = hash_token(token_raw)
         await reset_repo.create_token(str(user["_id"]), token_hash)
 
         response = await client.post(
             "/api/v1/auth/reset-password",
-            json={"token": token_raw, "new_password": "ResetPass123"},
+            json={"token": token_raw, "new_password": "ResetPass123!"},
         )
         assert response.status_code == 200
 
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "testuser", "password": "ResetPass123", "accepted_terms": True},
+            json={"username": "testuser", "password": "ResetPass123!", "accepted_terms": True},
         )
         assert login_resp.status_code == 200
 
@@ -497,18 +497,19 @@ class TestPasswordReset:
 
         from app.core.security import generate_refresh_token, hash_token
         from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
+
         token_raw = generate_refresh_token()
         await PasswordResetTokenRepository().create_token(str(user["_id"]), hash_token(token_raw))
 
         first = await client.post(
             "/api/v1/auth/reset-password",
-            json={"token": token_raw, "new_password": "ResetPass123"},
+            json={"token": token_raw, "new_password": "ResetPass123!"},
         )
         assert first.status_code == 200
 
         second = await client.post(
             "/api/v1/auth/reset-password",
-            json={"token": token_raw, "new_password": "AnotherPass1"},
+            json={"token": token_raw, "new_password": "AnotherPass1!"},
         )
         assert second.status_code == 401
 
@@ -517,20 +518,24 @@ class TestPasswordReset:
         user = await repo.get_by_username("testuser")
 
         from datetime import UTC, datetime, timedelta
+
         from app.core.security import generate_refresh_token, hash_token
+
         token_raw = generate_refresh_token()
         db = DatabaseManager.get_db()
-        await db.password_reset_tokens.insert_one({
-            "user_id": str(user["_id"]),
-            "token_hash": hash_token(token_raw),
-            "expires_at": datetime.now(UTC) - timedelta(minutes=1),
-            "used": False,
-            "created_at": datetime.now(UTC),
-        })
+        await db.password_reset_tokens.insert_one(
+            {
+                "user_id": str(user["_id"]),
+                "token_hash": hash_token(token_raw),
+                "expires_at": datetime.now(UTC) - timedelta(minutes=1),
+                "used": False,
+                "created_at": datetime.now(UTC),
+            }
+        )
 
         response = await client.post(
             "/api/v1/auth/reset-password",
-            json={"token": token_raw, "new_password": "ResetPass123"},
+            json={"token": token_raw, "new_password": "ResetPass123!"},
         )
         assert response.status_code == 401
 
@@ -541,7 +546,7 @@ class TestEmailVerification:
             "/api/v1/auth/register",
             json={
                 "username": username,
-                "password": "ValidPass1",
+                "password": "ValidPass1!",
                 "email": email,
                 "accepted_terms": True,
             },
@@ -563,8 +568,11 @@ class TestEmailVerification:
 
         from app.core.security import generate_refresh_token, hash_token
         from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
+
         token_raw = generate_refresh_token()
-        await EmailVerificationTokenRepository().create_token(str(db_user["_id"]), hash_token(token_raw))
+        await EmailVerificationTokenRepository().create_token(
+            str(db_user["_id"]), hash_token(token_raw)
+        )
 
         response = await client.post(
             "/api/v1/auth/verify-email",
@@ -590,8 +598,11 @@ class TestEmailVerification:
 
         from app.core.security import generate_refresh_token, hash_token
         from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
+
         token_raw = generate_refresh_token()
-        await EmailVerificationTokenRepository().create_token(str(db_user["_id"]), hash_token(token_raw))
+        await EmailVerificationTokenRepository().create_token(
+            str(db_user["_id"]), hash_token(token_raw)
+        )
 
         first = await client.post("/api/v1/auth/verify-email", json={"token": token_raw})
         assert first.status_code == 200
@@ -610,16 +621,20 @@ class TestEmailVerification:
         db_user = await repo.get_by_username("vuser3")
 
         from datetime import UTC, datetime, timedelta
+
         from app.core.security import generate_refresh_token, hash_token
+
         token_raw = generate_refresh_token()
         db = DatabaseManager.get_db()
-        await db.email_verification_tokens.insert_one({
-            "user_id": str(db_user["_id"]),
-            "token_hash": hash_token(token_raw),
-            "expires_at": datetime.now(UTC) - timedelta(minutes=1),
-            "used": False,
-            "created_at": datetime.now(UTC),
-        })
+        await db.email_verification_tokens.insert_one(
+            {
+                "user_id": str(db_user["_id"]),
+                "token_hash": hash_token(token_raw),
+                "expires_at": datetime.now(UTC) - timedelta(minutes=1),
+                "used": False,
+                "created_at": datetime.now(UTC),
+            }
+        )
 
         response = await client.post("/api/v1/auth/verify-email", json={"token": token_raw})
         assert response.status_code == 401
@@ -630,14 +645,13 @@ class TestEmailVerification:
         user = await self._register_with_email(client, "vuser4", "vuser4@test.com")
 
         sent = {}
-        from app.api.v1.endpoints.auth import send_email_verification
+
         async def fake_send(db_user, token_raw):
             sent["user_id"] = str(db_user["_id"])
             sent["token_raw"] = token_raw
             return True
-        monkeypatch.setattr(
-            "app.api.v1.endpoints.auth.send_email_verification", fake_send
-        )
+
+        monkeypatch.setattr("app.api.v1.endpoints.auth.send_email_verification", fake_send)
 
         response = await client.post(
             "/api/v1/auth/request-email-verification",
@@ -654,7 +668,9 @@ class TestEmailVerification:
         response = await client.post("/api/v1/auth/request-email-verification")
         assert response.status_code == 401
 
-    async def test_request_email_verification_no_email(self, client: AsyncClient, registered_user: dict):
+    async def test_request_email_verification_no_email(
+        self, client: AsyncClient, registered_user: dict
+    ):
         response = await client.post(
             "/api/v1/auth/request-email-verification",
             headers={"Authorization": f"Bearer {registered_user['access_token']}"},

@@ -146,9 +146,7 @@ async def sweep_orphaned_comments() -> dict:
         if not docs:
             break
         valid_comments = await _valid_ids(db.comments, list({c["comment_id"] for c in docs}))
-        all_cl_orphan_ids.extend(
-            c["_id"] for c in docs if c["comment_id"] not in valid_comments
-        )
+        all_cl_orphan_ids.extend(c["_id"] for c in docs if c["comment_id"] not in valid_comments)
     if all_cl_orphan_ids:
         for i in range(0, len(all_cl_orphan_ids), _BATCH_SIZE):
             chunk = all_cl_orphan_ids[i : i + _BATCH_SIZE]
@@ -184,22 +182,18 @@ async def sweep_orphaned_notifications() -> dict:
 
         # Collect target IDs by type for existence checks.
         diary_targets = {
-            d["target_id"]
-            for d in docs
-            if d.get("target_type") == "diary" and d.get("target_id")
+            d["target_id"] for d in docs if d.get("target_type") == "diary" and d.get("target_id")
         }
         comment_targets = {
-            d["target_id"]
-            for d in docs
-            if d.get("target_type") == "comment" and d.get("target_id")
+            d["target_id"] for d in docs if d.get("target_type") == "comment" and d.get("target_id")
         }
         user_targets = {
-            d["target_id"]
-            for d in docs
-            if d.get("target_type") == "user" and d.get("target_id")
+            d["target_id"] for d in docs if d.get("target_type") == "user" and d.get("target_id")
         }
 
-        valid_diaries = await _valid_ids(db.diaries, list(diary_targets)) if diary_targets else set()
+        valid_diaries = (
+            await _valid_ids(db.diaries, list(diary_targets)) if diary_targets else set()
+        )
         valid_comments = (
             await _valid_ids(db.comments, list(comment_targets)) if comment_targets else set()
         )

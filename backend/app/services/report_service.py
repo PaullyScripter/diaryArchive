@@ -85,11 +85,11 @@ async def submit_report(
         logger.warning(
             "Duplicate report submission blocked by unique index "
             "(reporter=%s target_type=%s target_id=%s)",
-            reporter_id, target_type, target_id,
+            reporter_id,
+            target_type,
+            target_id,
         )
-        raise ConflictException(
-            "You have already submitted a pending report for this target"
-        )
+        raise ConflictException("You have already submitted a pending report for this target")
 
     user_repo = UserRepository()
     reporter = await user_repo.get_by_id(reporter_id)
@@ -170,8 +170,12 @@ async def list_reports(
         target_type_val = r.get("target_type", "")
         target_id_val = str(r["target_id"]) if r.get("target_id") else ""
         target_preview = _build_target_preview(
-            target_type_val, target_id_val,
-            diaries_map, comments_map, users_map, author_map,
+            target_type_val,
+            target_id_val,
+            diaries_map,
+            comments_map,
+            users_map,
+            author_map,
         )
         report_item = {
             "id": str(r["_id"]),
@@ -324,16 +328,18 @@ async def list_user_reports(
 
     result = []
     for r in reports:
-        result.append({
-            "id": str(r["_id"]),
-            "target_type": r.get("target_type"),
-            "target_id": str(r["target_id"]) if r.get("target_id") else None,
-            "reason": r.get("reason"),
-            "description": r.get("description"),
-            "status": r.get("status", "pending"),
-            "resolution_note": r.get("resolution_note"),
-            "created_at": r.get("created_at"),
-        })
+        result.append(
+            {
+                "id": str(r["_id"]),
+                "target_type": r.get("target_type"),
+                "target_id": str(r["target_id"]) if r.get("target_id") else None,
+                "reason": r.get("reason"),
+                "description": r.get("description"),
+                "status": r.get("status", "pending"),
+                "resolution_note": r.get("resolution_note"),
+                "created_at": r.get("created_at"),
+            }
+        )
 
     has_next = skip + per_page < total
     has_prev = page > 1

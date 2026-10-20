@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, Request
 
-from app.api.deps import _optional_user, get_current_admin, get_current_user
+from app.api.deps import _optional_user, get_current_admin
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
 from app.search.config import get_client
@@ -25,16 +25,12 @@ async def search(
     current_user: dict | None = Depends(_optional_user),
 ):
     if current_user:
-        is_limited, _ = await check_rate_limit(
-            f"rate_limit:search:{current_user['_id']}", 30, 60
-        )
+        is_limited, _ = await check_rate_limit(f"rate_limit:search:{current_user['_id']}", 30, 60)
         if is_limited:
             raise RateLimitException("Too many search requests")
     else:
         client_ip = request.client.host if request.client else "unknown"
-        is_limited, _ = await check_rate_limit(
-            f"rate_limit:search:anon:{client_ip}", 60, 60
-        )
+        is_limited, _ = await check_rate_limit(f"rate_limit:search:anon:{client_ip}", 60, 60)
         if is_limited:
             raise RateLimitException("Too many search requests")
 
@@ -56,6 +52,7 @@ async def search(
 @router.post("/search/reindex")
 async def reindex(current_user: dict = Depends(get_current_admin)):
     from app.core.database import DatabaseManager
+
     db = DatabaseManager.get_db()
     total = await db.diaries.count_documents({})
     public = await db.diaries.count_documents({"privacy": "public"})

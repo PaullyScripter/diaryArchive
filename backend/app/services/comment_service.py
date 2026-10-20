@@ -90,6 +90,7 @@ async def create_comment(
 
     # Sanitize comment content to prevent XSS
     from app.core.sanitize import sanitize_html
+
     content = sanitize_html(content)
 
     comment_repo = CommentRepository()

@@ -13,6 +13,7 @@ must be idempotent with respect to its own partial application.
 Usage (inside the backend container):
   python -m app.migrations.run_migrations
 """
+
 import asyncio
 import logging
 
@@ -36,9 +37,7 @@ async def _ensure_schema_migration_collection(db) -> None:
 
 
 async def _applied_versions(db) -> set[int]:
-    docs = await db.schema_migrations.find({}, {"version": 1, "_id": 0}).to_list(
-        length=10000
-    )
+    docs = await db.schema_migrations.find({}, {"version": 1, "_id": 0}).to_list(length=10000)
     return {d["version"] for d in docs}
 
 
@@ -95,6 +94,7 @@ async def run_migrations(collection_name: str | None = None) -> dict:
 # Every apply() MUST be idempotent.
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def create_search_sync_outbox(db) -> None:
     """Search synchronization outbox: primary DB changes are durably recorded
     here before being pushed to Meilisearch (MED-3)."""
@@ -105,12 +105,12 @@ async def create_search_sync_outbox(db) -> None:
 async def unique_report_index(db) -> None:
     """One pending report per (reporter, target_type, target_id).
 
-Uses a partial index so only 'pending' reports are constrained, allowing a
-    reporter to re-report a resolved resource. Bug reports have a null
-    target_id and are excluded from the index (they skip duplicate checks and
-    are not subject to the reporter/target invariant). This makes the
-    previously application-level, raceable duplicate check an enforced DB
-    invariant.
+    Uses a partial index so only 'pending' reports are constrained, allowing a
+        reporter to re-report a resolved resource. Bug reports have a null
+        target_id and are excluded from the index (they skip duplicate checks and
+        are not subject to the reporter/target invariant). This makes the
+        previously application-level, raceable duplicate check an enforced DB
+        invariant.
     """
     await db.reports.create_index(
         [
@@ -135,6 +135,35 @@ async def remove_legacy_media_ttl_indexes(db) -> None:
     await remove_obsolete_media_indexes()
 
 
+async def reconcile_media_privacy(db) -> None:
+    """Repair legacy media privacy from the diary source of truth."""
+    for privacy, is_private in (
+        ("public", False),
+        ("draft", True),
+        ("private", True),
+        ("hidden", True),
+    ):
+        cursor = db.diaries.find({"privacy": privacy}, {"_id": 1})
+        batch: list = []
+        async for diary in cursor:
+            batch.append(diary["_id"])
+            if len(batch) == 500:
+                await db.media.update_many(
+                    {"diary_id": {"$in": batch}}, {"$set": {"is_private": is_private}}
+                )
+                batch.clear()
+        if batch:
+            await db.media.update_many(
+                {"diary_id": {"$in": batch}}, {"$set": {"is_private": is_private}}
+            )
+
+    # Unattached media is not public until explicitly attached to a public diary.
+    await db.media.update_many(
+        {"$or": [{"diary_id": None}, {"diary_id": {"$exists": False}}]},
+        {"$set": {"is_private": True}},
+    )
+
+
 MIGRATIONS: list[Migration] = [
     # v1: create the durable search-sync outbox collection and its indexes.
     Migration(
@@ -152,6 +181,11 @@ MIGRATIONS: list[Migration] = [
         version=3,
         name="remove_legacy_media_ttl_indexes",
         apply=remove_legacy_media_ttl_indexes,
+    ),
+    Migration(
+        version=4,
+        name="reconcile_media_privacy",
+        apply=reconcile_media_privacy,
     ),
 ]
 

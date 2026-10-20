@@ -1,4 +1,5 @@
 """MED-2: orphan sweeps + counter reconciliation + diary-delete cascade."""
+
 from bson import ObjectId
 
 from app.core.database import DatabaseManager
@@ -25,11 +26,13 @@ async def test_sweep_orphaned_likes_removes_refs_to_missing_diary_and_user():
     await db.diaries.insert_one(
         {"_id": keep_diary, "user_id": keep_user, "privacy": "public", "stats": {}}
     )
-    await db.likes.insert_many([
-        {"user_id": keep_user, "diary_id": keep_diary},  # keep
-        {"user_id": keep_user, "diary_id": missing_diary},  # orphan (diary gone)
-        {"user_id": missing_user, "diary_id": keep_diary},  # orphan (user gone)
-    ])
+    await db.likes.insert_many(
+        [
+            {"user_id": keep_user, "diary_id": keep_diary},  # keep
+            {"user_id": keep_user, "diary_id": missing_diary},  # orphan (diary gone)
+            {"user_id": missing_user, "diary_id": keep_diary},  # orphan (user gone)
+        ]
+    )
 
     result = await sweep_orphaned_likes()
     assert result["orphans_removed"] == 2
@@ -46,14 +49,18 @@ async def test_sweep_orphaned_bookmarks_and_follows():
     )
     missing = ObjectId()
 
-    await db.bookmarks.insert_many([
-        {"user_id": keep_user, "diary_id": keep_diary},
-        {"user_id": keep_user, "diary_id": missing},
-    ])
-    await db.follows.insert_many([
-        {"follower_id": keep_user, "following_id": keep_user},
-        {"follower_id": missing, "following_id": keep_user},
-    ])
+    await db.bookmarks.insert_many(
+        [
+            {"user_id": keep_user, "diary_id": keep_diary},
+            {"user_id": keep_user, "diary_id": missing},
+        ]
+    )
+    await db.follows.insert_many(
+        [
+            {"follower_id": keep_user, "following_id": keep_user},
+            {"follower_id": missing, "following_id": keep_user},
+        ]
+    )
 
     assert (await sweep_orphaned_bookmarks())["orphans_removed"] == 1
     assert (await sweep_orphaned_follows())["orphans_removed"] == 1
@@ -73,10 +80,12 @@ async def test_sweep_orphaned_comments_removes_comment_likes():
     await db.comments.insert_one(
         {"_id": missing_comment, "diary_id": ObjectId(), "user_id": keep_user}
     )
-    await db.comment_likes.insert_many([
-        {"comment_id": missing_comment, "user_id": keep_user},
-        {"comment_id": ObjectId(), "user_id": keep_user},  # orphan directly
-    ])
+    await db.comment_likes.insert_many(
+        [
+            {"comment_id": missing_comment, "user_id": keep_user},
+            {"comment_id": ObjectId(), "user_id": keep_user},  # orphan directly
+        ]
+    )
 
     result = await sweep_orphaned_comments()
     assert result["orphan_comments_removed"] == 1
@@ -97,15 +106,19 @@ async def test_reconcile_diary_counters_corrects_drift():
             "stats": {"like_count": 99, "bookmark_count": 99, "comment_count": 99},
         }
     )
-    await db.likes.insert_many([
-        {"user_id": user, "diary_id": diary},
-        {"user_id": ObjectId(), "diary_id": diary},
-    ])
+    await db.likes.insert_many(
+        [
+            {"user_id": user, "diary_id": diary},
+            {"user_id": ObjectId(), "diary_id": diary},
+        ]
+    )
     await db.bookmarks.insert_one({"user_id": user, "diary_id": diary})
-    await db.comments.insert_many([
-        {"diary_id": diary, "user_id": user, "is_deleted": False, "parent_comment_id": None},
-        {"diary_id": diary, "user_id": user, "is_deleted": True, "parent_comment_id": None},
-    ])
+    await db.comments.insert_many(
+        [
+            {"diary_id": diary, "user_id": user, "is_deleted": False, "parent_comment_id": None},
+            {"diary_id": diary, "user_id": user, "is_deleted": True, "parent_comment_id": None},
+        ]
+    )
 
     await reconcile_diary_counters()
     updated = await db.diaries.find_one({"_id": diary})
@@ -165,22 +178,24 @@ async def test_diary_delete_cascade_removes_notifications_and_reports():
     await db.users.insert_one({"_id": owner, "username": "owner", "stats": {}})
     await db.users.insert_one({"_id": user, "username": "user", "stats": {}})
     diary = ObjectId()
-    await db.diaries.insert_one(
-        {"_id": diary, "user_id": owner, "privacy": "public", "stats": {}}
-    )
+    await db.diaries.insert_one({"_id": diary, "user_id": owner, "privacy": "public", "stats": {}})
     comment = ObjectId()
     await db.comments.insert_one(
         {"_id": comment, "diary_id": diary, "user_id": user, "is_deleted": False}
     )
-    await db.notifications.insert_many([
-        {"user_id": user, "target_type": "diary", "target_id": diary},
-        {"user_id": user, "target_type": "comment", "target_id": comment},
-        {"user_id": user, "target_type": "user", "target_id": user},  # keep
-    ])
-    await db.reports.insert_many([
-        {"reporter_id": user, "target_type": "diary", "target_id": diary},
-        {"reporter_id": user, "target_type": "user", "target_id": owner},  # keep
-    ])
+    await db.notifications.insert_many(
+        [
+            {"user_id": user, "target_type": "diary", "target_id": diary},
+            {"user_id": user, "target_type": "comment", "target_id": comment},
+            {"user_id": user, "target_type": "user", "target_id": user},  # keep
+        ]
+    )
+    await db.reports.insert_many(
+        [
+            {"reporter_id": user, "target_type": "diary", "target_id": diary},
+            {"reporter_id": user, "target_type": "user", "target_id": owner},  # keep
+        ]
+    )
 
     deleted = await DiaryRepository().delete_cascade(str(diary))
     assert deleted == 1

@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.database import DatabaseManager
 from app.core.exceptions import AuthenticationException, PermissionDeniedException
-from app.core.security import decode_access_token, validate_access_token
+from app.core.security import validate_access_token
 from app.repositories.user_repo import UserRepository
 
 logger = logging.getLogger(__name__)

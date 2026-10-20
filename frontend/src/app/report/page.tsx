@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,11 +29,10 @@ type ReportType = "bug" | "ticket" | "content" | null;
 type ContentSubType = "diary_comment" | "profile" | null;
 
 function useCurrentUrl() {
-  const searchParams = useSearchParams();
   return useMemo(() => {
     if (typeof window === "undefined") return "";
     return window.location.href;
-  }, [searchParams]);
+  }, []);
 }
 
 function ReportPageContent() {
@@ -97,7 +96,7 @@ function ReportPageContent() {
         setSubmitting(false);
       }
     },
-    [bugDescription, currentUrl],
+    [baseUrl, bugDescription, bugPath],
   );
 
   const handleSubmitTicket = useCallback(

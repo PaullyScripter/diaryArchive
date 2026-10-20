@@ -1,4 +1,9 @@
+import io
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+
 import pytest
+from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 
 from app.core.database import DatabaseManager
@@ -11,6 +16,7 @@ async def clear_db():
     db = DatabaseManager.get_db()
     await db.users.delete_many({})
     await db.diaries.delete_many({})
+    await db.media.delete_many({})
     await db.refresh_tokens.delete_many({})
 
 
@@ -25,7 +31,7 @@ async def client():
 async def auth_user(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "profileuser", "password": "ValidPass123", "accepted_terms": True},
+        json={"username": "profileuser", "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json()
@@ -159,6 +165,88 @@ class TestUpdateProfile:
         )
         assert response.status_code == 422
 
+    async def test_profile_update_cannot_set_avatar_path(
+        self, client: AsyncClient, auth_token: str
+    ):
+        response = await client.put(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"avatar_path": "/api/v1/media/file/507f1f77bcf86cd799439011?v=thumb"},
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["avatar_path"] is None
+
+
+class TestAvatarUpload:
+    async def test_avatar_upload_requires_50_diaries(self, client: AsyncClient, auth_token: str):
+        response = await client.post(
+            "/api/v1/users/me/avatar",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            files={
+                "file": (
+                    "avatar.png",
+                    io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"x" * 32),
+                    "image/png",
+                )
+            },
+        )
+        assert response.status_code == 403
+        assert "50 diaries" in response.json()["error"]["message"]
+
+    async def test_avatar_upload_after_50_diaries(self, client: AsyncClient, auth_user: dict):
+        db = DatabaseManager.get_db()
+        user_id = ObjectId(auth_user["id"])
+        now = datetime.now(UTC)
+        await db.diaries.insert_many(
+            [
+                {
+                    "user_id": user_id,
+                    "privacy": "private",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                for _ in range(50)
+            ]
+        )
+
+        media_id = ObjectId()
+        await db.media.insert_one(
+            {
+                "_id": media_id,
+                "user_id": user_id,
+                "diary_id": None,
+                "stored_path": f"users/{auth_user['id']}/avatar.webp",
+                "thumbnail_path": f"users/{auth_user['id']}/avatar_thumb.webp",
+                "mime_type": "image/webp",
+                "filename": "avatar.png",
+                "size_bytes": 100,
+                "is_private": True,
+                "created_at": now,
+            }
+        )
+
+        with patch(
+            "app.services.user_service.upload_media",
+            new=AsyncMock(return_value={"id": str(media_id)}),
+        ):
+            response = await client.post(
+                "/api/v1/users/me/avatar",
+                headers={"Authorization": f"Bearer {auth_user['access_token']}"},
+                files={
+                    "file": (
+                        "avatar.png",
+                        io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"x" * 32),
+                        "image/png",
+                    )
+                },
+            )
+
+        assert response.status_code == 201
+        avatar_path = response.json()["data"]["avatar_path"]
+        assert avatar_path == f"/api/v1/media/file/{media_id}?v=thumb"
+        media = await db.media.find_one({"_id": media_id})
+        assert media["is_private"] is False
+
 
 class TestUpdateEmail:
     async def test_add_email(self, client: AsyncClient, auth_token: str, auth_user: dict):
@@ -209,11 +297,11 @@ class TestUpdateEmail:
 
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "otheruser", "password": "OtherPass123", "accepted_terms": True},
+            json={"username": "otheruser", "password": "OtherPass123!", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "otheruser", "password": "OtherPass123", "accepted_terms": True},
+            json={"username": "otheruser", "password": "OtherPass123!", "accepted_terms": True},
         )
         other_token = login_resp.json()["data"]["access_token"]
 
@@ -257,24 +345,68 @@ class TestGetUserDiaries:
         assert response.status_code == 404
 
     async def test_get_user_diaries_pagination(self, client: AsyncClient, auth_token: str):
+        from datetime import UTC, datetime
+
         from app.repositories.diary_repo import DiaryRepository
         from app.repositories.user_repo import UserRepository
-        from datetime import UTC, datetime
 
         user_repo = UserRepository()
         user = await user_repo.get_by_username("profileuser")
-        user_id = str(user["_id"])
-
         diary_repo = DiaryRepository()
         now = datetime.now(UTC)
         for i in range(25):
-            await diary_repo.create({
+            await diary_repo.create(
+                {
+                    "user_id": user["_id"],
+                    "privacy": "public",
+                    "title": f"Test Diary {i}",
+                    "content_html": f"<p>Content {i}</p>",
+                    "content_text": f"Content {i}",
+                    "tags": ["test"],
+                    "emotion": None,
+                    "comments_enabled": True,
+                    "comments_locked": False,
+                    "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
+                    "year": now.year,
+                    "month": now.month,
+                    "created_at": now,
+                    "updated_at": now,
+                    "published_at": now,
+                }
+            )
+
+        page1 = await client.get("/api/v1/users/profileuser/diaries?page=1&per_page=20")
+        assert page1.status_code == 200
+        body1 = page1.json()
+        assert len(body1["data"]) == 20
+        assert body1["meta"]["total"] == 25
+        assert body1["meta"]["has_next"] is True
+
+        page2 = await client.get("/api/v1/users/profileuser/diaries?page=2&per_page=20")
+        assert page2.status_code == 200
+        body2 = page2.json()
+        assert len(body2["data"]) == 5
+        assert body2["meta"]["has_next"] is False
+
+    async def test_get_user_diaries_excludes_private(self, client: AsyncClient, auth_token: str):
+        from datetime import UTC, datetime
+
+        from app.repositories.diary_repo import DiaryRepository
+        from app.repositories.user_repo import UserRepository
+
+        user_repo = UserRepository()
+        user = await user_repo.get_by_username("profileuser")
+
+        diary_repo = DiaryRepository()
+        now = datetime.now(UTC)
+        await diary_repo.create(
+            {
                 "user_id": user["_id"],
                 "privacy": "public",
-                "title": f"Test Diary {i}",
-                "content_html": f"<p>Content {i}</p>",
-                "content_text": f"Content {i}",
-                "tags": ["test"],
+                "title": "Visible Diary",
+                "content_html": "<p>Hi</p>",
+                "content_text": "Hi",
+                "tags": [],
                 "emotion": None,
                 "comments_enabled": True,
                 "comments_locked": False,
@@ -284,72 +416,28 @@ class TestGetUserDiaries:
                 "created_at": now,
                 "updated_at": now,
                 "published_at": now,
-            })
-
-        page1 = await client.get(
-            f"/api/v1/users/profileuser/diaries?page=1&per_page=20"
+            }
         )
-        assert page1.status_code == 200
-        body1 = page1.json()
-        assert len(body1["data"]) == 20
-        assert body1["meta"]["total"] == 25
-        assert body1["meta"]["has_next"] is True
-
-        page2 = await client.get(
-            f"/api/v1/users/profileuser/diaries?page=2&per_page=20"
+        await diary_repo.create(
+            {
+                "user_id": user["_id"],
+                "privacy": "private",
+                "title": None,
+                "content_html": None,
+                "content_text": None,
+                "encrypted_data": {"iv": "aa", "salt": "bb", "ciphertext": "cc"},
+                "tags": [],
+                "emotion": None,
+                "comments_enabled": False,
+                "comments_locked": False,
+                "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
+                "year": now.year,
+                "month": now.month,
+                "created_at": now,
+                "updated_at": now,
+                "published_at": None,
+            }
         )
-        assert page2.status_code == 200
-        body2 = page2.json()
-        assert len(body2["data"]) == 5
-        assert body2["meta"]["has_next"] is False
-
-    async def test_get_user_diaries_excludes_private(
-        self, client: AsyncClient, auth_token: str
-    ):
-        from app.repositories.diary_repo import DiaryRepository
-        from app.repositories.user_repo import UserRepository
-        from datetime import UTC, datetime
-
-        user_repo = UserRepository()
-        user = await user_repo.get_by_username("profileuser")
-
-        diary_repo = DiaryRepository()
-        now = datetime.now(UTC)
-        await diary_repo.create({
-            "user_id": user["_id"],
-            "privacy": "public",
-            "title": "Visible Diary",
-            "content_html": "<p>Hi</p>",
-            "content_text": "Hi",
-            "tags": [],
-            "emotion": None,
-            "comments_enabled": True,
-            "comments_locked": False,
-            "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
-            "year": now.year,
-            "month": now.month,
-            "created_at": now,
-            "updated_at": now,
-            "published_at": now,
-        })
-        await diary_repo.create({
-            "user_id": user["_id"],
-            "privacy": "private",
-            "title": None,
-            "content_html": None,
-            "content_text": None,
-            "encrypted_data": {"iv": "aa", "salt": "bb", "ciphertext": "cc"},
-            "tags": [],
-            "emotion": None,
-            "comments_enabled": False,
-            "comments_locked": False,
-            "stats": {"like_count": 0, "comment_count": 0, "bookmark_count": 0},
-            "year": now.year,
-            "month": now.month,
-            "created_at": now,
-            "updated_at": now,
-            "published_at": None,
-        })
 
         response = await client.get("/api/v1/users/profileuser/diaries")
         assert response.status_code == 200

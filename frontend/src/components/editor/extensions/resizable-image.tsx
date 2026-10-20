@@ -1,5 +1,6 @@
 import Image from "@tiptap/extension-image";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import { useAuthenticatedMediaUrl } from "@/components/media/authenticated-media";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -16,6 +17,7 @@ declare module "@tiptap/core" {
 
 function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
   const { src, alt, title, width, height } = node.attrs;
+  const displaySrc = useAuthenticatedMediaUrl(src);
 
   const onHandleDown = (e: React.PointerEvent<HTMLSpanElement>) => {
     e.preventDefault();
@@ -54,9 +56,11 @@ function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
           maxWidth: "100%",
         }}
       >
+        {/* Dynamic API/blob media cannot use Next's optimizer. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={src}
-          alt={alt}
+          src={displaySrc}
+          alt={alt ?? ""}
           title={title}
           width={width}
           height={height}

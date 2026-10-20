@@ -17,7 +17,7 @@ from app.services.encryption_service import hash_email, legacy_email_hash, match
 
 
 class _FakeRequest:
-    def __init__(self, headers: dict | None = None, host: str = "1.2.3.4"):
+    def __init__(self, headers: dict | None = None, host: str = "127.0.0.1"):
         self._headers = headers or {}
         self.headers = self._headers
         self.client = type("C", (), {"host": host})()
@@ -52,6 +52,7 @@ def test_hash_email_is_keyed_and_versioned():
 
 def test_hash_email_differs_from_sha256_of_value():
     import hashlib
+
     raw = hashlib.sha256(b"user@example.com").hexdigest()
     assert hash_email("user@example.com") != f"v2:{raw}"
 

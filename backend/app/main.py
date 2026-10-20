@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -92,38 +93,65 @@ async def _init_replica_set():
     performs ``rs.initiate``; subsequent startups detect the existing set and
     skip. If the URI does not include ``replicaSet=``, this is a no-op.
     """
+    uri = settings.mongodb_uri
+    if "replicaSet=" not in uri:
+        return
+
+    client = DatabaseManager._client
+    if client is None:
+        raise RuntimeError("MongoDB client is not initialized")
+
+    match = re.search(r"(?:[?&])replicaSet=([^&]+)", uri)
+    rs_name = match.group(1) if match else "diaryarchive"
+    host_part = uri.split("://", 1)[1].split("/", 1)[0].split("?")[0]
+    if "@" in host_part:
+        host_part = host_part.split("@", 1)[1]
+    host = host_part.split(",")[0]
+
+    # A URI containing replicaSet= cannot select a primary before the first
+    # rs.initiate call. Use a direct bootstrap connection for that command.
+    from motor.motor_asyncio import AsyncIOMotorClient
+    from pymongo.errors import OperationFailure
+
+    separator = "&" if "?" in uri else "?"
+    bootstrap_uri = f"{uri}{separator}directConnection=true"
+    bootstrap = AsyncIOMotorClient(bootstrap_uri, serverSelectionTimeoutMS=5000)
     try:
-        client = DatabaseManager._client
-        if client is None:
-            return
-        # Check whether the URI requests a replica set.
-        uri = settings.mongodb_uri
-        if "replicaSet=" not in uri:
-            return
-        admin_db = client.admin
-        status = await admin_db.command("replSetGetStatus").catch(
-            lambda _: None
-        )
+        admin_db = bootstrap.admin
+        await admin_db.command("ping")
+        try:
+            status = await admin_db.command("replSetGetStatus")
+        except OperationFailure as exc:
+            if getattr(exc, "code", None) not in (94, 76):
+                raise
+            status = None
+
         if status and status.get("ok") == 1:
+            logger.info("Replica set '%s' is already initialized", rs_name)
+        else:
+            try:
+                await admin_db.command(
+                    "replSetInitiate",
+                    {"_id": rs_name, "members": [{"_id": 0, "host": host}]},
+                )
+                logger.info("Replica set '%s' initialized with member %s", rs_name, host)
+            except OperationFailure as exc:
+                # A second backend starting concurrently may win the race.
+                if getattr(exc, "code", None) not in (23, 93) and "already" not in str(exc).lower():
+                    raise
+                logger.info("Replica set '%s' was initialized concurrently", rs_name)
+    finally:
+        bootstrap.close()
+
+    # Wait for the election before migrations/index creation use the normal
+    # replica-set client.
+    for _ in range(20):
+        try:
+            await client.admin.command("ping")
             return
-        # Not yet initialized; initiate with the current member.
-        import re
-        match = re.search(r"replicaSet=([^&]+)", uri)
-        rs_name = match.group(1) if match else "diaryarchive"
-        # Derive the hostname:port from the URI (first host in the list).
-        host_part = uri.split("://", 1)[1].split("/")[0].split("?")[0]
-        # Strip credentials if present (host part is after @).
-        if "@" in host_part:
-            host_part = host_part.split("@", 1)[1]
-        host = host_part.split(",")[0]  # take first member
-        await admin_db.command("replSetInitiate", {
-            "_id": rs_name,
-            "members": [{"_id": 0, "host": host}],
-        })
-        logger.info("Replica set '%s' initialized with member %s", rs_name, host)
-    except Exception:
-        # Replica set may already be initialized or not configured; non-fatal.
-        logger.debug("Replica set init skipped or failed", exc_info=True)
+        except Exception:
+            await asyncio.sleep(0.5)
+    raise RuntimeError(f"Replica set '{rs_name}' did not become ready")
 
 
 @asynccontextmanager
@@ -151,6 +179,7 @@ async def lifespan(app: FastAPI):
     outbox_task = asyncio.create_task(_search_outbox_loop())
 
     from app.core.metrics import mark_startup_complete
+
     mark_startup_complete()
     logger.info("Startup complete")
     yield

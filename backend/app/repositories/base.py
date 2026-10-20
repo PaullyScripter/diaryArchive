@@ -39,9 +39,7 @@ class BaseRepository:
     async def update(self, id: str, data: dict) -> bool:
         if not ObjectId.is_valid(id):
             return False
-        result = await self._collection.update_one(
-            {"_id": ObjectId(id)}, {"$set": data}
-        )
+        result = await self._collection.update_one({"_id": ObjectId(id)}, {"$set": data})
         return result.modified_count > 0
 
     async def delete(self, id: str) -> bool:

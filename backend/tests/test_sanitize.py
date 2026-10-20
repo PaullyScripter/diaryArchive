@@ -12,19 +12,19 @@ def test_style_block_preserved():
 
 def test_style_block_keeps_benign_css():
     html = (
-        '<style>'
-        '.hero{background:linear-gradient(rgba(66,49,40,0.65),rgba(66,49,40,0.65)),'
-        'linear-gradient(135deg,#b89c82,#5d514b);font-size:clamp(42px,7vw,76px);'
+        "<style>"
+        ".hero{background:linear-gradient(rgba(66,49,40,0.65),rgba(66,49,40,0.65)),"
+        "linear-gradient(135deg,#b89c82,#5d514b);font-size:clamp(42px,7vw,76px);"
         'font-family:Georgia,"Times New Roman",serif;border-radius:24px;'
-        'box-shadow:0 25px 70px rgba(72,52,39,0.18)}'
-        '.hero::first-letter{float:left;font-size:75px;color:#9b7657}'
-        '@media (max-width:700px){.hero{padding:50px 25px}}'
+        "box-shadow:0 25px 70px rgba(72,52,39,0.18)}"
+        ".hero::first-letter{float:left;font-size:75px;color:#9b7657}"
+        "@media (max-width:700px){.hero{padding:50px 25px}}"
         '</style><p class="hero">hi</p>'
     )
     result = sanitize_html(html)
     assert "linear-gradient(rgba(66,49,40,0.65)" in result
     assert "clamp(42px,7vw,76px)" in result
-    assert "Georgia,\"Times New Roman\"" in result
+    assert 'Georgia,"Times New Roman"' in result
     assert "border-radius:24px" in result
     assert "box-shadow:0 25px 70px rgba(72,52,39,0.18)" in result
     assert "::first-letter" in result
@@ -34,14 +34,14 @@ def test_style_block_keeps_benign_css():
 
 def test_style_block_drops_dangerous_values():
     html = (
-        '<style>'
-        '.a{background:url(javascript:alert(1))}'
-        '.b{width:expression(alert(1))}'
-        '.c{behavior:url(x.htc)}'
-        '.d{-moz-binding:url(x.xml#y)}'
-        '.e{background:url(data:image/svg+xml;base64,PHNjcmlwdD4=)}'
-        '.f{color:red}'
-        '</style><p>x</p>'
+        "<style>"
+        ".a{background:url(javascript:alert(1))}"
+        ".b{width:expression(alert(1))}"
+        ".c{behavior:url(x.htc)}"
+        ".d{-moz-binding:url(x.xml#y)}"
+        ".e{background:url(data:image/svg+xml;base64,PHNjcmlwdD4=)}"
+        ".f{color:red}"
+        "</style><p>x</p>"
     )
     result = sanitize_html(html)
     assert "url(" not in result
@@ -54,12 +54,12 @@ def test_style_block_drops_dangerous_values():
 
 def test_style_block_drops_import_and_other_at_rules():
     html = (
-        '<style>'
+        "<style>"
         '@import url("https://evil.example/x.css");'
         '@charset "utf-8";'
-        '@font-face{font-family:x;src:url(https://evil/x.woff)}'
-        '.x{color:red}'
-        '</style><p>x</p>'
+        "@font-face{font-family:x;src:url(https://evil/x.woff)}"
+        ".x{color:red}"
+        "</style><p>x</p>"
     )
     result = sanitize_html(html)
     assert "@import" not in result
@@ -70,10 +70,10 @@ def test_style_block_drops_import_and_other_at_rules():
 
 def test_style_block_drops_unapproved_properties():
     html = (
-        '<style>'
-        '.a{clip-path:url(#evil);scroll-behavior:smooth;animation:none;color:red}'
-        '.b{position:fixed;top:0;width:100%}'
-        '</style><p>x</p>'
+        "<style>"
+        ".a{clip-path:url(#evil);scroll-behavior:smooth;animation:none;color:red}"
+        ".b{position:fixed;top:0;width:100%}"
+        "</style><p>x</p>"
     )
     result = sanitize_html(html)
     assert "clip-path" not in result
@@ -85,9 +85,9 @@ def test_style_block_drops_unapproved_properties():
 
 def test_style_block_keeps_new_semantic_properties():
     html = (
-        '<style>'
+        "<style>"
         '.hero{backdrop-filter:blur(8px);box-sizing:border-box;content:"x";'
-        'inset:0;place-items:center;filter:drop-shadow(0 2px 4px #000)}'
+        "inset:0;place-items:center;filter:drop-shadow(0 2px 4px #000)}"
         '</style><p class="hero">hi</p>'
     )
     result = sanitize_html(html)
@@ -101,11 +101,11 @@ def test_style_block_keeps_new_semantic_properties():
 
 def test_style_block_keeps_css_custom_properties_and_var():
     html = (
-        '<style>'
-        ':root{--accent:#9b7657}'
-        '.bar{width:var(--value);color:var(--accent)}'
-        '.loss{--value:81%}'
-        '</style>'
+        "<style>"
+        ":root{--accent:#9b7657}"
+        ".bar{width:var(--value);color:var(--accent)}"
+        ".loss{--value:81%}"
+        "</style>"
         '<p class="bar" style="--value: 81%; width: var(--value)">hi</p>'
     )
     result = sanitize_html(html)
@@ -198,9 +198,7 @@ def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
     from app.core import sanitize
     from app.core.config import settings
 
-    monkeypatch.setattr(
-        settings, "public_media_base_url", "https://media.diaryarchive.com"
-    )
+    monkeypatch.setattr(settings, "public_media_base_url", "https://media.diaryarchive.com")
     monkeypatch.setattr(settings, "public_api_url", "https://api.diaryarchive.com")
     html = (
         '<img src="/api/v1/media/file/abc?v=original">'
@@ -217,6 +215,24 @@ def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
     assert "evil.example/z.png" not in result
 
 
+def test_uploaded_media_id_is_preserved_but_arbitrary_data_attributes_are_not():
+    media_id = "507f1f77bcf86cd799439011"
+    html = (
+        f'<img src="/api/v1/media/file/{media_id}?v=original" '
+        f'data-media-id="{media_id}" data-tracking-id="secret" alt="photo">'
+    )
+    result = sanitize_html(html)
+    assert f'data-media-id="{media_id}"' in result
+    assert "data-tracking-id" not in result
+
+
+def test_invalid_uploaded_media_id_is_removed():
+    html = '<img src="/api/v1/media/file/abc" data-media-id="not-an-id" alt="photo">'
+    result = sanitize_html(html)
+    assert "data-media-id" not in result
+    assert '<img src="/api/v1/media/file/abc"' in result
+
+
 def test_external_href_link_kept():
     # Links (navigation, no resource loading) to arbitrary http(s) are allowed;
     # only dangerous schemes are stripped.
@@ -226,7 +242,7 @@ def test_external_href_link_kept():
 
 
 def test_disallowed_tags_stripped():
-    html = "<script>alert(1)</script><form>Hello</form><div class=\"x\">body</div>"
+    html = '<script>alert(1)</script><form>Hello</form><div class="x">body</div>'
     result = sanitize_html(html)
     assert "<script>" not in result
     assert "<form>" not in result

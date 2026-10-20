@@ -54,7 +54,7 @@ export function ExplorePageContent({
     if (initialYear != null && initialYear !== s.selectedYear) {
       s.setDate(initialYear, initialMonth);
     }
-  }, []);
+  }, [initialEmotion, initialMonth, initialQ, initialTags, initialYear]);
 
   useEffect(() => {
     const s = useExploreStore.getState();

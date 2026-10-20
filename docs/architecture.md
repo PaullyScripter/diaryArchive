@@ -317,7 +317,8 @@ Root Layout (html, body, providers)
 - **Static generation for homepage**: If content changes infrequently, revalidate periodically.
 - **Image optimization**: Next.js `<Image>` component with remote patterns for MinIO.
 - **Bundle splitting**: Dynamic imports for the Tiptap editor (large dependency).
-- **Font loading**: Self-hosted fonts (Inter for UI, JetBrains Mono for code) via `next/font`.
+- **Font loading**: Deterministic local/system font stacks for UI and code;
+  production builds do not fetch Google Fonts or depend on network access.
 
 ### Accessibility Targets
 
@@ -447,7 +448,7 @@ Database / Cache / Search
   email_encrypted: String|null,  // AES-256-GCM encrypted
   email_hash: String|null,       // SHA-256 for uniqueness check (sparse unique index)
   email_verified: Boolean,
-  avatar_path: String|null,      // Path in MinIO
+  avatar_path: String|null,      // Stable public media URL
   about: String|null,            // Max 500 chars
   favorite_quote: String|null,
   currently_feeling: String|null,
@@ -902,6 +903,7 @@ Same pattern as Likes.
 |--------|------|-------------|
 | GET | `/users/{username}` | Get user profile |
 | PUT | `/users/me` | Update own profile |
+| POST | `/users/me/avatar` | Upload profile picture after 50 diaries |
 | GET | `/users/{username}/diaries` | List user's public diaries |
 
 #### Search

@@ -10,7 +10,10 @@ class RefreshTokenRepository(BaseRepository):
     collection_name = "refresh_tokens"
 
     async def create_token(
-        self, user_id: str, token_hash: str, days: int = 7,
+        self,
+        user_id: str,
+        token_hash: str,
+        days: int = 7,
         original_login_at: datetime | None = None,
     ) -> str:
         now = datetime.now(UTC)

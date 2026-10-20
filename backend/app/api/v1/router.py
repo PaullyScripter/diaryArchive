@@ -1,6 +1,25 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import achievements, admin, appeals, auth, comments, diaries, discover, health, media, me_, notifications, reports, search, social, tags, tickets, users, warnings
+from app.api.v1.endpoints import (
+    achievements,
+    admin,
+    appeals,
+    auth,
+    comments,
+    diaries,
+    discover,
+    health,
+    me_,
+    media,
+    notifications,
+    reports,
+    search,
+    social,
+    tags,
+    tickets,
+    users,
+    warnings,
+)
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
