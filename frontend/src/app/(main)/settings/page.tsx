@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { BadgeSelector } from "@/components/settings/badge-selector";
+import { AvatarCropDialog } from "@/components/settings/avatar-crop-dialog";
 import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
 
@@ -41,6 +42,7 @@ function SettingsContent() {
   const [resendingVerification, setResendingVerification] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -71,12 +73,20 @@ function SettingsContent() {
     }
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
 
     setAvatarError(null);
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Please choose an image file.");
+      return;
+    }
+    setAvatarCropFile(file);
+  };
+
+  const handleAvatarUpload = async (file: File) => {
     setAvatarUploading(true);
     try {
       const formData = new FormData();
@@ -88,6 +98,7 @@ function SettingsContent() {
       if (user && avatarPath) {
         setUser({ ...user, avatar_path: avatarPath });
       }
+      setAvatarCropFile(null);
       showToast("Profile picture updated.");
     } catch (error: unknown) {
       const message =
@@ -263,16 +274,16 @@ function SettingsContent() {
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
                         className="sr-only"
-                        onChange={handleAvatarUpload}
+                        onChange={handleAvatarSelected}
                         disabled={avatarUploading}
                       />
                       <label
                         htmlFor="avatar-upload"
                         className="inline-flex items-center border border-border px-3 py-1.5 text-xs text-foreground cursor-pointer hover:bg-overlay disabled:opacity-50"
                       >
-                        {avatarUploading ? "Uploading..." : "Upload profile picture"}
+                        {avatarUploading ? "Uploading..." : "Choose profile picture"}
                       </label>
-                      <p className="text-xs text-muted mt-1">JPG, PNG, WebP, GIF, or AVIF.</p>
+                      <p className="text-xs text-muted mt-1">You can crop and zoom it before uploading.</p>
                     </>
                   ) : (
                     <p className="text-sm text-muted">
@@ -285,6 +296,17 @@ function SettingsContent() {
                   {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
                 </div>
               </div>
+
+              <AvatarCropDialog
+                file={avatarCropFile}
+                uploading={avatarUploading}
+                error={avatarError}
+                onCancel={() => {
+                  setAvatarCropFile(null);
+                  setAvatarError(null);
+                }}
+                onConfirm={handleAvatarUpload}
+              />
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
