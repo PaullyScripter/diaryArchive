@@ -105,7 +105,6 @@ export function BadgeSelector() {
             </span>
             <div className="flex flex-wrap gap-1.5">
               {typeItems.map((ach) => {
-                const isBug = ach.icon === "bug";
                 const isSelected = selectedTiers[type] === ach.tier;
 
                 return (
@@ -113,14 +112,10 @@ export function BadgeSelector() {
                     key={ach.id}
                     type="button"
                     onClick={() => setBadge.mutate(ach.id)}
-                    className={`inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                      isBug
-                        ? isSelected
-                          ? "border-green-600/70 bg-green-500/15 text-foreground font-medium shadow-sm shadow-green-700/10"
-                          : "border-green-600/35 bg-green-500/5 text-foreground hover:border-green-600/65 hover:bg-green-500/10"
-                        : isSelected
-                          ? "border-accent bg-accent/10 text-foreground font-medium"
-                          : "border-border text-foreground hover:border-accent"
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors ${
+                      isSelected
+                        ? "border-accent bg-accent/10 text-foreground font-medium"
+                        : "border-border text-foreground hover:border-accent"
                     }`}
                     title={ach.label}
                   >

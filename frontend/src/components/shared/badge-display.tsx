@@ -6,11 +6,10 @@ export function BadgeDisplay({ badges, size = "sm" }: { badges: BadgeData[] | nu
   if (!badges || !Array.isArray(badges) || badges.length === 0) return null;
 
   return (
-    <span className="inline-flex items-center gap-1.5" aria-label="Achievements">
+    <span className="inline-flex items-center gap-1.5">
       {badges.map((badge, index) => (
-        <span key={`${badge.type}-${badge.tier}-${index}`} title={badge.label} className="inline-flex items-center">
+        <span key={index} title={badge.label} className="inline-flex items-center">
           <BadgeIcon badge={badge} size={size} />
-          <span className="sr-only">{badge.label}</span>
         </span>
       ))}
     </span>

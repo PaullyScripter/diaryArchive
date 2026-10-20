@@ -305,7 +305,7 @@ style { display: none; }
    middle / back pairs move out of phase, giving a natural alternating crawl. */
 @keyframes badge-bug-legs {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(1.5px); }
+  50%      { transform: translateY(0.65px); }
 }
 
 .badge-bug-legs {
