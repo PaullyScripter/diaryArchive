@@ -2,7 +2,8 @@
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml up -d
 #
 # Adds: Prometheus, Loki, Promtail, Grafana
-# Access Grafana at https://diaryarchive.com:3001 (or via Nginx proxy)
+# Grafana is internal-only; access it through the authenticated reverse proxy
+# or an SSH tunnel.
 services:
   prometheus:
     image: prom/prometheus:v2.53.0
@@ -60,7 +61,6 @@ services:
     volumes:
       - ./docker/promtail/config.yaml:/etc/promtail/config.yaml:ro
       - /var/log:/var/log:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
     command: -config.file=/etc/promtail/config.yaml
     depends_on:
@@ -88,10 +88,10 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?set GRAFANA_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
-      GF_SERVER_ROOT_URL: https://diaryarchive.com:3001
+      GF_SERVER_ROOT_URL: http://grafana:3000
       GF_INSTALL_PLUGINS: ""
-    ports:
-      - "3001:3000"
+    expose:
+      - "3000"
     depends_on:
       - prometheus
       - loki

@@ -8,6 +8,10 @@ import { ProtectedRoute } from "@/components/shared/protected-route";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api/client";
 import { showToast } from "@/components/shared/toast";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaLink,
+} from "@/components/media/authenticated-media";
 
 interface TicketMessage {
   id: string;
@@ -71,20 +75,18 @@ function MessageBubble({ msg }: { msg: TicketMessage }) {
       {msg.media_url && (
         <div className="mt-2">
           {msg.media_type?.startsWith("image/") ? (
-            <img
+            <AuthenticatedMediaImage
               src={msg.media_url}
               alt="attachment"
               className="max-w-full max-h-80 rounded border border-border object-contain"
             />
           ) : (
-            <a
-              href={msg.media_url}
-              target="_blank"
-              rel="noreferrer"
+            <AuthenticatedMediaLink
+              src={msg.media_url}
               className="text-xs text-link hover:underline"
             >
               View attachment
-            </a>
+            </AuthenticatedMediaLink>
           )}
         </div>
       )}

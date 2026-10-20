@@ -46,14 +46,14 @@ export function BrowseSidebar() {
   const { data: emotionsData } = useEmotions();
   const [tagSearch, setTagSearch] = useState("");
 
-  const tags = tagsData ?? [];
   const emotions = emotionsData?.data ?? [];
 
   const filteredTags = useMemo(() => {
+    const tags = tagsData ?? [];
     if (!tagSearch.trim()) return tags;
     const q = tagSearch.toLowerCase();
     return tags.filter((t) => t.tag.toLowerCase().includes(q));
-  }, [tags, tagSearch]);
+  }, [tagsData, tagSearch]);
 
   return (
     <aside className="w-44 shrink-0 hidden lg:block">

@@ -18,8 +18,8 @@ import {
   Undo2,
   Redo2,
   Code2,
-  Image,
-  Images,
+  Image as ImageIcon,
+  Images as ImagesIcon,
   LayoutTemplate,
 } from "lucide-react";
 
@@ -218,7 +218,7 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUploa
             aria-label="Insert image"
             className={`${btnBase} ${btnNormal}`}
           >
-            <Image className="w-3.5 h-3.5" />
+            <ImageIcon className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
           {onOpenGallery && (
             <button
@@ -228,7 +228,7 @@ export function EditorToolbar({ editor, sourceMode, onToggleSource, onImageUploa
               aria-label="Open media gallery"
               className={`${btnBase} ${btnNormal}`}
             >
-              <Images className="w-3.5 h-3.5" />
+              <ImagesIcon className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           )}
           <div className="w-px h-5 bg-border mx-1" />

@@ -54,9 +54,11 @@ function ResizableImageNodeView({ node, updateAttributes, selected }: any) {
           maxWidth: "100%",
         }}
       >
+        {/* Dynamic API/blob media cannot use Next's optimizer. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
-          alt={alt}
+          alt={alt ?? ""}
           title={title}
           width={width}
           height={height}

@@ -18,6 +18,21 @@ services:
       timeout: 5s
       retries: 5
 
+  mongo-replica-init:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-dev-password}
+      MONGO_REPLICA_SET: diaryarchive
+      MONGO_HOST: mongodb:27017
+    volumes:
+      - ./docker/mongo/init-replica-set.sh:/usr/local/bin/init-replica-set.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/init-replica-set.sh"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: "no"
+
   redis:
     image: redis:7.4-alpine
     expose:
@@ -67,7 +82,7 @@ services:
     expose:
       - "8000"
     environment:
-      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-dev-password}@mongodb:27017/diaryarchive?authSource=admin
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-dev-password}@mongodb:27017/diaryarchive?authSource=admin&replicaSet=diaryarchive
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
@@ -83,6 +98,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      mongo-replica-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       meilisearch:

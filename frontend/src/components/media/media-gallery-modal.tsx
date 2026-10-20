@@ -149,12 +149,16 @@ export function MediaGalleryModal({
                     aria-label={`Insert ${item.filename}`}
                   >
                     {item.mime_type.startsWith("image/") ? (
-                      <img
-                        src={resolveMediaUrl(item.thumbnail_url || item.url)}
-                        alt={item.filename}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      <>
+                        {/* Dynamic authenticated media cannot use Next's optimizer. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={resolveMediaUrl(item.thumbnail_url || item.url)}
+                          alt={item.filename}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </>
                     ) : (
                       <div className="flex items-center justify-center w-full h-full text-muted">
                         <ImageIcon className="w-8 h-8 opacity-50" />

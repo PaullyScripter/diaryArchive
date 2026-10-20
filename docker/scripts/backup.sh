@@ -71,6 +71,13 @@ docker exec "$MINIO_CONTAINER" tar -C /data -cf - . \
 echo "==> Calculating checksums"
 sha256sum "$BACKUP_DIR"/*.enc > "$BACKUP_DIR/checksums.sha256"
 
+for artifact in "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/minio.tar.enc"; do
+  if [[ ! -s "$artifact" ]]; then
+    echo "ERROR: backup artifact is missing or empty: $artifact" >&2
+    exit 1
+  fi
+done
+
 echo "$STAMP" > "$BACKUP_DIR/backup-timestamp.txt"
 echo "DiaryArchive backup complete: $BACKUP_DIR"
 
@@ -109,26 +116,48 @@ RETAIN_DAILY="${BACKUP_RETENTION_DAILY:-14}"
 _RETAIN_WEEKLY="${BACKUP_RETENTION_WEEKLY:-8}"
 RETAIN_MONTHLY="${BACKUP_RETENTION_MONTHLY:-6}"
 
-# Newest backup is always kept. We rotate by date-name prefix semantics:
-#   daily   = keep newest N
-#   weekly  = keep newest N backups that fall in a Monday week
-#   monthly = keep newest N backups that fall in a fresh calendar month
-_prune() {
-  local pattern="$1" keep="$2"
-  if [[ "$keep" == "0" ]]; then return; fi
-  # List dated backup dirs matching a date prefix, newest first, skip newest N.
-  mapfile -t stale < <(find "$BACKUP_ROOT" -maxdepth 1 -type d -name "$pattern" \
-                        | sort -r | tail -n +$((keep + 1)))
-  for d in "${stale[@]}"; do
-    echo "   removing old backup: $d"
-    rm -rf "$d"
+# Retention is based on actual timestamped backup directories. The previous
+# glob-based implementation compared directory names with patterns that could
+# never match, so it did not prune anything.
+mapfile -t BACKUPS < <(
+  find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d \
+    -regextype posix-extended -regex '.*/20[0-9]{6}-[0-9]{6}' \
+    -printf '%f\n' | sort -r
+)
+
+declare -A KEEP_BACKUPS=()
+if [[ "${#BACKUPS[@]}" -gt 0 ]]; then
+  KEEP_BACKUPS["${BACKUPS[0]}"]=1
+fi
+
+_protect_periods() {
+  local keep="$1" format="$2" stamp period count=0
+  [[ "$keep" =~ ^[0-9]+$ ]] || { echo "ERROR: invalid retention value: $keep" >&2; exit 1; }
+  [[ "$keep" -gt 0 ]] || return
+  declare -A seen=()
+  for stamp in "${BACKUPS[@]}"; do
+    period="$(date -u -d "${stamp:0:8}" "+$format")"
+    [[ -n "${seen[$period]+x}" ]] && continue
+    seen["$period"]=1
+    KEEP_BACKUPS["$stamp"]=1
+    count=$((count + 1))
+    [[ "$count" -ge "$keep" ]] && break
   done
 }
 
-_prune "${STAMP%????????}-*" "$RETAIN_DAILY"
-# Weekly backups: match by ISO week prefix (YYYY-Wxx)
-_WEEK_NUM=$(date +%G-W%V)
-_prune "$(echo "$_WEEK_NUM" | cut -d- -f1)-*-W*" "$_RETAIN_WEEKLY"
-_prune "$(date +%Y%m)-*" "$RETAIN_MONTHLY"
+_protect_periods "$RETAIN_DAILY" "%Y-%m-%d"
+_protect_periods "$_RETAIN_WEEKLY" "%G-W%V"
+_protect_periods "$RETAIN_MONTHLY" "%Y-%m"
+
+for stamp in "${BACKUPS[@]}"; do
+  [[ -n "${KEEP_BACKUPS[$stamp]+x}" ]] && continue
+  target="$BACKUP_ROOT/$stamp"
+  case "$target" in
+    "$BACKUP_ROOT"/*) ;;
+    *) echo "ERROR: refusing to remove unexpected path: $target" >&2; exit 1 ;;
+  esac
+  echo "   removing old backup: $target"
+  rm -rf -- "$target"
+done
 
 echo "==> Backup rotation done (daily=$RETAIN_DAILY weekly=$_RETAIN_WEEKLY monthly=$RETAIN_MONTHLY)."

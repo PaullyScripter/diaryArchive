@@ -317,7 +317,8 @@ Root Layout (html, body, providers)
 - **Static generation for homepage**: If content changes infrequently, revalidate periodically.
 - **Image optimization**: Next.js `<Image>` component with remote patterns for MinIO.
 - **Bundle splitting**: Dynamic imports for the Tiptap editor (large dependency).
-- **Font loading**: Self-hosted fonts (Inter for UI, JetBrains Mono for code) via `next/font`.
+- **Font loading**: Deterministic local/system font stacks for UI and code;
+  production builds do not fetch Google Fonts or depend on network access.
 
 ### Accessibility Targets
 
