@@ -215,6 +215,24 @@ def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
     assert "evil.example/z.png" not in result
 
 
+def test_uploaded_media_id_is_preserved_but_arbitrary_data_attributes_are_not():
+    media_id = "507f1f77bcf86cd799439011"
+    html = (
+        f'<img src="/api/v1/media/file/{media_id}?v=original" '
+        f'data-media-id="{media_id}" data-tracking-id="secret" alt="photo">'
+    )
+    result = sanitize_html(html)
+    assert f'data-media-id="{media_id}"' in result
+    assert "data-tracking-id" not in result
+
+
+def test_invalid_uploaded_media_id_is_removed():
+    html = '<img src="/api/v1/media/file/abc" data-media-id="not-an-id" alt="photo">'
+    result = sanitize_html(html)
+    assert "data-media-id" not in result
+    assert '<img src="/api/v1/media/file/abc"' in result
+
+
 def test_external_href_link_kept():
     # Links (navigation, no resource loading) to arbitrary http(s) are allowed;
     # only dangerous schemes are stripped.

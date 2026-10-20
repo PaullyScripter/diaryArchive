@@ -79,7 +79,10 @@ ALLOWED_TAGS = {
 ALLOWED_ATTRIBUTES = {
     "*": ["class", "style", "title"],
     "a": ["href", "target", "rel"],
-    "img": ["src", "alt", "width", "height"],
+    # data-media-id is the app's validated reference to an uploaded media
+    # record. Keeping it lets private diary readers hydrate the image through
+    # the authenticated media endpoint after the HTML is saved.
+    "img": ["src", "alt", "width", "height", "data-media-id"],
     "input": ["type", "checked", "disabled", "value", "name"],
     "label": ["for"],
     "col": ["span"],
@@ -429,6 +432,9 @@ def _attribute_filter(tag, name, value):
         if stripped.lower().startswith(_DANGEROUS_URI_PREFIXES):
             return None
         return value
+    if name == "data-media-id":
+        # Do not turn the allowlist into a general data-* escape hatch.
+        return value if re.fullmatch(r"[a-f0-9]{24}", value or "", re.IGNORECASE) else None
     if name == "href":
         stripped = value.strip().lstrip()
         if stripped.lower().startswith(_DANGEROUS_URI_PREFIXES):
