@@ -18,6 +18,7 @@ const ALLOWED_ATTR = [
   "class", "style", "title",
   "href", "target", "rel",
   "src", "alt", "width", "height",
+  "data-media-id",
   "type", "checked", "disabled", "value", "name",
   "for",
   "span", "colspan", "rowspan", "scope", "align", "valign",

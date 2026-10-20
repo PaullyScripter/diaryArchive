@@ -4,7 +4,12 @@ import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     resizableImage: {
-      setResizableImage: (options: { src: string; width?: number; height?: number }) => ReturnType;
+      setResizableImage: (options: {
+        src: string;
+        width?: number;
+        height?: number;
+        mediaId?: string;
+      }) => ReturnType;
     };
   }
 }
@@ -93,6 +98,11 @@ export const ResizableImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      mediaId: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-media-id"),
+        renderHTML: (attrs) => (attrs.mediaId ? { "data-media-id": attrs.mediaId } : {}),
+      },
       width: {
         default: null,
         parseHTML: (el) => {
@@ -130,6 +140,7 @@ export const ResizableImage = Image.extend({
                 src: options.src,
                 width: options.width ?? null,
                 height: options.height ?? null,
+                mediaId: options.mediaId ?? null,
               },
             })
             .run(),

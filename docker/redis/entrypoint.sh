@@ -22,7 +22,7 @@ dbfilename dump.rdb
 
 # Memory management
 maxmemory ${REDIS_MAXMEMORY:-128mb}
-maxmemory-policy allkeys-lru
+maxmemory-policy volatile-lru
 
 # Logging
 loglevel notice

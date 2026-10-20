@@ -198,6 +198,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
                   placeholder={`Reply to @${comment.author.username}...`}
                   maxLength={2000}
                   rows={2}
+                  aria-label={`Reply to ${comment.author.username}`}
                   className="flex-1 border border-border rounded-md bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-subtle resize-y focus:outline-none focus:ring-2 focus:ring-ring"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {

@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
@@ -7,7 +7,6 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import get_current_user, get_db
 from app.core.config import settings
-from app.core.utils import fmt_dt
 from app.core.exceptions import (
     AuthenticationException,
     ConflictException,
@@ -29,12 +28,13 @@ from app.core.security import (
     record_failed_attempt,
     verify_password_async,
 )
+from app.core.utils import fmt_dt
 from app.models.token import AuthResponse, RegisterResponse, TokenResponse
 from app.models.user import UserCreate, UserLogin
+from app.repositories.audit_log_repo import AuditLogRepository
 from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
 from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
-from app.repositories.refresh_token_repo import RefreshTokenRepository
-from app.repositories.audit_log_repo import AuditLogRepository
+from app.repositories.refresh_token_repo import MAX_SESSION_LIFETIME_DAYS, RefreshTokenRepository
 from app.repositories.user_repo import UserRepository
 from app.services.auth_email_service import send_email_verification, send_password_reset_email
 from app.services.encryption_service import encrypt_email, hash_email, legacy_email_hash
@@ -80,8 +80,8 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key="refresh_token",
         value=token,
         httponly=True,
-        secure=not settings.debug,
-        samesite="strict" if not settings.debug else "lax",
+        secure=True,
+        samesite="strict",
         path="/api/v1/auth",
         max_age=604800,
     )
@@ -125,13 +125,21 @@ def _validate_password(password: str) -> None:
         raise ValidationException("Password must contain at least one letter")
     if not any(c.isdigit() for c in password):
         raise ValidationException("Password must contain at least one digit")
+    if not any(c.isupper() for c in password):
+        raise ValidationException("Password must contain at least one uppercase letter")
+    if not any(c.islower() for c in password):
+        raise ValidationException("Password must contain at least one lowercase letter")
+    if not any(c in "!@#$%^&*()_+-=[]{}|;:',.<>?/~`" for c in password):
+        raise ValidationException("Password must contain at least one special character")
 
 
-async def _generate_tokens(response: Response, user_id: str) -> str:
+async def _generate_tokens(response: Response, user_id: str, original_login_at=None) -> str:
     refresh_token_raw = generate_refresh_token()
     refresh_token_hash = hash_token(refresh_token_raw)
     refresh_repo = RefreshTokenRepository()
-    await refresh_repo.create_token(user_id, refresh_token_hash)
+    await refresh_repo.create_token(
+        user_id, refresh_token_hash, original_login_at=original_login_at
+    )
     _set_refresh_cookie(response, refresh_token_raw)
     return refresh_token_raw
 
@@ -372,6 +380,14 @@ async def refresh(
     if stored["expires_at"].replace(tzinfo=UTC) < datetime.now(UTC):
         raise AuthenticationException("Refresh token has expired")
 
+    # Absolute session lifetime: reject tokens older than MAX_SESSION_LIFETIME_DAYS
+    original_login = stored.get("original_login_at")
+    if original_login:
+        if original_login.tzinfo is None:
+            original_login = original_login.replace(tzinfo=UTC)
+        if datetime.now(UTC) - original_login > timedelta(days=MAX_SESSION_LIFETIME_DAYS):
+            raise AuthenticationException("Session has expired; please log in again")
+
     user_repo = UserRepository()
     user = await user_repo.get_by_id(stored["user_id"])
     if user is None:
@@ -384,7 +400,10 @@ async def refresh(
     access_token = create_access_token(
         str(user["_id"]), user["username"]
     )
-    await _generate_tokens(response, str(user["_id"]))
+    await _generate_tokens(
+        response, str(user["_id"]),
+        original_login_at=stored.get("original_login_at"),
+    )
 
     return {"data": TokenResponse(access_token=access_token)}
 

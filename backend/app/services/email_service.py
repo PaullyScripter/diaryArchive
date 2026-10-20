@@ -47,12 +47,11 @@ class EmailService:
 
     async def send_email(self, to_email: str, subject: str, text_body: str) -> bool:
         if not self.enabled:
-            logger.info(
-                "Email delivery disabled (no SMTP provider configured); would send to %s "
-                "subject=%r body=%r",
+            logger.debug(
+                "Email delivery disabled (no SMTP provider configured); "
+                "would send to %s subject=%r",
                 to_email,
                 subject,
-                text_body,
             )
             return False
         msg = self._new_message(to_email, subject, text_body)

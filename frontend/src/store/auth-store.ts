@@ -158,6 +158,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     clearAllMasterKeys();
+    // Clear drafts from localStorage
+    const userId = get().user?.id;
+    if (userId) {
+      localStorage.removeItem(`diaryarchive-draft:${userId}`);
+    }
     try {
       await apiClient.post("/auth/logout");
     } catch {
@@ -181,7 +186,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const meData = meResponse.data.data || meResponse.data;
       set({ user: meData, isAuthenticated: true, isLoading: false });
     } catch {
-      set({ isLoading: false });
+      set({
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      });
     }
   },
 

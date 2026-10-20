@@ -5,6 +5,7 @@ datasources:
     type: prometheus
     access: proxy
     url: http://prometheus:9090
+    uid: diaryarchive-prometheus
     isDefault: true
     editable: false
 
@@ -12,4 +13,5 @@ datasources:
     type: loki
     access: proxy
     url: http://loki:3100
+    uid: diaryarchive-loki
     editable: false

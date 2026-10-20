@@ -152,5 +152,6 @@ class CSPSecurityMiddleware(BaseHTTPMiddleware):
                 "max-age=63072000; includeSubDomains; preload"
             )
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
         response.headers["Content-Security-Policy"] = _build_csp()
         return response

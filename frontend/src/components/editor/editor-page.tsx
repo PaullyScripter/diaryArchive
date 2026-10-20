@@ -201,7 +201,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         editorInstance
           .chain()
           .focus()
-          .setResizableImage({ src: resolveMediaUrl(result.url) ?? result.url })
+          .setResizableImage({
+            src: resolveMediaUrl(result.url) ?? result.url,
+            mediaId: result.id,
+          })
           .run();
       } catch {
         // toast already shown by hook
@@ -227,7 +230,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           // relative /api/v1/media/<id> URL (resolved to the full origin at
           // render time), at the user's cursor.
           insertAt(
-            `<img src="${resolveMediaUrl(result.url) ?? result.url}" alt="">`
+            `<img src="${resolveMediaUrl(result.url) ?? result.url}" data-media-id="${result.id}" alt="">`
           );
         } catch {
           // toast already shown by hook
@@ -244,9 +247,9 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
       const insertAt = sourceEditorInsertRef.current;
       const src = resolveMediaUrl(item.url) ?? item.url;
       if (sourceMode && insertAt) {
-        insertAt(`<img src="${src}" alt="">`);
+        insertAt(`<img src="${src}" data-media-id="${item.id}" alt="">`);
       } else if (editor) {
-        editor.chain().focus().setResizableImage({ src }).run();
+        editor.chain().focus().setResizableImage({ src, mediaId: item.id }).run();
       }
     },
     [sourceMode, editor],
@@ -415,6 +418,11 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         : contentHtml,
       { allowExternalImages: finalAllowExternalImages }
     );
+    const stableContent = sanitizedContent;
+    const mediaIds = Array.from(
+      stableContent.matchAll(/data-media-id=["']([a-f0-9]{24})["']/gi),
+      (match) => match[1],
+    );
     try {
       let payload: Record<string, unknown>;
       if (finalPrivacy === "private") {
@@ -426,7 +434,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         const encryptedPayload = await encryptDiary(
           {
             title: title.trim() || "Untitled",
-            contentHtml: sanitizedContent,
+            contentHtml: stableContent,
             tags,
           },
           masterKey
@@ -438,13 +446,15 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
           emotion: emotion || null,
           fixed_width: fixedEnabled ? fixedWidth : null,
           fixed_height: fixedEnabled ? fixedHeight : null,
+          media_ids: mediaIds,
         };
       } else {
         payload = {
           privacy: finalPrivacy,
           title: title.trim() || null,
-          content_html: sanitizedContent,
+          content_html: stableContent,
           content_text: contentText,
+          media_ids: mediaIds,
           tags,
           emotion: emotion || null,
           comments_enabled: commentsEnabled,

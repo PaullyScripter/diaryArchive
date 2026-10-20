@@ -155,6 +155,15 @@ class Settings(BaseSettings):
         if self.meilisearch_api_key == "dev-master-key":
             raise ValueError("MEILISEARCH_API_KEY must not use the 'dev-master-key' value")
 
+        if not self.debug:
+            if "*" in self.cors_origins:
+                raise ValueError("CORS_ORIGINS must not contain '*' in production")
+            for origin in self.cors_origins:
+                if origin.startswith("http://") and "localhost" not in origin:
+                    raise ValueError(
+                        f"CORS_ORIGINS must not use http:// in production: {origin}"
+                    )
+
         return self
 
     model_config = {

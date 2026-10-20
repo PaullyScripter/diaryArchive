@@ -1785,6 +1785,8 @@ Upload a media file. Returns a URL for embedding in diary content.
 ```
 
 For private media, `url` and `thumbnail_url` are signed URLs with 15-minute expiry.
+They are intended for authorized gallery/preview use and must not be treated as
+permanent public links.
 
 **Errors:**
 

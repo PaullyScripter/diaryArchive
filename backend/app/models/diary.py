@@ -21,6 +21,7 @@ class DiaryCreate(BaseModel):
     content_html: str | None = Field(None, max_length=102400)
     content_text: str | None = Field(None, max_length=51200)
     encrypted_data: EncryptedData | None = None
+    media_ids: list[str] = Field(default_factory=list, max_length=20)
     tags: list[str] = Field(default_factory=list, max_length=50)
     emotion: str | None = None
     comments_enabled: bool = True
@@ -35,6 +36,7 @@ class DiaryUpdate(BaseModel):
     content_html: str | None = Field(None, max_length=102400)
     content_text: str | None = Field(None, max_length=51200)
     encrypted_data: EncryptedData | None = None
+    media_ids: list[str] | None = Field(None, max_length=20)
     tags: list[str] | None = None
     emotion: str | None = None
     comments_enabled: bool | None = None

@@ -13,7 +13,7 @@
 set -euo pipefail
 
 ENV_FILE=".env.production"
-COMPOSE_ARGS=(-f docker-compose.yml -f docker-compose.prod.yml)
+COMPOSE_ARGS=(-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.monitoring.yml)
 GIT_REF="${1:-HEAD}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
