@@ -18,6 +18,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { BadgeSelector } from "@/components/settings/badge-selector";
 import { apiClient } from "@/lib/api/client";
+import { showToast } from "@/components/shared/toast";
+
+const AVATAR_DIARY_THRESHOLD = 50;
 
 function SettingsContent() {
   const user = useAuthStore((s) => s.user);
@@ -36,6 +39,8 @@ function SettingsContent() {
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -63,6 +68,34 @@ function SettingsContent() {
       }
     } catch {
       // error handled by mutation
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setAvatarError(null);
+    setAvatarUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await apiClient.post("/users/me/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const avatarPath = response.data.data?.avatar_path as string | undefined;
+      if (user && avatarPath) {
+        setUser({ ...user, avatar_path: avatarPath });
+      }
+      showToast("Profile picture updated.");
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message || "Failed to upload profile picture.";
+      setAvatarError(message);
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -223,9 +256,33 @@ function SettingsContent() {
                   size="lg"
                 />
                 <div>
-                  <p className="text-sm text-muted">
-                    Avatar upload will be available in a future update.
-                  </p>
+                  {user.stats.diary_count >= AVATAR_DIARY_THRESHOLD ? (
+                    <>
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                        className="sr-only"
+                        onChange={handleAvatarUpload}
+                        disabled={avatarUploading}
+                      />
+                      <label
+                        htmlFor="avatar-upload"
+                        className="inline-flex items-center border border-border px-3 py-1.5 text-xs text-foreground cursor-pointer hover:bg-overlay disabled:opacity-50"
+                      >
+                        {avatarUploading ? "Uploading..." : "Upload profile picture"}
+                      </label>
+                      <p className="text-xs text-muted mt-1">JPG, PNG, WebP, GIF, or AVIF.</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted">
+                      Profile picture uploads unlock after {AVATAR_DIARY_THRESHOLD} diaries.
+                      <span className="block text-xs mt-1">
+                        {AVATAR_DIARY_THRESHOLD - user.stats.diary_count} more to go.
+                      </span>
+                    </p>
+                  )}
+                  {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
                 </div>
               </div>
 

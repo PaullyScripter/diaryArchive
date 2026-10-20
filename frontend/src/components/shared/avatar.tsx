@@ -1,5 +1,16 @@
 import { cn } from "@/lib/utils";
 
+function resolveAvatarSrc(src: string): string {
+  if (!src.startsWith("/api/") || !/^https?:\/\//i.test(process.env.NEXT_PUBLIC_API_URL || "")) {
+    return src;
+  }
+  try {
+    return `${new URL(process.env.NEXT_PUBLIC_API_URL!).origin}${src}`;
+  } catch {
+    return src;
+  }
+}
+
 interface AvatarProps {
   src: string | null | undefined;
   alt: string;
@@ -43,7 +54,7 @@ export function Avatar({ src, alt, size = "md", className }: AvatarProps) {
         {/* Avatar URLs may be user-uploaded, API-relative, or blob-backed. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={src}
+          src={resolveAvatarSrc(src)}
           alt={alt}
           className={cn(
             "rounded-full object-cover border border-border",

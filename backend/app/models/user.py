@@ -54,7 +54,6 @@ class UserMeResponse(UserResponse):
 
 
 class UserUpdate(BaseModel):
-    avatar_path: str | None = None
     about: str | None = Field(None, max_length=500)
     favorite_quote: str | None = Field(None, max_length=300)
     currently_feeling: str | None = Field(None, max_length=50)
