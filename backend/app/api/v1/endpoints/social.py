@@ -23,9 +23,7 @@ async def like_diary(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:toggle_like:{current_user['_id']}", 30, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:toggle_like:{current_user['_id']}", 30, 60)
     if is_limited:
         raise RateLimitException("Too many like attempts")
     result = await toggle_like(diary_id, current_user)

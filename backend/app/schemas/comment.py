@@ -20,4 +20,3 @@ comment_like_indexes: list[tuple[dict, dict]] = [
         {"unique": True, "name": "idx_comment_like_user"},
     ),
 ]
-

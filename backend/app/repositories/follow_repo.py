@@ -6,7 +6,9 @@ from app.repositories.base import BaseRepository
 class FollowRepository(BaseRepository):
     collection_name = "follows"
 
-    async def ensure_following(self, follower_id: str, following_id: str, created_at) -> bool:
+    async def ensure_following(
+        self, follower_id: str, following_id: str, created_at, session=None
+    ) -> bool:
         """Atomically insert a follow if absent. Returns True only if this call
         performed the insertion. A unique compound index makes concurrent calls
         converge to a single follow."""
@@ -17,27 +19,30 @@ class FollowRepository(BaseRepository):
             },
             {"$setOnInsert": {"created_at": created_at}},
             upsert=True,
+            session=session,
         )
         return result.upserted_id is not None
 
     async def ensure_unfollowed(self, follower_id: str, following_id: str) -> bool:
-        result = await self._collection.delete_one({
-            "follower_id": ObjectId(follower_id),
-            "following_id": ObjectId(following_id),
-        })
+        result = await self._collection.delete_one(
+            {
+                "follower_id": ObjectId(follower_id),
+                "following_id": ObjectId(following_id),
+            }
+        )
         return result.deleted_count > 0
 
     async def find_by_follower_and_following(
         self, follower_id: str, following_id: str
     ) -> dict | None:
-        return await self.find_one({
-            "follower_id": ObjectId(follower_id),
-            "following_id": ObjectId(following_id),
-        })
+        return await self.find_one(
+            {
+                "follower_id": ObjectId(follower_id),
+                "following_id": ObjectId(following_id),
+            }
+        )
 
-    async def find_followers(
-        self, user_id: str, skip: int = 0, limit: int = 20
-    ) -> list[dict]:
+    async def find_followers(self, user_id: str, skip: int = 0, limit: int = 20) -> list[dict]:
         return await self.find(
             {"following_id": ObjectId(user_id)},
             sort=[("created_at", -1)],
@@ -45,9 +50,7 @@ class FollowRepository(BaseRepository):
             limit=limit,
         )
 
-    async def find_following(
-        self, user_id: str, skip: int = 0, limit: int = 20
-    ) -> list[dict]:
+    async def find_following(self, user_id: str, skip: int = 0, limit: int = 20) -> list[dict]:
         return await self.find(
             {"follower_id": ObjectId(user_id)},
             sort=[("created_at", -1)],
@@ -62,17 +65,21 @@ class FollowRepository(BaseRepository):
         return await self.count({"follower_id": ObjectId(user_id)})
 
     async def delete_by_pair(self, follower_id: str, following_id: str) -> int:
-        result = await self._collection.delete_one({
-            "follower_id": ObjectId(follower_id),
-            "following_id": ObjectId(following_id),
-        })
+        result = await self._collection.delete_one(
+            {
+                "follower_id": ObjectId(follower_id),
+                "following_id": ObjectId(following_id),
+            }
+        )
         return result.deleted_count
 
     async def find_one_and_delete(self, follower_id: str, following_id: str) -> dict | None:
-        return await self._collection.find_one_and_delete({
-            "follower_id": ObjectId(follower_id),
-            "following_id": ObjectId(following_id),
-        })
+        return await self._collection.find_one_and_delete(
+            {
+                "follower_id": ObjectId(follower_id),
+                "following_id": ObjectId(following_id),
+            }
+        )
 
     async def get_following_ids(self, follower_id: str, limit: int = 1000) -> list[str]:
         docs = await self.find(
@@ -88,8 +95,11 @@ class FollowRepository(BaseRepository):
         oids = [ObjectId(fid) for fid in following_ids if ObjectId.is_valid(fid)]
         if not oids:
             return set()
-        docs = await self.find({
-            "follower_id": ObjectId(follower_id),
-            "following_id": {"$in": oids},
-        }, limit=len(oids))
+        docs = await self.find(
+            {
+                "follower_id": ObjectId(follower_id),
+                "following_id": {"$in": oids},
+            },
+            limit=len(oids),
+        )
         return {str(d["following_id"]) for d in docs}

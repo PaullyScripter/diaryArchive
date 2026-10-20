@@ -57,9 +57,7 @@ async def test_get_by_username(user_repo: UserRepository):
 
 @pytest.mark.asyncio
 async def test_get_by_id(user_repo: UserRepository):
-    user_id = await user_repo.create_user(
-        {"username": "byid", "password_hash": "hash"}
-    )
+    user_id = await user_repo.create_user({"username": "byid", "password_hash": "hash"})
     user = await user_repo.get_by_id(str(user_id))
     assert user is not None
     assert user["username"] == "byid"
@@ -67,12 +65,8 @@ async def test_get_by_id(user_repo: UserRepository):
 
 @pytest.mark.asyncio
 async def test_update_user(user_repo: UserRepository):
-    user_id = await user_repo.create_user(
-        {"username": "updatable", "password_hash": "hash"}
-    )
-    updated = await user_repo.update(
-        str(user_id), {"about": "Updated bio"}
-    )
+    user_id = await user_repo.create_user({"username": "updatable", "password_hash": "hash"})
+    updated = await user_repo.update(str(user_id), {"about": "Updated bio"})
     assert updated is True
     user = await user_repo.get_by_id(str(user_id))
     assert user["about"] == "Updated bio"
@@ -80,9 +74,7 @@ async def test_update_user(user_repo: UserRepository):
 
 @pytest.mark.asyncio
 async def test_delete_user(user_repo: UserRepository):
-    user_id = await user_repo.create_user(
-        {"username": "deletable", "password_hash": "hash"}
-    )
+    user_id = await user_repo.create_user({"username": "deletable", "password_hash": "hash"})
     deleted = await user_repo.delete(str(user_id))
     assert deleted is True
     user = await user_repo.get_by_id(str(user_id))

@@ -2,6 +2,9 @@ import asyncio
 import time
 from datetime import UTC, datetime
 
+from pymongo.errors import OperationFailure
+
+from app.core.config import settings
 from app.core.database import DatabaseManager
 from app.core.exceptions import (
     NotFoundException,
@@ -64,9 +67,17 @@ async def _run_in_transaction(operation):
     indexing) should be fired AFTER the transaction commits.
     """
     db = DatabaseManager.get_db()
-    async with await db.client.start_session() as session:
-        async with session.start_transaction():
-            return await operation(session)
+    try:
+        async with await db.client.start_session() as session:
+            async with session.start_transaction():
+                return await operation(session)
+    except OperationFailure as exc:
+        # Local development/test Mongo instances may intentionally run as a
+        # standalone server. Production compose requires a replica set, so a
+        # missing transaction capability remains a hard failure there.
+        if settings.debug and getattr(exc, "code", None) == 20:
+            return await operation(None)
+        raise
 
 
 async def _count_liked_public_diaries(collection, user_id: str, banned_ids: list) -> int:
@@ -265,9 +276,11 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
             }
 
         # P3.1: Transactional follow + counter update.
-        added = await _run_in_transaction(lambda session: follow_repo.ensure_following(
-            follower_id, following_id, datetime.now(UTC), session=session
-        ))
+        added = await _run_in_transaction(
+            lambda session: follow_repo.ensure_following(
+                follower_id, following_id, datetime.now(UTC), session=session
+            )
+        )
         if added:
             await user_repo.update_stats(following_id, "follower_count", 1)
             await user_repo.update_stats(follower_id, "following_count", 1)

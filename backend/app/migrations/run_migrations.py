@@ -13,6 +13,7 @@ must be idempotent with respect to its own partial application.
 Usage (inside the backend container):
   python -m app.migrations.run_migrations
 """
+
 import asyncio
 import logging
 
@@ -36,9 +37,7 @@ async def _ensure_schema_migration_collection(db) -> None:
 
 
 async def _applied_versions(db) -> set[int]:
-    docs = await db.schema_migrations.find({}, {"version": 1, "_id": 0}).to_list(
-        length=10000
-    )
+    docs = await db.schema_migrations.find({}, {"version": 1, "_id": 0}).to_list(length=10000)
     return {d["version"] for d in docs}
 
 
@@ -95,6 +94,7 @@ async def run_migrations(collection_name: str | None = None) -> dict:
 # Every apply() MUST be idempotent.
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def create_search_sync_outbox(db) -> None:
     """Search synchronization outbox: primary DB changes are durably recorded
     here before being pushed to Meilisearch (MED-3)."""
@@ -105,12 +105,12 @@ async def create_search_sync_outbox(db) -> None:
 async def unique_report_index(db) -> None:
     """One pending report per (reporter, target_type, target_id).
 
-Uses a partial index so only 'pending' reports are constrained, allowing a
-    reporter to re-report a resolved resource. Bug reports have a null
-    target_id and are excluded from the index (they skip duplicate checks and
-    are not subject to the reporter/target invariant). This makes the
-    previously application-level, raceable duplicate check an enforced DB
-    invariant.
+    Uses a partial index so only 'pending' reports are constrained, allowing a
+        reporter to re-report a resolved resource. Bug reports have a null
+        target_id and are excluded from the index (they skip duplicate checks and
+        are not subject to the reporter/target invariant). This makes the
+        previously application-level, raceable duplicate check an enforced DB
+        invariant.
     """
     await db.reports.create_index(
         [

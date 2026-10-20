@@ -160,9 +160,7 @@ class Settings(BaseSettings):
                 raise ValueError("CORS_ORIGINS must not contain '*' in production")
             for origin in self.cors_origins:
                 if origin.startswith("http://") and "localhost" not in origin:
-                    raise ValueError(
-                        f"CORS_ORIGINS must not use http:// in production: {origin}"
-                    )
+                    raise ValueError(f"CORS_ORIGINS must not use http:// in production: {origin}")
 
         return self
 

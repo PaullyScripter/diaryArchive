@@ -114,33 +114,37 @@ class CommentRepository(BaseRepository):
         return result.modified_count > 0
 
     async def delete_by_diary(self, diary_id: str) -> int:
-        result = await self._collection.delete_many(
-            {"diary_id": ObjectId(diary_id)}
-        )
+        result = await self._collection.delete_many({"diary_id": ObjectId(diary_id)})
         return result.deleted_count
 
     async def has_comment_like(self, comment_id: str, user_id: str) -> bool:
         db = self._collection.database
-        doc = await db.comment_likes.find_one({
-            "comment_id": ObjectId(comment_id),
-            "user_id": ObjectId(user_id),
-        })
+        doc = await db.comment_likes.find_one(
+            {
+                "comment_id": ObjectId(comment_id),
+                "user_id": ObjectId(user_id),
+            }
+        )
         return doc is not None
 
     async def add_comment_like(self, comment_id: str, user_id: str) -> None:
         from datetime import UTC, datetime
+
         db = self._collection.database
-        await db.comment_likes.insert_one({
-            "comment_id": ObjectId(comment_id),
-            "user_id": ObjectId(user_id),
-            "created_at": datetime.now(UTC),
-        })
+        await db.comment_likes.insert_one(
+            {
+                "comment_id": ObjectId(comment_id),
+                "user_id": ObjectId(user_id),
+                "created_at": datetime.now(UTC),
+            }
+        )
 
     async def ensure_comment_liked(self, comment_id: str, user_id: str) -> bool:
         """Atomically insert a comment-like if absent. Returns True only if this
         call performed the insertion (state changed). The unique compound index
         makes concurrent likes converge to a single row."""
         from datetime import UTC, datetime
+
         db = self._collection.database
         result = await db.comment_likes.update_one(
             {
@@ -154,25 +158,31 @@ class CommentRepository(BaseRepository):
 
     async def ensure_comment_unliked(self, comment_id: str, user_id: str) -> bool:
         db = self._collection.database
-        result = await db.comment_likes.delete_one({
-            "comment_id": ObjectId(comment_id),
-            "user_id": ObjectId(user_id),
-        })
+        result = await db.comment_likes.delete_one(
+            {
+                "comment_id": ObjectId(comment_id),
+                "user_id": ObjectId(user_id),
+            }
+        )
         return result.deleted_count > 0
 
     async def remove_comment_like(self, comment_id: str, user_id: str) -> None:
         db = self._collection.database
-        await db.comment_likes.delete_one({
-            "comment_id": ObjectId(comment_id),
-            "user_id": ObjectId(user_id),
-        })
+        await db.comment_likes.delete_one(
+            {
+                "comment_id": ObjectId(comment_id),
+                "user_id": ObjectId(user_id),
+            }
+        )
 
     async def find_one_and_delete_comment_like(self, comment_id: str, user_id: str) -> dict | None:
         db = self._collection.database
-        return await db.comment_likes.find_one_and_delete({
-            "comment_id": ObjectId(comment_id),
-            "user_id": ObjectId(user_id),
-        })
+        return await db.comment_likes.find_one_and_delete(
+            {
+                "comment_id": ObjectId(comment_id),
+                "user_id": ObjectId(user_id),
+            }
+        )
 
     async def batch_has_comment_likes(self, comment_ids: list[str], user_id: str) -> set[str]:
         if not comment_ids:
@@ -181,8 +191,10 @@ class CommentRepository(BaseRepository):
         oids = [ObjectId(cid) for cid in comment_ids if ObjectId.is_valid(cid)]
         if not oids:
             return set()
-        docs = await db.comment_likes.find({
-            "comment_id": {"$in": oids},
-            "user_id": ObjectId(user_id),
-        }).to_list(length=len(oids))
+        docs = await db.comment_likes.find(
+            {
+                "comment_id": {"$in": oids},
+                "user_id": ObjectId(user_id),
+            }
+        ).to_list(length=len(oids))
         return {str(d["comment_id"]) for d in docs}

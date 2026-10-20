@@ -26,7 +26,7 @@ async def client():
 async def _register(client: AsyncClient, username: str) -> dict:
     resp = await client.post(
         "/api/v1/auth/register",
-        json={"username": username, "password": "ValidPass1", "accepted_terms": True},
+        json={"username": username, "password": "ValidPass1!", "accepted_terms": True},
     )
     assert resp.status_code == 201
     return resp.json().get("data", resp.json())

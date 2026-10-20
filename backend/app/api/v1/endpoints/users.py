@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.deps import _optional_user, get_current_user

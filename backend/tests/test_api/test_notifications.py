@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from app.services.notification_service import create_notification
 
@@ -60,8 +61,13 @@ class TestNotificationCreation:
         mock_notif_repo = MagicMock()
         mock_notif_repo.create = AsyncMock(return_value="fake_id_123")
 
-        with patch("app.services.notification_service.UserRepository", return_value=mock_user_repo), \
-             patch("app.services.notification_service.NotificationRepository", return_value=mock_notif_repo):
+        with (
+            patch("app.services.notification_service.UserRepository", return_value=mock_user_repo),
+            patch(
+                "app.services.notification_service.NotificationRepository",
+                return_value=mock_notif_repo,
+            ),
+        ):
             result = await create_notification(
                 recipient_id=USER1,
                 actor_id=USER2,
@@ -109,8 +115,13 @@ class TestNotificationCreation:
         mock_notif_repo = MagicMock()
         mock_notif_repo.create = AsyncMock(return_value="fake_id")
 
-        with patch("app.services.notification_service.UserRepository", return_value=mock_user_repo), \
-             patch("app.services.notification_service.NotificationRepository", return_value=mock_notif_repo):
+        with (
+            patch("app.services.notification_service.UserRepository", return_value=mock_user_repo),
+            patch(
+                "app.services.notification_service.NotificationRepository",
+                return_value=mock_notif_repo,
+            ),
+        ):
             await create_notification(
                 recipient_id=USER1,
                 actor_id=USER2,
@@ -141,8 +152,13 @@ class TestNotificationCreation:
         mock_notif_repo = MagicMock()
         mock_notif_repo.create = AsyncMock(return_value="fake_id")
 
-        with patch("app.services.notification_service.UserRepository", return_value=mock_user_repo), \
-             patch("app.services.notification_service.NotificationRepository", return_value=mock_notif_repo):
+        with (
+            patch("app.services.notification_service.UserRepository", return_value=mock_user_repo),
+            patch(
+                "app.services.notification_service.NotificationRepository",
+                return_value=mock_notif_repo,
+            ),
+        ):
             await create_notification(
                 recipient_id=USER1,
                 actor_id=USER2,
@@ -171,8 +187,13 @@ class TestNotificationCreation:
         mock_notif_repo = MagicMock()
         mock_notif_repo.create = AsyncMock(return_value="fake_id")
 
-        with patch("app.services.notification_service.UserRepository", return_value=mock_user_repo), \
-             patch("app.services.notification_service.NotificationRepository", return_value=mock_notif_repo):
+        with (
+            patch("app.services.notification_service.UserRepository", return_value=mock_user_repo),
+            patch(
+                "app.services.notification_service.NotificationRepository",
+                return_value=mock_notif_repo,
+            ),
+        ):
             await create_notification(
                 recipient_id=USER1,
                 actor_id=USER2,

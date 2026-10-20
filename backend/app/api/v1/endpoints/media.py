@@ -28,9 +28,7 @@ async def upload(
     is_private: bool = False,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:upload_media:{current_user['_id']}", 10, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:upload_media:{current_user['_id']}", 10, 60)
     if is_limited:
         raise RateLimitException("Too many upload attempts")
 
@@ -91,8 +89,7 @@ async def get_media_file(
 
     def iter_chunks():
         try:
-            for chunk in obj.stream(64 * 1024):
-                yield chunk
+            yield from obj.stream(64 * 1024)
         finally:
             obj.close()
             obj.release_conn()
@@ -100,11 +97,7 @@ async def get_media_file(
     return StreamingResponse(
         iter_chunks(),
         media_type=content_type,
-        headers={
-            "Cache-Control": (
-                "private, no-store" if is_private else "public, max-age=86400"
-            )
-        },
+        headers={"Cache-Control": ("private, no-store" if is_private else "public, max-age=86400")},
     )
 
 

@@ -12,9 +12,11 @@ async def check_bio_warnings() -> int:
     db = DatabaseManager.get_db()
     now = datetime.now(UTC)
 
-    expired = await db.users.find({
-        "bio_warning_deadline": {"$lte": now},
-    }).to_list(length=1000)
+    expired = await db.users.find(
+        {
+            "bio_warning_deadline": {"$lte": now},
+        }
+    ).to_list(length=1000)
 
     count = 0
     user_repo = UserRepository()
@@ -31,29 +33,38 @@ async def check_bio_warnings() -> int:
             count += 1
             logger.info(
                 "Bio auto-blanked for user %s (deadline: %s)",
-                user.get("username", user_id), user.get("bio_warning_deadline"),
+                user.get("username", user_id),
+                user.get("bio_warning_deadline"),
             )
         else:
-            await user_repo.update(user_id, {
-                "bio_warning_deadline": None,
-                "bio_warning_about_snapshot": None,
-            })
+            await user_repo.update(
+                user_id,
+                {
+                    "bio_warning_deadline": None,
+                    "bio_warning_about_snapshot": None,
+                },
+            )
             logger.info(
                 "Bio warning cleared for user %s (bio changed after warning)",
                 user.get("username", user_id),
             )
 
-    expired_bans = await db.users.find({
-        "bio_edit_banned_until": {"$lte": now, "$ne": None},
-    }).to_list(length=1000)
+    expired_bans = await db.users.find(
+        {
+            "bio_edit_banned_until": {"$lte": now, "$ne": None},
+        }
+    ).to_list(length=1000)
 
     ban_removed = 0
     for user in expired_bans:
         user_id = str(user["_id"])
-        await user_repo.update(user_id, {
-            "bio_edit_banned_until": None,
-            "bio_warning_awaiting_review": None,
-        })
+        await user_repo.update(
+            user_id,
+            {
+                "bio_edit_banned_until": None,
+                "bio_warning_awaiting_review": None,
+            },
+        )
         ban_removed += 1
         logger.info(
             "Bio edit ban expired for user %s",
@@ -67,10 +78,12 @@ async def check_username_warnings() -> int:
     db = DatabaseManager.get_db()
     now = datetime.now(UTC)
 
-    expired = await db.users.find({
-        "username_warning_deadline": {"$lte": now},
-        "is_banned": {"$ne": True},
-    }).to_list(length=1000)
+    expired = await db.users.find(
+        {
+            "username_warning_deadline": {"$lte": now},
+            "is_banned": {"$ne": True},
+        }
+    ).to_list(length=1000)
 
     count = 0
     user_repo = UserRepository()
@@ -78,11 +91,14 @@ async def check_username_warnings() -> int:
         user_id = str(user["_id"])
         reason = user.get("username_warning_reason", "Username policy violation")
 
-        await user_repo.update(user_id, {
-            "is_banned": True,
-            "ban_reason": f"Username warning expired: {reason}",
-            "banned_at": now,
-        })
+        await user_repo.update(
+            user_id,
+            {
+                "is_banned": True,
+                "ban_reason": f"Username warning expired: {reason}",
+                "banned_at": now,
+            },
+        )
 
         await create_notification(
             recipient_id=user_id,

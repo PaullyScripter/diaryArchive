@@ -59,9 +59,7 @@ async def create_indexes() -> None:
                         collection_name,
                     )
         except Exception as e:
-            logger.warning(
-                "Failed to create indexes on %s: %s", collection_name, e
-            )
+            logger.warning("Failed to create indexes on %s: %s", collection_name, e)
 
     # TTL indexes for token cleanup
     ttl_collections = [

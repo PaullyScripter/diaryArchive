@@ -17,7 +17,10 @@ async def _meili_call_retry(operation, *args, attempts: int = 3, **kwargs):
             last_exc = e
             logger.warning(
                 "Meilisearch %s failed (attempt %d/%d): %s",
-                op_name, attempt + 1, attempts, e,
+                op_name,
+                attempt + 1,
+                attempts,
+                e,
             )
             if attempt < attempts - 1:
                 await asyncio.sleep(delay)
@@ -45,11 +48,7 @@ class DiaryIndexer:
             logger.warning("Failed to remove diary %s from index", diary_id, exc_info=True)
 
     async def bulk_index(self, diaries: list[dict]) -> None:
-        docs = [
-            self._build_document(d)
-            for d in diaries
-            if d.get("privacy") == "public"
-        ]
+        docs = [self._build_document(d) for d in diaries if d.get("privacy") == "public"]
         if not docs:
             return
         try:
@@ -83,6 +82,7 @@ class DiaryIndexer:
             "excerpt": content_text[:300],
             "published_at": _fmt_date(diary.get("published_at")),
         }
+
 
 def _fmt_date(value) -> str | None:
     if value is None:

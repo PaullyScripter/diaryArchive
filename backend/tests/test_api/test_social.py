@@ -3,7 +3,6 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.database import DatabaseManager
 from app.main import app
-from app.repositories.user_repo import UserRepository
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +28,7 @@ async def client():
 async def auth_token(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "testuser", "password": "ValidPass123", "accepted_terms": True},
+        json={"username": "testuser", "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
@@ -66,7 +65,9 @@ class TestComments:
         assert data["content"] == "Great diary!"
         assert data["is_deleted"] is False
 
-    async def test_create_comment_empty_content(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_create_comment_empty_content(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         response = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -93,7 +94,9 @@ class TestComments:
         assert len(body["data"]) == 1
         assert body["data"][0]["content"] == "First comment"
 
-    async def test_delete_comment_as_author(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_delete_comment_as_author(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -111,7 +114,9 @@ class TestComments:
         comments = list_resp.json()["data"]
         assert len(comments) == 0
 
-    async def test_comment_count_incremented(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_comment_count_incremented(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -133,7 +138,9 @@ class TestLikes:
         assert data["is_liked"] is True
         assert data["like_count"] == 1
 
-    async def test_toggle_like_remove(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_toggle_like_remove(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         await client.post(
             f"/api/v1/diaries/{public_diary}/like",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -150,7 +157,9 @@ class TestLikes:
         response = await client.post(f"/api/v1/diaries/{public_diary}/like")
         assert response.status_code == 401
 
-    async def test_is_liked_in_diary_response(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_is_liked_in_diary_response(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         await client.post(
             f"/api/v1/diaries/{public_diary}/like",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -164,7 +173,9 @@ class TestLikes:
 
 
 class TestBookmarks:
-    async def test_toggle_bookmark_add(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_toggle_bookmark_add(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         response = await client.post(
             f"/api/v1/diaries/{public_diary}/bookmark",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -174,7 +185,9 @@ class TestBookmarks:
         assert data["is_bookmarked"] is True
         assert data["bookmark_count"] == 1
 
-    async def test_toggle_bookmark_remove(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_toggle_bookmark_remove(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         await client.post(
             f"/api/v1/diaries/{public_diary}/bookmark",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -205,7 +218,7 @@ class TestFollows:
     async def test_toggle_follow_add(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "targetuser", "password": "ValidPass123!", "accepted_terms": True},
         )
         response = await client.post(
             "/api/v1/users/targetuser/follow",
@@ -219,7 +232,7 @@ class TestFollows:
     async def test_toggle_follow_remove(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser2", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "targetuser2", "password": "ValidPass123!", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/targetuser2/follow",
@@ -242,7 +255,7 @@ class TestFollows:
     async def test_followers_list(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser3", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "targetuser3", "password": "ValidPass123!", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/targetuser3/follow",
@@ -257,7 +270,7 @@ class TestFollows:
     async def test_following_list(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "targetuser4", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "targetuser4", "password": "ValidPass123!", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/targetuser4/follow",
@@ -333,7 +346,9 @@ class TestThreadedReplies:
         body = response.json()
         assert len(body["data"]) == 2
 
-    async def test_reply_increments_reply_count(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_reply_increments_reply_count(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -354,7 +369,9 @@ class TestThreadedReplies:
 
 
 class TestCommentLikes:
-    async def test_toggle_comment_like(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_toggle_comment_like(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -371,7 +388,9 @@ class TestCommentLikes:
         assert data["is_liked"] is True
         assert data["like_count"] == 1
 
-    async def test_comment_like_toggle(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_comment_like_toggle(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -406,11 +425,11 @@ class TestFollowingFeed:
     async def test_following_feed_with_content(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "writer1", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "writer1", "password": "ValidPass123!", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "writer1", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "writer1", "password": "ValidPass123!", "accepted_terms": True},
         )
         writer_token = login_resp.json()["data"]["access_token"]
 
@@ -470,7 +489,9 @@ class TestCommentsDisabled:
 
 
 class TestCommentDiaryIdValidation:
-    async def test_delete_comment_wrong_diary_id(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_delete_comment_wrong_diary_id(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -486,7 +507,9 @@ class TestCommentDiaryIdValidation:
 
 
 class TestDeleteCommentAuthorization:
-    async def test_delete_comment_non_author_non_owner(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_delete_comment_non_author_non_owner(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -496,11 +519,11 @@ class TestDeleteCommentAuthorization:
 
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "otheruser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "otheruser", "password": "ValidPass123!", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "otheruser", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "otheruser", "password": "ValidPass123!", "accepted_terms": True},
         )
         other_token = login_resp.json()["data"]["access_token"]
 
@@ -510,7 +533,9 @@ class TestDeleteCommentAuthorization:
         )
         assert response.status_code == 403
 
-    async def test_delete_comment_as_diary_owner(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_delete_comment_as_diary_owner(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -526,7 +551,9 @@ class TestDeleteCommentAuthorization:
 
 
 class TestDeletedCommentContent:
-    async def test_deleted_comment_has_null_content(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_deleted_comment_has_null_content(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         create_resp = await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -541,6 +568,7 @@ class TestDeletedCommentContent:
 
         db = DatabaseManager.get_db()
         from bson import ObjectId
+
         doc = await db.comments.find_one({"_id": ObjectId(comment_id)})
         assert doc is not None
         assert doc["is_deleted"] is True
@@ -549,7 +577,9 @@ class TestDeletedCommentContent:
 
 
 class TestCommentCountIntegrity:
-    async def test_delete_comment_decrements_count(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_delete_comment_decrements_count(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         await client.post(
             f"/api/v1/diaries/{public_diary}/comments",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -578,7 +608,7 @@ class TestIsFollowingInLists:
     async def test_is_following_in_followers_list(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "followed_user", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "followed_user", "password": "ValidPass123!", "accepted_terms": True},
         )
         await client.post(
             "/api/v1/users/followed_user/follow",
@@ -587,7 +617,7 @@ class TestIsFollowingInLists:
 
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "followed_user", "password": "ValidPass123", "accepted_terms": True},
+            json={"username": "followed_user", "password": "ValidPass123!", "accepted_terms": True},
         )
         target_token = login_resp.json()["data"]["access_token"]
 
@@ -602,7 +632,9 @@ class TestIsFollowingInLists:
 
 
 class TestIdempotentToggle:
-    async def test_like_toggle_idempotent(self, client: AsyncClient, auth_token: str, public_diary: str):
+    async def test_like_toggle_idempotent(
+        self, client: AsyncClient, auth_token: str, public_diary: str
+    ):
         resp1 = await client.post(
             f"/api/v1/diaries/{public_diary}/like",
             headers={"Authorization": f"Bearer {auth_token}"},

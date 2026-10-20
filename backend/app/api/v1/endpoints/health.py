@@ -32,6 +32,7 @@ async def metrics(request: Request, response: Response):
     # Update pool metrics before rendering
     try:
         from app.core.metrics import update_pool_metrics
+
         db = DatabaseManager.get_db()
         pool_info = db.client.get_io()["pool"]
         mongo_ready = pool_info.get("ready_connections", 0) if isinstance(pool_info, dict) else 0
@@ -58,6 +59,7 @@ async def startup_probe(response: Response):
     ``/health`` instead.
     """
     from app.core.metrics import _STARTUP_COMPLETE
+
     if not _STARTUP_COMPLETE:
         response.status_code = 503
         return {"status": "initializing"}
@@ -117,9 +119,7 @@ async def health_check(request: Request, response: Response):
     uptime_seconds = int(time.monotonic() - _STARTUP_TIME)
     deployed_at = _DEPLOYED_AT
     if not deployed_at:
-        deployed_at = datetime.fromtimestamp(
-            time.time() - uptime_seconds, tz=UTC
-        ).isoformat()
+        deployed_at = datetime.fromtimestamp(time.time() - uptime_seconds, tz=UTC).isoformat()
 
     return {
         "status": overall,

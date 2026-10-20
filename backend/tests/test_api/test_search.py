@@ -3,7 +3,6 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.database import DatabaseManager
 from app.main import app
-from app.search.indexer import DiaryIndexer
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +28,7 @@ async def client():
 async def auth_token(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "searchuser", "password": "ValidPass123", "accepted_terms": True},
+        json={"username": "searchuser", "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
@@ -93,6 +92,7 @@ class TestEmotions:
 
     async def test_emotions_include_all_valid(self, client: AsyncClient):
         from app.models.diary import VALID_EMOTIONS
+
         response = await client.get("/api/v1/emotions")
         body = response.json()
         returned = {e["emotion"] for e in body["data"]}

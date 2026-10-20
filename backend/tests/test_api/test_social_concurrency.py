@@ -53,7 +53,7 @@ async def client():
         yield ac
 
 
-async def _register(client, username, password="ValidPass1"):
+async def _register(client, username, password="ValidPass1!"):
     resp = await client.post(
         "/api/v1/auth/register",
         json={"username": username, "password": password, "accepted_terms": True},

@@ -1,5 +1,6 @@
 """Regression tests for the migration runner and DB-level data-integrity
 enforcement (LOW-2, LOW-7, LOW-8, MED-3)."""
+
 import pytest
 
 from app.core.database import DatabaseManager
@@ -34,36 +35,42 @@ async def test_unique_pending_report_index_enforced():
     reporter = ObjectId()
     target = ObjectId()
 
-    await db.reports.insert_one({
-        "reporter_id": reporter,
-        "target_type": "user",
-        "target_id": target,
-        "reason": "spam",
-        "status": "pending",
-        "created_at": None,
-    })
+    await db.reports.insert_one(
+        {
+            "reporter_id": reporter,
+            "target_type": "user",
+            "target_id": target,
+            "reason": "spam",
+            "status": "pending",
+            "created_at": None,
+        }
+    )
 
     from pymongo.errors import DuplicateKeyError
 
     with pytest.raises(DuplicateKeyError):
-        await db.reports.insert_one({
+        await db.reports.insert_one(
+            {
+                "reporter_id": reporter,
+                "target_type": "user",
+                "target_id": target,
+                "reason": "harassment",
+                "status": "pending",
+                "created_at": None,
+            }
+        )
+
+    # A resolved report does not collide with a pending one.
+    await db.reports.insert_one(
+        {
             "reporter_id": reporter,
             "target_type": "user",
             "target_id": target,
-            "reason": "harassment",
-            "status": "pending",
+            "reason": "other",
+            "status": "resolved",
             "created_at": None,
-        })
-
-    # A resolved report does not collide with a pending one.
-    await db.reports.insert_one({
-        "reporter_id": reporter,
-        "target_type": "user",
-        "target_id": target,
-        "reason": "other",
-        "status": "resolved",
-        "created_at": None,
-    })
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -74,11 +81,13 @@ async def test_bug_reports_not_covered_by_unique_index():
 
     reporter = ObjectId()
     for _ in range(2):
-        await db.reports.insert_one({
-            "reporter_id": reporter,
-            "target_type": "bug",
-            "target_id": None,
-            "reason": "bug",
-            "status": "pending",
-            "created_at": None,
-        })
+        await db.reports.insert_one(
+            {
+                "reporter_id": reporter,
+                "target_type": "bug",
+                "target_id": None,
+                "reason": "bug",
+                "status": "pending",
+                "created_at": None,
+            }
+        )

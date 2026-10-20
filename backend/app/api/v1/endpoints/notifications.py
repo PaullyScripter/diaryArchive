@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import UTC, datetime
 
@@ -130,6 +129,7 @@ async def mark_read(
     updated = await repo.mark_read(notification_id, str(current_user["_id"]))
     if not updated:
         from app.core.exceptions import NotFoundException
+
         raise NotFoundException("Notification not found")
     try:
         redis = DatabaseManager.get_redis()

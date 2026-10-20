@@ -25,9 +25,7 @@ async def enrich_search_results(
         like_repo = LikeRepository()
         bookmark_repo = BookmarkRepository()
         diary_ids = [h["id"] for h in hits]
-        like_docs = await like_repo.find_by_user_and_diary_ids(
-            str(current_user["_id"]), diary_ids
-        )
+        like_docs = await like_repo.find_by_user_and_diary_ids(str(current_user["_id"]), diary_ids)
         liked_ids = {str(d["diary_id"]) for d in like_docs}
         bookmark_docs = await bookmark_repo.find_by_user_and_diary_ids(
             str(current_user["_id"]), diary_ids
