@@ -1,4 +1,9 @@
+import io
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+
 import pytest
+from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 
 from app.core.database import DatabaseManager
@@ -11,6 +16,7 @@ async def clear_db():
     db = DatabaseManager.get_db()
     await db.users.delete_many({})
     await db.diaries.delete_many({})
+    await db.media.delete_many({})
     await db.refresh_tokens.delete_many({})
 
 
@@ -158,6 +164,88 @@ class TestUpdateProfile:
             json={"preferences": {"theme": "neon"}},
         )
         assert response.status_code == 422
+
+    async def test_profile_update_cannot_set_avatar_path(
+        self, client: AsyncClient, auth_token: str
+    ):
+        response = await client.put(
+            "/api/v1/users/me",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={"avatar_path": "/api/v1/media/file/507f1f77bcf86cd799439011?v=thumb"},
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["avatar_path"] is None
+
+
+class TestAvatarUpload:
+    async def test_avatar_upload_requires_50_diaries(self, client: AsyncClient, auth_token: str):
+        response = await client.post(
+            "/api/v1/users/me/avatar",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            files={
+                "file": (
+                    "avatar.png",
+                    io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"x" * 32),
+                    "image/png",
+                )
+            },
+        )
+        assert response.status_code == 403
+        assert "50 diaries" in response.json()["error"]["message"]
+
+    async def test_avatar_upload_after_50_diaries(self, client: AsyncClient, auth_user: dict):
+        db = DatabaseManager.get_db()
+        user_id = ObjectId(auth_user["id"])
+        now = datetime.now(UTC)
+        await db.diaries.insert_many(
+            [
+                {
+                    "user_id": user_id,
+                    "privacy": "private",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                for _ in range(50)
+            ]
+        )
+
+        media_id = ObjectId()
+        await db.media.insert_one(
+            {
+                "_id": media_id,
+                "user_id": user_id,
+                "diary_id": None,
+                "stored_path": f"users/{auth_user['id']}/avatar.webp",
+                "thumbnail_path": f"users/{auth_user['id']}/avatar_thumb.webp",
+                "mime_type": "image/webp",
+                "filename": "avatar.png",
+                "size_bytes": 100,
+                "is_private": True,
+                "created_at": now,
+            }
+        )
+
+        with patch(
+            "app.services.user_service.upload_media",
+            new=AsyncMock(return_value={"id": str(media_id)}),
+        ):
+            response = await client.post(
+                "/api/v1/users/me/avatar",
+                headers={"Authorization": f"Bearer {auth_user['access_token']}"},
+                files={
+                    "file": (
+                        "avatar.png",
+                        io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"x" * 32),
+                        "image/png",
+                    )
+                },
+            )
+
+        assert response.status_code == 201
+        avatar_path = response.json()["data"]["avatar_path"]
+        assert avatar_path == f"/api/v1/media/file/{media_id}?v=thumb"
+        media = await db.media.find_one({"_id": media_id})
+        assert media["is_private"] is False
 
 
 class TestUpdateEmail:

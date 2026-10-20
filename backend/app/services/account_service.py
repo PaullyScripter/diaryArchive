@@ -226,7 +226,7 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     # Remove the user's avatar file if stored in MinIO.
     user_doc = await db.users.find_one({"_id": uid})
     avatar_path = user_doc.get("avatar_path") if user_doc else None
-    if avatar_path:
+    if avatar_path and not str(avatar_path).startswith("/api/v1/media/file/"):
         try:
             await _delete_object_async(avatar_path)
         except Exception:

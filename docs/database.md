@@ -146,8 +146,8 @@ email_hash          string|null SHA-256 of normalized email.
 
 email_verified      bool        Whether email has been verified.
 
-avatar_path         string|null Path in MinIO (e.g.,
-                                "users/{id}/avatar.webp").
+avatar_path         string|null Stable public media URL for the profile
+                                picture (e.g. "/api/v1/media/file/{id}?v=thumb").
 
 about               string|null Max 500 characters.
 
