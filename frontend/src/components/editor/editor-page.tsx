@@ -354,6 +354,14 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   // IP/referrer must never leak to a third-party image host from a diary the
   // author marked private).
   const allowExternalImages = privacy !== "private";
+  const previewSourceHtml = customCss
+    ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
+    : contentHtml;
+  const previewHtml = sanitizeHtml(
+    resolveMediaUrlsInHtml(previewSourceHtml),
+    { allowExternalImages },
+  );
+  const hydratedPreviewHtml = useHydratedMediaHtml(previewHtml);
   useEffect(() => {
     const raw = customCss
       ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
@@ -1069,14 +1077,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                 {isHtmlCss ? (
                   <ResizableDiaryWindow naturalWidth={previewNaturalWidth}>
                     <IsolatedDiary
-                      html={sanitizeHtml(
-                        resolveMediaUrlsInHtml(
-                          customCss
-                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                            : contentHtml
-                        ),
-                        { allowExternalImages }
-                      )}
+                      html={hydratedPreviewHtml}
                       onContentWidth={handlePreviewContentWidth}
                     />
                   </ResizableDiaryWindow>
@@ -1084,14 +1085,7 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
                   <article
                     className={`${PROSE_CLASSES} max-w-none overflow-x-auto`}
                     dangerouslySetInnerHTML={{
-                      __html: sanitizeHtml(
-                        resolveMediaUrlsInHtml(
-                          customCss
-                            ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
-                            : contentHtml
-                        ),
-                        { allowExternalImages }
-                      ),
+                      __html: hydratedPreviewHtml,
                     }}
                   />
                 )}
