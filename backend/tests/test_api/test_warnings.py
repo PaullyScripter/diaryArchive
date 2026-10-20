@@ -3,6 +3,7 @@ server-verified. A warned user cannot simply claim they changed their bio; the
 server requires the bio to actually differ from the offending snapshot and be
 updated after the warning was issued. A user also cannot self-clear their own
 pending moderation reports."""
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -32,8 +33,9 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _register(client: AsyncClient, username: str, password: str = "ValidPass1",
-                    is_admin: bool = False) -> dict:
+async def _register(
+    client: AsyncClient, username: str, password: str = "ValidPass1!", is_admin: bool = False
+) -> dict:
     resp = await client.post(
         "/api/v1/auth/register",
         json={
@@ -50,11 +52,14 @@ async def _register(client: AsyncClient, username: str, password: str = "ValidPa
     return data
 
 
-async def _issue_bio_warning(client: AsyncClient, admin_token: str, user_id: str,
-                             reason: str = "Inappropriate bio content") -> int:
-    resp = await client.post("/api/v1/admin/warnings/bio",
-                             json={"user_id": user_id, "reason": reason},
-                             headers=_auth(admin_token))
+async def _issue_bio_warning(
+    client: AsyncClient, admin_token: str, user_id: str, reason: str = "Inappropriate bio content"
+) -> int:
+    resp = await client.post(
+        "/api/v1/admin/warnings/bio",
+        json={"user_id": user_id, "reason": reason},
+        headers=_auth(admin_token),
+    )
     assert resp.status_code == 200
     return resp.json().get("data", resp.json())
 
@@ -65,15 +70,17 @@ class TestBioConfirmServerVerification:
         admin = await _register(client, "admin1", is_admin=True)
         await _issue_bio_warning(client, admin["access_token"], user["id"])
 
-        resp = await client.put("/api/v1/users/me/confirm-bio-change",
-                                headers=_auth(user["access_token"]))
+        resp = await client.put(
+            "/api/v1/users/me/confirm-bio-change", headers=_auth(user["access_token"])
+        )
         assert resp.status_code in (400, 422)
         assert "not changed" in resp.json().get("error", {}).get("message", "").lower()
 
     async def test_confirm_rejected_when_no_pending_warning(self, client: AsyncClient):
         user = await _register(client, "nowarnuser")
-        resp = await client.put("/api/v1/users/me/confirm-bio-change",
-                                headers=_auth(user["access_token"]))
+        resp = await client.put(
+            "/api/v1/users/me/confirm-bio-change", headers=_auth(user["access_token"])
+        )
         assert resp.status_code in (400, 422)
 
     async def test_confirm_rejected_when_edit_before_warning(self, client: AsyncClient):
@@ -83,16 +90,19 @@ class TestBioConfirmServerVerification:
         admin = await _register(client, "admin2", is_admin=True)
 
         # Set the bio BEFORE the warning.
-        resp = await client.put("/api/v1/users/me",
-                                  json={"about": "My original bio"},
-                                  headers=_auth(user["access_token"]))
+        resp = await client.put(
+            "/api/v1/users/me",
+            json={"about": "My original bio"},
+            headers=_auth(user["access_token"]),
+        )
         assert resp.status_code == 200
 
         await _issue_bio_warning(client, admin["access_token"], user["id"])
 
         # Bio unchanged (== snapshot) -> reject.
-        resp = await client.put("/api/v1/users/me/confirm-bio-change",
-                                headers=_auth(user["access_token"]))
+        resp = await client.put(
+            "/api/v1/users/me/confirm-bio-change", headers=_auth(user["access_token"])
+        )
         assert resp.status_code in (400, 422)
         assert "not changed" in resp.json().get("error", {}).get("message", "").lower()
 
@@ -102,13 +112,16 @@ class TestBioConfirmServerVerification:
         await _issue_bio_warning(client, admin["access_token"], user["id"])
 
         # Actually change the bio after the warning.
-        resp = await client.put("/api/v1/users/me",
-                                  json={"about": "My corrected compliant bio"},
-                                  headers=_auth(user["access_token"]))
+        resp = await client.put(
+            "/api/v1/users/me",
+            json={"about": "My corrected compliant bio"},
+            headers=_auth(user["access_token"]),
+        )
         assert resp.status_code == 200
 
-        resp = await client.put("/api/v1/users/me/confirm-bio-change",
-                                headers=_auth(user["access_token"]))
+        resp = await client.put(
+            "/api/v1/users/me/confirm-bio-change", headers=_auth(user["access_token"])
+        )
         assert resp.status_code == 200
         data = resp.json().get("data", resp.json())
         assert "confirmed" in data.get("message", "").lower()
@@ -121,29 +134,39 @@ class TestBioConfirmServerVerification:
         admin = await _register(client, "admin4", is_admin=True)
 
         # Reporter files a report against the user.
-        resp = await client.post("/api/v1/reports",
-                                 json={"target_type": "user", "target_id": user["id"],
-                                       "reason": "inappropriate_content"},
-                                 headers=_auth(reporter["access_token"]))
+        resp = await client.post(
+            "/api/v1/reports",
+            json={
+                "target_type": "user",
+                "target_id": user["id"],
+                "reason": "inappropriate_content",
+            },
+            headers=_auth(reporter["access_token"]),
+        )
         assert resp.status_code == 201
 
         await _issue_bio_warning(client, admin["access_token"], user["id"])
         # Comply and confirm.
-        await client.put("/api/v1/users/me",
-                           json={"about": "fixed compliant bio"},
-                           headers=_auth(user["access_token"]))
-        resp = await client.put("/api/v1/users/me/confirm-bio-change",
-                                headers=_auth(user["access_token"]))
+        await client.put(
+            "/api/v1/users/me",
+            json={"about": "fixed compliant bio"},
+            headers=_auth(user["access_token"]),
+        )
+        resp = await client.put(
+            "/api/v1/users/me/confirm-bio-change", headers=_auth(user["access_token"])
+        )
         assert resp.status_code == 200
 
         # The report must still be pending for admin review (not self-cleared).
         from bson import ObjectId
 
         db = DatabaseManager.get_db()
-        report = await db.reports.find_one({
-            "target_type": "user",
-            "target_id": ObjectId(user["id"]),
-        })
+        report = await db.reports.find_one(
+            {
+                "target_type": "user",
+                "target_id": ObjectId(user["id"]),
+            }
+        )
         assert report is not None
         assert report["status"] == "pending"
 
@@ -162,9 +185,12 @@ class TestBioWarningAutoBlank:
 
         # Make the warning deadline already expired.
         user_repo = UserRepository()
-        await user_repo.update(user["id"], {
-            "bio_warning_deadline": datetime.now(UTC) - timedelta(minutes=1),
-        })
+        await user_repo.update(
+            user["id"],
+            {
+                "bio_warning_deadline": datetime.now(UTC) - timedelta(minutes=1),
+            },
+        )
 
         # User did NOT change their bio -> auto-blank.
         await check_bio_warnings()
@@ -182,13 +208,18 @@ class TestBioWarningAutoBlank:
         await _issue_bio_warning(client, admin["access_token"], user["id"])
 
         # User changes their bio, then the deadline expires.
-        await client.put("/api/v1/users/me",
-                           json={"about": "I fixed my bio"},
-                           headers=_auth(user["access_token"]))
+        await client.put(
+            "/api/v1/users/me",
+            json={"about": "I fixed my bio"},
+            headers=_auth(user["access_token"]),
+        )
         user_repo = UserRepository()
-        await user_repo.update(user["id"], {
-            "bio_warning_deadline": datetime.now(UTC) - timedelta(minutes=1),
-        })
+        await user_repo.update(
+            user["id"],
+            {
+                "bio_warning_deadline": datetime.now(UTC) - timedelta(minutes=1),
+            },
+        )
 
         await check_bio_warnings()
         db = DatabaseManager.get_db()

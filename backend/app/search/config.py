@@ -11,15 +11,9 @@ PUBLIC_DIARIES_INDEX = "public_diaries"
 
 INDEX_SETTINGS = {
     "searchableAttributes": ["title", "content_text", "tags"],
-    "filterableAttributes": [
-        "tags", "emotion", "year", "month", "author_id", "created_at"
-    ],
-    "sortableAttributes": [
-        "created_at", "updated_at", "like_count", "comment_count"
-    ],
-    "rankingRules": [
-        "words", "typo", "proximity", "attribute", "sort", "exactness"
-    ],
+    "filterableAttributes": ["tags", "emotion", "year", "month", "author_id", "created_at"],
+    "sortableAttributes": ["created_at", "updated_at", "like_count", "comment_count"],
+    "rankingRules": ["words", "typo", "proximity", "attribute", "sort", "exactness"],
 }
 
 _client: Client | None = None
@@ -35,6 +29,7 @@ def get_client() -> Client:
 async def initialize_search_indexes() -> None:
     try:
         client = get_client()
+
         def _setup():
             try:
                 index = client.get_index(PUBLIC_DIARIES_INDEX)
@@ -42,6 +37,7 @@ async def initialize_search_indexes() -> None:
                 index = client.create_index(PUBLIC_DIARIES_INDEX, {"primaryKey": "id"})
             index.update_settings(INDEX_SETTINGS)
             return index
+
         await asyncio.to_thread(_setup)
         logger.info("Meilisearch index '%s' initialized", PUBLIC_DIARIES_INDEX)
     except Exception:

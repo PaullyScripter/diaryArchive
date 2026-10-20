@@ -22,9 +22,7 @@ class MediaRepository(BaseRepository):
             query["diary_id"] = self._oid(diary_id)
         return await self.find(query, sort=sort, skip=skip, limit=limit)
 
-    async def count_by_user(
-        self, user_id: str, diary_id: str | None = None
-    ) -> int:
+    async def count_by_user(self, user_id: str, diary_id: str | None = None) -> int:
         query: dict = {"user_id": self._oid(user_id)}
         if diary_id:
             query["diary_id"] = self._oid(diary_id)
@@ -38,9 +36,7 @@ class MediaRepository(BaseRepository):
         )
 
     async def delete_by_diary(self, diary_id: str) -> int:
-        result = await self._collection.delete_many(
-            {"diary_id": self._oid(diary_id)}
-        )
+        result = await self._collection.delete_many({"diary_id": self._oid(diary_id)})
         return result.deleted_count
 
     async def get_by_id(self, media_id: str) -> dict | None:
@@ -52,9 +48,9 @@ class MediaRepository(BaseRepository):
         self, media_ids: list[str], user_id: str, diary_id: str, is_private: bool
     ) -> int:
         """Attach all owned media to a diary and persist its effective privacy."""
-        valid_ids = list({
-            ObjectId(media_id) for media_id in media_ids if ObjectId.is_valid(media_id)
-        })
+        valid_ids = list(
+            {ObjectId(media_id) for media_id in media_ids if ObjectId.is_valid(media_id)}
+        )
         if not valid_ids or not ObjectId.is_valid(user_id) or not ObjectId.is_valid(diary_id):
             return 0
         existing = await self.find({"_id": {"$in": valid_ids}})
@@ -63,8 +59,7 @@ class MediaRepository(BaseRepository):
         diary_oid = ObjectId(diary_id)
         user_oid = ObjectId(user_id)
         if any(
-            media.get("user_id") != user_oid
-            or media.get("diary_id") not in (None, diary_oid)
+            media.get("user_id") != user_oid or media.get("diary_id") not in (None, diary_oid)
             for media in existing
         ):
             return 0

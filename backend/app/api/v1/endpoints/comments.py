@@ -27,7 +27,9 @@ async def create(
     )
     if is_limited:
         raise RateLimitException("Too many comment attempts")
-    result = await create_comment(diary_id, body.content, current_user, parent_comment_id=body.parent_comment_id)
+    result = await create_comment(
+        diary_id, body.content, current_user, parent_comment_id=body.parent_comment_id
+    )
     return {"data": result}
 
 
@@ -59,9 +61,7 @@ async def like_comment(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:comment_like:{current_user['_id']}", 30, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:comment_like:{current_user['_id']}", 30, 60)
     if is_limited:
         raise RateLimitException("Too many comment like attempts")
     result = await toggle_comment_like(comment_id, current_user)

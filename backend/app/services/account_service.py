@@ -17,9 +17,9 @@ Two user-facing capabilities built on the existing repository primitives:
 
 import logging
 import re
+import tarfile
 from datetime import UTC, datetime
 from io import BytesIO
-import tarfile
 
 from bson import ObjectId
 
@@ -269,7 +269,7 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
 
     # P2.8: Structured audit log entry for account deletion.
     try:
-        username = user.get("username", "unknown") if user else "unknown"
+        username = user_doc.get("username", "unknown") if user_doc else "unknown"
         audit_repo = AuditLogRepository()
         await audit_repo.create(
             admin_id="system",

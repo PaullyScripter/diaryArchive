@@ -1,4 +1,9 @@
+import asyncio
 import os
+
+import pytest
+import pytest_asyncio
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # ---------------------------------------------------------------------------
 # Test environment, applied BEFORE any app module is imported.
@@ -66,15 +71,6 @@ def _assert_safe_test_database() -> str:
     return name
 
 
-import asyncio
-
-import pytest
-import pytest_asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-
-from app.core.database import DatabaseManager
-
-
 @pytest.fixture(scope="session", autouse=True)
 def _guard_test_db_isolation():
     """Fail fast before ANY test body runs if the target is not a test DB."""
@@ -90,10 +86,10 @@ def event_loop():
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_database():
+    from app.core.database import DatabaseManager
+
     db_name = _assert_safe_test_database()
-    assert db_name == TEST_DB_NAME, (
-        f"Resolved DB {db_name!r} != TEST_DB_NAME {TEST_DB_NAME!r}"
-    )
+    assert db_name == TEST_DB_NAME, f"Resolved DB {db_name!r} != TEST_DB_NAME {TEST_DB_NAME!r}"
     client = AsyncIOMotorClient(TEST_MONGODB_URI)
     DatabaseManager._client = client
     yield

@@ -1,5 +1,4 @@
-import pytest
-from app.core.media_validator import detect_mime_type, is_allowed_mime, get_max_size, mime_category
+from app.core.media_validator import detect_mime_type, get_max_size, is_allowed_mime, mime_category
 
 
 class TestDetectMimeType:

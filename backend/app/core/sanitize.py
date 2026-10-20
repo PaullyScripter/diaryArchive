@@ -10,20 +10,68 @@ from app.core.config import settings
 
 ALLOWED_TAGS = {
     # core text
-    "p", "h1", "h2", "h3", "h4", "h5", "h6",
-    "ul", "ol", "li", "blockquote", "pre", "code",
-    "em", "strong", "a", "img", "br", "span", "small",
-    "sub", "sup", "mark", "abbr", "cite", "q", "s", "u",
+    "p",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "pre",
+    "code",
+    "em",
+    "strong",
+    "a",
+    "img",
+    "br",
+    "span",
+    "small",
+    "sub",
+    "sup",
+    "mark",
+    "abbr",
+    "cite",
+    "q",
+    "s",
+    "u",
     # semantic layout (commonly used in custom HTML/CSS diaries)
-    "article", "section", "header", "footer", "aside",
-    "nav", "main", "figure", "figcaption", "div",
+    "article",
+    "section",
+    "header",
+    "footer",
+    "aside",
+    "nav",
+    "main",
+    "figure",
+    "figcaption",
+    "div",
     # tables
-    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
-    "caption", "colgroup", "col",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+    "caption",
+    "colgroup",
+    "col",
     # lists / structure
-    "dl", "dt", "dd", "hr", "details", "summary",
+    "dl",
+    "dt",
+    "dd",
+    "hr",
+    "details",
+    "summary",
     # forms (interactive but inert without JS; used for checklists/toggles)
-    "label", "input", "fieldset", "legend",
+    "label",
+    "input",
+    "fieldset",
+    "legend",
     # style
     "style",
 }
@@ -44,36 +92,123 @@ ALLOWED_ATTRIBUTES = {
 # the danger lives in VALUES (url(), expression(), behavior, ...) which are
 # rejected by _CSS_VALUE_RE below. Custom properties (--*) are allowed so
 # writers can define their own design tokens.
-ALLOWED_CSS_PROPERTIES = frozenset({
-    # typography
-    "font-family", "font-size", "font-weight", "font-style",
-    "color", "background-color", "background", "background-image",
-    "text-align", "text-decoration", "text-indent", "text-transform",
-    "line-height", "letter-spacing", "white-space", "word-wrap",
-    "vertical-align", "text-shadow", "word-break", "overflow-wrap",
-    # box model
-    "margin", "margin-left", "margin-right", "margin-top", "margin-bottom",
-    "padding", "padding-left", "padding-right", "padding-top", "padding-bottom",
-    "border", "border-left", "border-right", "border-top", "border-bottom",
-    "border-radius", "box-shadow", "border-collapse", "border-spacing",
-    # sizing / layout
-    "width", "height", "min-width", "min-height", "max-width", "max-height",
-    "display", "float", "overflow", "overflow-x", "overflow-y",
-    "position", "top", "right", "bottom", "left", "inset", "z-index",
-    "flex", "flex-direction", "flex-wrap", "flex-grow", "flex-shrink",
-    "flex-basis", "gap", "row-gap", "column-gap",
-    "align-items", "align-self", "align-content", "justify-content",
-    "justify-items", "justify-self", "place-items", "place-content", "place-self",
-    "grid", "grid-template", "grid-template-columns", "grid-template-rows",
-    "grid-template-areas", "grid-column", "grid-column-start", "grid-column-end",
-    "grid-row", "grid-row-start", "grid-row-end", "grid-area",
-    "grid-auto-flow", "grid-auto-rows", "grid-auto-columns", "grid-gap",
-    "box-sizing", "aspect-ratio", "object-fit", "object-position",
-    "opacity", "transform", "transform-origin", "transition",
-    "content", "filter", "backdrop-filter", "cursor", "user-select",
-    "visibility", "overflow-wrap", "text-overflow",
-    "columns", "column-count", "column-gap",
-})
+ALLOWED_CSS_PROPERTIES = frozenset(
+    {
+        # typography
+        "font-family",
+        "font-size",
+        "font-weight",
+        "font-style",
+        "color",
+        "background-color",
+        "background",
+        "background-image",
+        "text-align",
+        "text-decoration",
+        "text-indent",
+        "text-transform",
+        "line-height",
+        "letter-spacing",
+        "white-space",
+        "word-wrap",
+        "vertical-align",
+        "text-shadow",
+        "word-break",
+        "overflow-wrap",
+        # box model
+        "margin",
+        "margin-left",
+        "margin-right",
+        "margin-top",
+        "margin-bottom",
+        "padding",
+        "padding-left",
+        "padding-right",
+        "padding-top",
+        "padding-bottom",
+        "border",
+        "border-left",
+        "border-right",
+        "border-top",
+        "border-bottom",
+        "border-radius",
+        "box-shadow",
+        "border-collapse",
+        "border-spacing",
+        # sizing / layout
+        "width",
+        "height",
+        "min-width",
+        "min-height",
+        "max-width",
+        "max-height",
+        "display",
+        "float",
+        "overflow",
+        "overflow-x",
+        "overflow-y",
+        "position",
+        "top",
+        "right",
+        "bottom",
+        "left",
+        "inset",
+        "z-index",
+        "flex",
+        "flex-direction",
+        "flex-wrap",
+        "flex-grow",
+        "flex-shrink",
+        "flex-basis",
+        "gap",
+        "row-gap",
+        "column-gap",
+        "align-items",
+        "align-self",
+        "align-content",
+        "justify-content",
+        "justify-items",
+        "justify-self",
+        "place-items",
+        "place-content",
+        "place-self",
+        "grid",
+        "grid-template",
+        "grid-template-columns",
+        "grid-template-rows",
+        "grid-template-areas",
+        "grid-column",
+        "grid-column-start",
+        "grid-column-end",
+        "grid-row",
+        "grid-row-start",
+        "grid-row-end",
+        "grid-area",
+        "grid-auto-flow",
+        "grid-auto-rows",
+        "grid-auto-columns",
+        "grid-gap",
+        "box-sizing",
+        "aspect-ratio",
+        "object-fit",
+        "object-position",
+        "opacity",
+        "transform",
+        "transform-origin",
+        "transition",
+        "content",
+        "filter",
+        "backdrop-filter",
+        "cursor",
+        "user-select",
+        "visibility",
+        "overflow-wrap",
+        "text-overflow",
+        "columns",
+        "column-count",
+        "column-gap",
+    }
+)
 
 # Constructs that must never survive in a CSS value or stylesheet.
 _CSS_VALUE_RE = re.compile(
@@ -102,6 +237,7 @@ def _origin_host(origin: str | None) -> str:
     if "://" not in origin:
         return ""
     return origin.split("://", 1)[0] + "://" + origin.split("://", 1)[1].split("/", 1)[0]
+
 
 _MAX_RULE_DEPTH = 12
 
@@ -165,17 +301,13 @@ class _CustomPropertyAwareCSSSanitizer(CSSSanitizer):
         return serialize(declarations) if declarations else ""
 
 
-css_sanitizer = _CustomPropertyAwareCSSSanitizer(
-    allowed_css_properties=ALLOWED_CSS_PROPERTIES
-)
+css_sanitizer = _CustomPropertyAwareCSSSanitizer(allowed_css_properties=ALLOWED_CSS_PROPERTIES)
 
 
 def _sanitize_declarations(content) -> list:
     """Return only safe, allowlisted CSS declarations from a token list or string."""
     try:
-        declarations = parse_declaration_list(
-            content, skip_comments=True, skip_whitespace=True
-        )
+        declarations = parse_declaration_list(content, skip_comments=True, skip_whitespace=True)
     except Exception:
         return []
     kept = []

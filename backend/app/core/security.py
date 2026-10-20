@@ -54,12 +54,14 @@ def decode_access_token(token: str) -> dict:
         return payload
     except JWTError:
         from app.core.exceptions import AuthenticationException
+
         raise AuthenticationException("Invalid or expired access token")
 
 
 async def validate_access_token(token: str) -> dict:
     """Decode and validate a token, including revocation check."""
     from app.core.exceptions import AuthenticationException
+
     payload = decode_access_token(token)
     user_id = payload.get("sub")
     iat = payload.get("iat")
@@ -141,9 +143,24 @@ def _is_trusted_proxy(ip: str) -> bool:
         return True
     # Check common Docker/internal ranges
     private_prefixes = (
-        "10.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.",
-        "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.",
-        "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168.",
+        "10.",
+        "172.16.",
+        "172.17.",
+        "172.18.",
+        "172.19.",
+        "172.20.",
+        "172.21.",
+        "172.22.",
+        "172.23.",
+        "172.24.",
+        "172.25.",
+        "172.26.",
+        "172.27.",
+        "172.28.",
+        "172.29.",
+        "172.30.",
+        "172.31.",
+        "192.168.",
     )
     for prefix in private_prefixes:
         if ip.startswith(prefix):
@@ -220,9 +237,7 @@ async def clear_attempts(key: str) -> None:
         pass
 
 
-async def check_rate_limit(
-    key: str, max_attempts: int, window_seconds: int
-) -> tuple[bool, int]:
+async def check_rate_limit(key: str, max_attempts: int, window_seconds: int) -> tuple[bool, int]:
     try:
         redis: Redis = DatabaseManager.get_redis()
     except RuntimeError:
@@ -259,6 +274,7 @@ async def check_rate_limit(
 #   - account compromise
 
 _TOKEN_INVALIDATION_PREFIX = "auth:invalid_before:"
+
 
 async def invalidate_all_user_tokens(user_id: str) -> None:
     """Persist a durable timestamp that invalidates all access tokens."""
@@ -300,9 +316,5 @@ async def _is_token_invalidated(user_id: str, token_iat: datetime | int | float)
     if invalid_before is None:
         return False
 
-    issued_at = (
-        token_iat.timestamp()
-        if isinstance(token_iat, datetime)
-        else float(token_iat)
-    )
+    issued_at = token_iat.timestamp() if isinstance(token_iat, datetime) else float(token_iat)
     return issued_at < float(invalid_before)

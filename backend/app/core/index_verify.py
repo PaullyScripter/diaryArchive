@@ -7,7 +7,12 @@ logger = logging.getLogger(__name__)
 
 QUERY_PATTERNS: list[tuple[str, dict[str, Any], list[tuple[str, int]], str]] = [
     ("diaries", {"privacy": "public"}, [("created_at", -1)], "public feed"),
-    ("diaries", {"privacy": "public", "tags": {"$in": ["test"]}}, [("created_at", -1)], "feed by tag"),
+    (
+        "diaries",
+        {"privacy": "public", "tags": {"$in": ["test"]}},
+        [("created_at", -1)],
+        "feed by tag",
+    ),
     ("diaries", {"privacy": "public", "emotion": "happy"}, [("created_at", -1)], "feed by emotion"),
     ("diaries", {"user_id": "placeholder"}, [("created_at", -1)], "user diaries"),
     ("diaries", {"_id": "placeholder"}, [], "diary by id"),
@@ -73,7 +78,11 @@ async def verify_indexes(db: AsyncIOMotorDatabase) -> dict[str, Any]:
                 collscan_count += 1
                 results[description] = {"status": "COLLSCAN", "collection": collection_name}
             elif _has_index_stage(explain_result):
-                results[description] = {"status": "OK", "stage": stage, "collection": collection_name}
+                results[description] = {
+                    "status": "OK",
+                    "stage": stage,
+                    "collection": collection_name,
+                }
             else:
                 logger.warning(
                     "Unexpected plan stage '%s' for query: %s on collection '%s' (%s)",
@@ -82,7 +91,11 @@ async def verify_indexes(db: AsyncIOMotorDatabase) -> dict[str, Any]:
                     collection_name,
                     description,
                 )
-                results[description] = {"status": "UNEXPECTED", "stage": stage, "collection": collection_name}
+                results[description] = {
+                    "status": "UNEXPECTED",
+                    "stage": stage,
+                    "collection": collection_name,
+                }
         except Exception as exc:
             logger.warning(
                 "Failed to explain query for '%s' on '%s': %s",
@@ -90,7 +103,11 @@ async def verify_indexes(db: AsyncIOMotorDatabase) -> dict[str, Any]:
                 collection_name,
                 exc,
             )
-            results[description] = {"status": "ERROR", "error": str(exc), "collection": collection_name}
+            results[description] = {
+                "status": "ERROR",
+                "error": str(exc),
+                "collection": collection_name,
+            }
 
     return {
         "total": len(QUERY_PATTERNS),

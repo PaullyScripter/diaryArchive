@@ -52,24 +52,30 @@ def _build_user_response(user: dict) -> dict:
         "about": user.get("about"),
         "favorite_quote": user.get("favorite_quote"),
         "currently_feeling": user.get("currently_feeling"),
-        "stats": user.get("stats", {
-            "diary_count": 0,
-            "follower_count": 0,
-            "following_count": 0,
-        }),
+        "stats": user.get(
+            "stats",
+            {
+                "diary_count": 0,
+                "follower_count": 0,
+                "following_count": 0,
+            },
+        ),
         "is_admin": user.get("is_admin", False),
         "has_email": bool(user.get("email_encrypted")),
         "email_verified": user.get("email_verified", False),
         "has_master_key": bool(user.get("encrypted_master_key")),
-        "preferences": user.get("preferences", {
-            "theme": "system",
-            "comments_disabled": False,
-            "email_notifications": False,
-            "notify_on_like": True,
-            "notify_on_comment": True,
-            "notify_on_follow": True,
-            "notify_on_bookmark": False,
-        }),
+        "preferences": user.get(
+            "preferences",
+            {
+                "theme": "system",
+                "comments_disabled": False,
+                "email_notifications": False,
+                "notify_on_like": True,
+                "notify_on_comment": True,
+                "notify_on_follow": True,
+                "notify_on_bookmark": False,
+            },
+        ),
         "created_at": fmt_dt(user.get("created_at")),
         "last_login_at": fmt_dt(user.get("last_login_at")),
     }
@@ -104,16 +110,18 @@ async def _write_auth_audit(
 ) -> None:
     try:
         repo = AuditLogRepository()
-        await repo.create_log({
-            "admin_id": actor,
-            "admin_username": actor,
-            "action": action,
-            "target_type": target_type,
-            "target_id": target_id,
-            "details": details or {},
-            "ip_address": ip_address,
-            "category": "auth",
-        })
+        await repo.create_log(
+            {
+                "admin_id": actor,
+                "admin_username": actor,
+                "action": action,
+                "target_type": target_type,
+                "target_id": target_id,
+                "details": details or {},
+                "ip_address": ip_address,
+                "category": "auth",
+            }
+        )
     except Exception:
         logger.exception("Failed to write auth audit event: %s %s", action, target_id)
 
@@ -239,12 +247,14 @@ async def register(
 
     await _generate_tokens(response, user_id)
 
-    return {"data": RegisterResponse(
-        id=user_id,
-        username=body.username.lower(),
-        created_at=user_doc["created_at"].isoformat(),
-        access_token=access_token,
-    )}
+    return {
+        "data": RegisterResponse(
+            id=user_id,
+            username=body.username.lower(),
+            created_at=user_doc["created_at"].isoformat(),
+            access_token=access_token,
+        )
+    }
 
 
 @router.post("/login")
@@ -331,9 +341,7 @@ async def login(
     await clear_attempts(account_key)
     _check_age_achievement(str(user["_id"]))
 
-    access_token = create_access_token(
-        str(user["_id"]), user["username"]
-    )
+    access_token = create_access_token(str(user["_id"]), user["username"])
 
     await _generate_tokens(response, str(user["_id"]))
 
@@ -345,12 +353,14 @@ async def login(
         ip_address=client_ip,
     )
 
-    return {"data": AuthResponse(
-        id=str(user["_id"]),
-        username=user["username"],
-        is_admin=user.get("is_admin", False),
-        access_token=access_token,
-    )}
+    return {
+        "data": AuthResponse(
+            id=str(user["_id"]),
+            username=user["username"],
+            is_admin=user.get("is_admin", False),
+            access_token=access_token,
+        )
+    }
 
 
 @router.post("/refresh")
@@ -397,11 +407,10 @@ async def refresh(
     if user.get("is_banned"):
         raise PermissionDeniedException("Your account has been banned")
 
-    access_token = create_access_token(
-        str(user["_id"]), user["username"]
-    )
+    access_token = create_access_token(str(user["_id"]), user["username"])
     await _generate_tokens(
-        response, str(user["_id"]),
+        response,
+        str(user["_id"]),
         original_login_at=stored.get("original_login_at"),
     )
 
@@ -510,9 +519,7 @@ async def request_password_reset(
             reset_token_hash[:8],
         )
 
-    return {
-        "data": {"message": "If this account has an email, a reset link has been sent."}
-    }
+    return {"data": {"message": "If this account has an email, a reset link has been sent."}}
 
 
 @router.post("/reset-password")
@@ -549,12 +556,15 @@ async def reset_password(
         raise AuthenticationException("User not found")
 
     new_hash = await hash_password_async(new_password)
-    await user_repo.update(str(user["_id"]), {
-        "password_hash": new_hash,
-        "encrypted_master_key": None,
-        "master_key_salt": None,
-        "master_key_iv": None,
-    })
+    await user_repo.update(
+        str(user["_id"]),
+        {
+            "password_hash": new_hash,
+            "encrypted_master_key": None,
+            "master_key_salt": None,
+            "master_key_iv": None,
+        },
+    )
 
     refresh_repo = RefreshTokenRepository()
     await refresh_repo.delete_all_for_user(str(user["_id"]))
@@ -602,10 +612,13 @@ async def verify_email(
     if user is None:
         raise AuthenticationException("User not found")
 
-    await user_repo.update(str(user["_id"]), {
-        "email_verified": True,
-        "email_verified_at": datetime.now(UTC),
-    })
+    await user_repo.update(
+        str(user["_id"]),
+        {
+            "email_verified": True,
+            "email_verified_at": datetime.now(UTC),
+        },
+    )
 
     await _write_auth_audit(
         actor=user["username"],
@@ -654,6 +667,7 @@ def _check_age_achievement(user_id: str) -> None:
     async def _do():
         try:
             from app.services.achievement_service import check_and_award_age_achievements
+
             await check_and_award_age_achievements(user_id)
         except Exception:
             pass

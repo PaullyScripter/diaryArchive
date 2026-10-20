@@ -13,19 +13,19 @@ from app.core.exceptions import (
     ValidationException,
 )
 from app.core.media_validator import (
+    MAX_HEIGHT,
+    MAX_PIXELS,
+    MAX_WIDTH,
     detect_mime_type,
     get_max_size,
     is_allowed_mime,
     mime_category,
-    MAX_HEIGHT,
-    MAX_PIXELS,
-    MAX_WIDTH,
 )
 from app.core.minio_client import get_minio_client
 from app.core.utils import fmt_dt
-from app.repositories.media_repo import MediaRepository
 from app.repositories.diary_repo import DiaryRepository
-from app.services.image_service import process_image, get_image_dimensions
+from app.repositories.media_repo import MediaRepository
+from app.services.image_service import get_image_dimensions, process_image
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ async def _upload_object_async(stored_path: str, data: bytes, content_type: str)
     try:
         client = get_minio_client()
         from app.core.config import settings
+
         exists = await asyncio.to_thread(lambda: client.bucket_exists(settings.minio_bucket))
         if not exists:
             await asyncio.to_thread(lambda: client.make_bucket(settings.minio_bucket))
@@ -56,7 +57,7 @@ async def _upload_object_async(stored_path: str, data: bytes, content_type: str)
                 content_type=content_type,
             )
         )
-    except Exception as e:
+    except Exception:
         logger.exception("MinIO upload failed for %s", stored_path)
         raise
 
@@ -180,9 +181,7 @@ async def fetch_media_object(path: str):
     """Open the stored object for streaming, or raise 404 if it is gone."""
     client = get_minio_client()
     try:
-        return await asyncio.to_thread(
-            client.get_object, settings.minio_bucket, path
-        )
+        return await asyncio.to_thread(client.get_object, settings.minio_bucket, path)
     except Exception:
         raise NotFoundException("Media not found")
 
@@ -203,9 +202,7 @@ async def upload_media(
     repo = MediaRepository()
     user_count = await repo.count_by_user(str(user["_id"]))
     if user_count >= settings.max_media_per_user:
-        raise ValidationException(
-            f"Media limit reached ({settings.max_media_per_user} files)"
-        )
+        raise ValidationException(f"Media limit reached ({settings.max_media_per_user} files)")
 
     effective_is_private = True  # unattached/draft media is private by default
     if diary_id:
@@ -224,7 +221,10 @@ async def upload_media(
     detected_mime = detect_mime_type(file_data)
     logger.info(
         "Upload detected_mime=%s content_type_header=%s filename=%s size=%d",
-        detected_mime, content_type_header, original_filename, len(file_data),
+        detected_mime,
+        content_type_header,
+        original_filename,
+        len(file_data),
     )
 
     if detected_mime is None:
@@ -361,7 +361,8 @@ async def delete_media(media_id: str, current_user: dict) -> None:
     if failed_paths:
         logger.error(
             "Failed to delete MinIO objects for media %s: %s",
-            media_id, failed_paths,
+            media_id,
+            failed_paths,
         )
     else:
         logger.info("Deleted all MinIO objects for media %s", media_id)
@@ -377,9 +378,7 @@ async def get_media_gallery(
 ) -> dict:
     repo = MediaRepository()
     skip = (page - 1) * per_page
-    media_list = await repo.find_by_user(
-        user_id, diary_id=diary_id, skip=skip, limit=per_page
-    )
+    media_list = await repo.find_by_user(user_id, diary_id=diary_id, skip=skip, limit=per_page)
     total = await repo.count_by_user(user_id, diary_id=diary_id)
 
     data = []
@@ -388,9 +387,7 @@ async def get_media_gallery(
         if m.get("diary_id"):
             diary = await DiaryRepository().get_by_id(str(m["diary_id"]))
             effective_is_private = diary is None or diary.get("privacy") != "public"
-        data.append(
-            _build_media_response(m, effective_is_private=effective_is_private)
-        )
+        data.append(_build_media_response(m, effective_is_private=effective_is_private))
 
     return {
         "data": data,

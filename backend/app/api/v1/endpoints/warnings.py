@@ -86,7 +86,7 @@ async def issue_bio_warning(
             "body": (
                 f"Hello {user['username']},\n\n"
                 f"Your bio has been flagged by our moderation team for the following reason:\n"
-                f"\"{reason}\"\n\n"
+                f'"{reason}"\n\n'
                 f"How to change your bio:\n"
                 f"1. Click the notification to view details\n"
                 f"2. Go to Settings > Profile\n"
@@ -94,9 +94,9 @@ async def issue_bio_warning(
                 f"4. Click 'Save' to update your profile\n"
                 f"5. Return to this notification and click 'I changed my bio'\n\n"
                 f"Please update your bio within 5 minutes. Failure to comply may result in"
-                f" your bio being blanked" +
-                (" and your bio editing privileges being suspended." if new_count >= 3 else ".") +
-                "\n\nRepeated violations may result in account suspension or banning.\n\n"
+                f" your bio being blanked"
+                + (" and your bio editing privileges being suspended." if new_count >= 3 else ".")
+                + "\n\nRepeated violations may result in account suspension or banning.\n\n"
                 "Regards,\nDiaryArchive Moderation"
             ),
             "count": new_count,
@@ -152,10 +152,13 @@ async def issue_username_warning(
 
     deadline = datetime.now(UTC) + timedelta(minutes=5)
 
-    await user_repo.update(user_id, {
-        "username_warning_deadline": deadline,
-        "username_warning_reason": reason,
-    })
+    await user_repo.update(
+        user_id,
+        {
+            "username_warning_deadline": deadline,
+            "username_warning_reason": reason,
+        },
+    )
 
     await create_notification(
         recipient_id=user_id,
@@ -167,7 +170,7 @@ async def issue_username_warning(
             "body": (
                 f"Hello {user['username']},\n\n"
                 f"Your username has been flagged by our moderation team for the following reason:\n"
-                f"\"{reason}\"\n\n"
+                f'"{reason}"\n\n'
                 f"How to change your username:\n"
                 f"1. Go to Report > Open a Ticket\n"
                 f"2. Select the 'Username Change' category\n"
@@ -219,17 +222,19 @@ async def list_warned_users(
 
     result = []
     for u in users:
-        result.append({
-            "id": str(u["_id"]),
-            "username": u.get("username", ""),
-            "bio_warning_count": u.get("bio_warning_count", 0),
-            "bio_warning_deadline": u.get("bio_warning_deadline"),
-            "bio_warning_reason": u.get("bio_warning_reason"),
-            "bio_edit_banned_until": u.get("bio_edit_banned_until"),
-            "username_warning_deadline": u.get("username_warning_deadline"),
-            "username_warning_reason": u.get("username_warning_reason"),
-            "is_banned": u.get("is_banned", False),
-        })
+        result.append(
+            {
+                "id": str(u["_id"]),
+                "username": u.get("username", ""),
+                "bio_warning_count": u.get("bio_warning_count", 0),
+                "bio_warning_deadline": u.get("bio_warning_deadline"),
+                "bio_warning_reason": u.get("bio_warning_reason"),
+                "bio_edit_banned_until": u.get("bio_edit_banned_until"),
+                "username_warning_deadline": u.get("username_warning_deadline"),
+                "username_warning_reason": u.get("username_warning_reason"),
+                "is_banned": u.get("is_banned", False),
+            }
+        )
 
     has_next = skip + per_page < total
     has_prev = page > 1
@@ -283,11 +288,14 @@ async def confirm_bio_change(
     # Legitimately complied: clear the auto-blank deadline and snapshot, and
     # leave the pending moderation reports for admin review (do NOT let the user
     # self-clear their own moderation queue). Record an auditable confirmation.
-    await user_repo.update(user_id, {
-        "bio_warning_deadline": None,
-        "bio_warning_about_snapshot": None,
-        "bio_warning_confirmed_at": datetime.now(UTC),
-    })
+    await user_repo.update(
+        user_id,
+        {
+            "bio_warning_deadline": None,
+            "bio_warning_about_snapshot": None,
+            "bio_warning_confirmed_at": datetime.now(UTC),
+        },
+    )
 
     logger.info("Bio change confirmed (server-verified) for user %s", user_id)
 

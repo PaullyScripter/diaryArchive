@@ -1,11 +1,11 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
-class ReportReason(str, Enum):
+class ReportReason(StrEnum):
     spam = "spam"
     inappropriate_content = "inappropriate_content"
     harassment = "harassment"
@@ -15,14 +15,14 @@ class ReportReason(str, Enum):
     other = "other"
 
 
-class ReportTargetType(str, Enum):
+class ReportTargetType(StrEnum):
     diary = "diary"
     comment = "comment"
     user = "user"
     bug = "bug"
 
 
-class ReportStatus(str, Enum):
+class ReportStatus(StrEnum):
     pending = "pending"
     resolved = "resolved"
     dismissed = "dismissed"

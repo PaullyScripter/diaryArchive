@@ -134,11 +134,13 @@ def render_metrics() -> str:
         # Cross-platform: use resource module on Unix, psutil if available, else 0
         try:
             import resource
+
             usage = resource.getrusage(resource.RUSAGE_SELF)
             mem_bytes = usage.ru_maxrss * 1024  # Linux: bytes; macOS: already bytes
         except (ImportError, AttributeError):
             try:
                 import psutil
+
                 mem_bytes = psutil.Process().memory_info().rss
             except ImportError:
                 mem_bytes = 0

@@ -1,10 +1,10 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class TicketCategory(str, Enum):
+class TicketCategory(StrEnum):
     account_help = "account_help"
     username_change = "username_change"
     general_inquiry = "general_inquiry"

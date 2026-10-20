@@ -54,9 +54,7 @@ class ReportRepository(BaseRepository):
             filter_dict["target_type"] = target_type
         return await self.count(filter_dict)
 
-    async def find_by_user(
-        self, user_id: str, skip: int = 0, limit: int = 20
-    ) -> list[dict]:
+    async def find_by_user(self, user_id: str, skip: int = 0, limit: int = 20) -> list[dict]:
         return await self.find(
             filter={"reporter_id": ObjectId(user_id)},
             sort=[("created_at", -1)],

@@ -52,6 +52,7 @@ def test_hash_email_is_keyed_and_versioned():
 
 def test_hash_email_differs_from_sha256_of_value():
     import hashlib
+
     raw = hashlib.sha256(b"user@example.com").hexdigest()
     assert hash_email("user@example.com") != f"v2:{raw}"
 

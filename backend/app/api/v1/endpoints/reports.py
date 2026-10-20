@@ -18,9 +18,7 @@ async def create_report(
     request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    is_limited, _ = await check_rate_limit(
-        f"rate_limit:report:{current_user['_id']}", 5, 60
-    )
+    is_limited, _ = await check_rate_limit(f"rate_limit:report:{current_user['_id']}", 5, 60)
     if is_limited:
         raise RateLimitException("Too many report submissions. Please try again later.")
 
@@ -30,8 +28,8 @@ async def create_report(
         target_id=body.target_id or "",
         reason=body.reason.value,
         description=body.description,
-        url=body.url if hasattr(body, 'url') else None,
-        user_agent=body.user_agent if hasattr(body, 'user_agent') else None,
+        url=body.url if hasattr(body, "url") else None,
+        user_agent=body.user_agent if hasattr(body, "user_agent") else None,
     )
 
     return {"data": result}

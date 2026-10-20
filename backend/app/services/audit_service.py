@@ -27,7 +27,10 @@ async def log_audit(
     log_id = await repo.create_log(doc)
     logger.info(
         "Audit: %s performed %s on %s/%s",
-        admin_username, action, target_type, target_id,
+        admin_username,
+        action,
+        target_type,
+        target_id,
     )
     return log_id
 
@@ -63,17 +66,19 @@ async def list_audit_logs(
 
     result = []
     for log in logs:
-        result.append({
-            "id": str(log["_id"]),
-            "admin_id": str(log.get("admin_id", "")),
-            "admin_username": log.get("admin_username", "unknown"),
-            "action": log.get("action", ""),
-            "target_type": log.get("target_type", ""),
-            "target_id": log.get("target_id"),
-            "details": log.get("details", {}),
-            "ip_address": log.get("ip_address"),
-            "created_at": log["created_at"],
-        })
+        result.append(
+            {
+                "id": str(log["_id"]),
+                "admin_id": str(log.get("admin_id", "")),
+                "admin_username": log.get("admin_username", "unknown"),
+                "action": log.get("action", ""),
+                "target_type": log.get("target_type", ""),
+                "target_id": log.get("target_id"),
+                "details": log.get("details", {}),
+                "ip_address": log.get("ip_address"),
+                "created_at": log["created_at"],
+            }
+        )
 
     has_next = skip + per_page < total
     has_prev = page > 1

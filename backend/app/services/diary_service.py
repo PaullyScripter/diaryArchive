@@ -335,6 +335,7 @@ async def create_diary(user: dict, data: dict) -> dict:
 
     try:
         from app.core.cache import cache
+
         await cache.delete_pattern("feed:*")
     except Exception:
         pass
@@ -485,6 +486,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
         _index_diary_async(updated_diary)
         try:
             from app.core.cache import cache
+
             await cache.delete_pattern("feed:*")
         except Exception:
             pass
@@ -492,6 +494,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
         _remove_from_index_async(diary_id)
         try:
             from app.core.cache import cache
+
             await cache.delete_pattern("feed:*")
         except Exception:
             pass
@@ -542,6 +545,7 @@ async def delete_diary(
         _cascade_delete_media_async(diary_id)
         try:
             from app.core.cache import cache
+
             await cache.delete_pattern("feed:*")
         except Exception:
             pass
@@ -565,6 +569,7 @@ async def list_public_diaries(
     if current_user is None:
         try:
             from app.core.database import DatabaseManager
+
             redis = DatabaseManager.get_redis()
             cached = await redis.get(cache_key)
             if cached:
@@ -664,6 +669,7 @@ async def list_public_diaries(
     if current_user is None:
         try:
             from app.core.database import DatabaseManager
+
             redis = DatabaseManager.get_redis()
             await redis.setex(cache_key, 30, json.dumps(result, default=str))
         except Exception:

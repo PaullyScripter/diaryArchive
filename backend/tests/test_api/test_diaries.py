@@ -28,7 +28,7 @@ async def client():
 async def auth_token(client: AsyncClient):
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": "diaryauthor", "password": "ValidPass123", "accepted_terms": True},
+        json={"username": "diaryauthor", "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
@@ -66,9 +66,7 @@ class TestCreateDiary:
         user = await repo.get_by_username("diaryauthor")
         assert user["stats"]["diary_count"] == 1
 
-    async def test_create_diary_banned_user(
-        self, client: AsyncClient, auth_token: str
-    ):
+    async def test_create_diary_banned_user(self, client: AsyncClient, auth_token: str):
         repo = UserRepository()
         user = await repo.get_by_username("diaryauthor")
         await repo.update(str(user["_id"]), {"is_banned": True})
@@ -120,9 +118,7 @@ class TestGetDiary:
         assert data["is_owner"] is False
 
     async def test_get_diary_not_found(self, client: AsyncClient):
-        response = await client.get(
-            "/api/v1/diaries/aaaaaaaaaaaaaaaaaaaaaaaa"
-        )
+        response = await client.get("/api/v1/diaries/aaaaaaaaaaaaaaaaaaaaaaaa")
         assert response.status_code == 404
 
 
@@ -150,9 +146,7 @@ class TestUpdateDiary:
         assert data["title"] == "Updated Title"
         assert data["tags"] == ["new"]
 
-    async def test_update_diary_non_owner(
-        self, client: AsyncClient, auth_token: str
-    ):
+    async def test_update_diary_non_owner(self, client: AsyncClient, auth_token: str):
         create_resp = await client.post(
             "/api/v1/diaries",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -162,11 +156,11 @@ class TestUpdateDiary:
 
         await client.post(
             "/api/v1/auth/register",
-            json={"username": "otherperson", "password": "OtherPass123", "accepted_terms": True},
+            json={"username": "otherperson", "password": "OtherPass123!", "accepted_terms": True},
         )
         login_resp = await client.post(
             "/api/v1/auth/login",
-            json={"username": "otherperson", "password": "OtherPass123", "accepted_terms": True},
+            json={"username": "otherperson", "password": "OtherPass123!", "accepted_terms": True},
         )
         other_token = login_resp.json()["data"]["access_token"]
 
@@ -219,9 +213,7 @@ class TestListDiaries:
         assert body["meta"]["total"] == 3
         assert body["meta"]["has_next"] is False
 
-    async def test_list_diaries_filter_tags(
-        self, client: AsyncClient, auth_token: str
-    ):
+    async def test_list_diaries_filter_tags(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/diaries",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -247,9 +239,7 @@ class TestListDiaries:
         assert len(body["data"]) == 1
         assert body["data"][0]["title"] == "Life Entry"
 
-    async def test_list_diaries_filter_emotion(
-        self, client: AsyncClient, auth_token: str
-    ):
+    async def test_list_diaries_filter_emotion(self, client: AsyncClient, auth_token: str):
         await client.post(
             "/api/v1/diaries",
             headers={"Authorization": f"Bearer {auth_token}"},
@@ -275,21 +265,16 @@ class TestListDiaries:
         assert len(body["data"]) == 1
         assert body["data"][0]["title"] == "Sad entry"
 
-    async def test_list_diaries_filter_year_month(
-        self, client: AsyncClient, auth_token: str
-    ):
+    async def test_list_diaries_filter_year_month(self, client: AsyncClient, auth_token: str):
         from datetime import UTC, datetime
+
         now = datetime.now(UTC)
-        create_resp = await client.post(
+        await client.post(
             "/api/v1/diaries",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={"title": "Current month", "content_text": "test"},
         )
-        diary_id = create_resp.json()["data"]["id"]
-
-        response = await client.get(
-            f"/api/v1/diaries?year={now.year}&month={now.month}"
-        )
+        response = await client.get(f"/api/v1/diaries?year={now.year}&month={now.month}")
         assert response.status_code == 200
         body = response.json()
         assert len(body["data"]) >= 1
