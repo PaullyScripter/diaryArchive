@@ -17,7 +17,7 @@ import asyncio
 import logging
 
 from app.core.database import DatabaseManager
-from app.core.indexes import create_indexes
+from app.core.indexes import create_indexes, remove_obsolete_media_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +127,14 @@ Uses a partial index so only 'pending' reports are constrained, allowing a
     )
 
 
+async def remove_legacy_media_ttl_indexes(db) -> None:
+    """Remove pre-MED-13 media TTL indexes that caused delayed data loss."""
+    # The helper uses the shared database manager, which points at this same
+    # database during the migration run. Startup also calls it for local dev
+    # installations that do not run the explicit deployment stage.
+    await remove_obsolete_media_indexes()
+
+
 MIGRATIONS: list[Migration] = [
     # v1: create the durable search-sync outbox collection and its indexes.
     Migration(
@@ -139,6 +147,11 @@ MIGRATIONS: list[Migration] = [
         version=2,
         name="unique_report_index",
         apply=unique_report_index,
+    ),
+    Migration(
+        version=3,
+        name="remove_legacy_media_ttl_indexes",
+        apply=remove_legacy_media_ttl_indexes,
     ),
 ]
 

@@ -202,6 +202,18 @@ def _validate_fixed_size(fixed_width: int | None, fixed_height: int | None) -> N
         raise ValidationException("Fixed height must be between 240 and 2000 pixels")
 
 
+async def _attach_media_to_diary(user_id: str, diary_id: str, media_ids) -> None:
+    """Best-effort attachment of uploads made before a diary was created."""
+    if not isinstance(media_ids, list):
+        return
+    try:
+        from app.repositories.media_repo import MediaRepository
+
+        await MediaRepository().attach_to_diary(media_ids[:20], user_id, diary_id)
+    except Exception:
+        logger.warning("Failed to attach media to diary %s", diary_id, exc_info=True)
+
+
 async def create_diary(user: dict, data: dict) -> dict:
     user_repo = UserRepository()
     diary_repo = DiaryRepository()
@@ -302,6 +314,7 @@ async def create_diary(user: dict, data: dict) -> dict:
         }
 
     diary_id = await diary_repo.create(diary_doc)
+    await _attach_media_to_diary(str(user["_id"]), str(diary_id), data.get("media_ids", []))
     await user_repo.update_stats(str(user["_id"]), "diary_count", 1)
 
     if privacy == "public":
@@ -439,6 +452,11 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
     if set_fields:
         set_fields["updated_at"] = datetime.now(UTC)
         await diary_repo.update(diary_id, set_fields)
+
+    if "media_ids" in updates and updates["media_ids"] is not None:
+        await _attach_media_to_diary(
+            str(current_user["_id"]), diary_id, updates["media_ids"]
+        )
 
     updated_diary = await diary_repo.get_by_id(diary_id)
     user_repo = UserRepository()

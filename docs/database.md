@@ -1199,12 +1199,11 @@ created_at      date
 { user_id: 1, created_at: -1 }
 // Purpose: User's media library / upload history.
 
-// 3. Cleanup orphaned media (TTL)
-{ created_at: 1 }
-// expireAfterSeconds: 604800 (7 days)
-// Only applies to documents where diary_id === null
-// (uploaded but never attached to a diary).
-// Application sets a temporary flag to handle this.
+// No media TTL index is used.
+// Media is durable until the owning diary/account is deleted. Uploads made
+// before a new diary receives an id are attached immediately after creation.
+// This avoids deleting valid uploads merely because the editor was left open
+// or the server was stopped between upload and save.
 ```
 
 ### Relationships
