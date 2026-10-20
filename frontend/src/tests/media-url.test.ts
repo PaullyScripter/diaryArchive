@@ -1,5 +1,30 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { resolveMediaUrl, resolveMediaUrlsInHtml } from "@/lib/media-url";
+import {
+  normalizeMediaReferencesInHtml,
+  resolveMediaUrl,
+  resolveMediaUrlsInHtml,
+  stableMediaUrl,
+} from "@/lib/media-url";
+
+const MEDIA_ID = "507f1f77bcf86cd799439011";
+
+describe("stable media references", () => {
+  it("creates a non-expiring proxy path from a media id", () => {
+    expect(stableMediaUrl(MEDIA_ID, "thumb")).toBe(
+      `/api/v1/media/file/${MEDIA_ID}?v=thumb`,
+    );
+  });
+
+  it("normalizes editor HTML without persisting a signed URL", () => {
+    const html = `<p><img data-media-id="${MEDIA_ID}" src="https://minio:9000/diaryarchive/temporary?X-Amz-Expires=900" alt="photo"></p>`;
+    const normalized = normalizeMediaReferencesInHtml(html);
+    expect(normalized).toContain(
+      `src="/api/v1/media/file/${MEDIA_ID}?v=original"`,
+    );
+    expect(normalized).not.toContain("X-Amz-Expires");
+    expect(normalized).not.toContain("minio:9000");
+  });
+});
 
 describe("resolveMediaUrl", () => {
   beforeEach(() => {

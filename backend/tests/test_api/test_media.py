@@ -28,7 +28,7 @@ async def client():
 async def _register_user(client: AsyncClient, username: str = "testuser") -> dict:
     response = await client.post(
         "/api/v1/auth/register",
-        json={"username": username, "password": "ValidPass123", "accepted_terms": True},
+        json={"username": username, "password": "ValidPass123!", "accepted_terms": True},
     )
     assert response.status_code == 201
     data = response.json()
@@ -205,6 +205,29 @@ class TestMediaUpload:
         resp_data = response.json()
         assert resp_data["data"]["is_private"] is True
 
+    async def test_upload_to_private_diary_ignores_client_visibility(self, client: AsyncClient):
+        user = await _register_user(client)
+        token = user["access_token"]
+        diary_resp = await client.post(
+            "/api/v1/diaries",
+            json={
+                "privacy": "private",
+                "encrypted_data": {"ciphertext": "x", "iv": "y", "salt": "z"},
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert diary_resp.status_code == 201
+        diary_id = diary_resp.json()["data"]["id"]
+
+        files = {"file": ("private.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
+        response = await client.post(
+            f"/api/v1/media/upload?diary_id={diary_id}&is_private=false",
+            files=files,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 201
+        assert response.json()["data"]["is_private"] is True
+
 
 class TestMediaGallery:
     async def test_gallery_empty(self, client: AsyncClient):
@@ -361,9 +384,22 @@ class TestMediaFileStream:
         user = await _register_user(client)
         token = user["access_token"]
 
+        diary_resp = await client.post(
+            "/api/v1/diaries",
+            json={
+                "privacy": "public",
+                "title": "Public media diary",
+                "content_html": "<p>Photo</p>",
+                "content_text": "Photo",
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert diary_resp.status_code == 201
+        diary_id = diary_resp.json()["data"]["id"]
+
         files = {"file": ("test.jpg", io.BytesIO(_jpeg_data()), "image/jpeg")}
         upload_resp = await client.post(
-            "/api/v1/media/upload",
+            f"/api/v1/media/upload?diary_id={diary_id}",
             files=files,
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -381,6 +417,7 @@ class TestMediaFileStream:
         assert resp.status_code == 200
         assert resp.content.startswith(b"\x52\x49\x46\x46")  # RIFF (webp) header
         assert "image/webp" in resp.headers["content-type"]
+        assert resp.headers["cache-control"] == "public, max-age=86400"
 
     async def test_private_media_requires_owner(self, client: AsyncClient):
         user = await _register_user(client)
@@ -407,6 +444,7 @@ class TestMediaFileStream:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert owner.status_code == 200
+        assert owner.headers["cache-control"] == "private, no-store"
 
 
 class TestCascadeDelete:

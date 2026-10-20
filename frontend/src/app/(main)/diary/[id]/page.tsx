@@ -10,7 +10,7 @@ import { useDiary, useDeleteDiary } from "@/hooks/use-diaries";
 import { useAuthStore } from "@/store/auth-store";
 import { useMasterKey } from "@/hooks/use-master-key";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { resolveMediaUrlsInHtml } from "@/lib/media-url";
+import { resolveMediaUrlsInHtml, useHydratedMediaHtml } from "@/lib/media-url";
 import { decryptDiary, type DiaryEncryptedPayload } from "@/lib/crypto";
 import { Avatar } from "@/components/shared/avatar";
 import { TagBadge } from "@/components/shared/tag-badge";
@@ -196,8 +196,9 @@ export default function DiaryReaderPage() {
     if (isPrivate && isOwner) return resolveMediaUrlsInHtml(decrypted?.contentHtml ?? "");
     return resolveMediaUrlsInHtml(diary?.content_html ?? "");
   }, [isPrivate, isOwner, decrypted, diary]);
+  const hydratedDisplayHtml = useHydratedMediaHtml(displayHtml);
 
-  const hasCustomCss = displayHtml.includes("<style>");
+  const hasCustomCss = hydratedDisplayHtml.includes("<style>");
 
   const [naturalWidth, setNaturalWidth] = useState<number | null>(null);
   const handleContentWidth = useCallback((w: number) => setNaturalWidth(w), []);
@@ -464,7 +465,7 @@ export default function DiaryReaderPage() {
         >
           {hasCustomCss ? (
             <IsolatedDiary
-              html={sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate })}
+              html={sanitizeHtml(hydratedDisplayHtml, { allowExternalImages: !isPrivate })}
               className="mt-6"
               onContentWidth={handleContentWidth}
             />
@@ -472,7 +473,7 @@ export default function DiaryReaderPage() {
             <article
               className={`mt-6 ${PROSE_CLASSES} [&_hr]:border-border [&_hr]:my-4 max-w-prose`}
               dangerouslySetInnerHTML={{
-                __html: sanitizeHtml(displayHtml, { allowExternalImages: !isPrivate }),
+                __html: sanitizeHtml(hydratedDisplayHtml, { allowExternalImages: !isPrivate }),
               }}
             />
           )}

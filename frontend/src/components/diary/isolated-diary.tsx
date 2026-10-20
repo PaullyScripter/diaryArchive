@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import { scopeAuthorCss } from "@/lib/scope-css";
+import { useHydratedMediaHtml } from "@/lib/media-url";
 
 interface IsolatedDiaryProps {
   html: string;
@@ -32,6 +33,7 @@ export function IsolatedDiary({
   const rootRef = useRef<ShadowRoot | null>(null);
   const onContentWidthRef = useRef(onContentWidth);
   onContentWidthRef.current = onContentWidth;
+  const hydratedHtml = useHydratedMediaHtml(html);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -40,7 +42,7 @@ export function IsolatedDiary({
       rootRef.current = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     }
     const root = rootRef.current;
-    root.innerHTML = scopeAuthorCss(html);
+    root.innerHTML = scopeAuthorCss(hydratedHtml);
 
     const callback = onContentWidthRef.current;
     if (!callback) return;
@@ -58,7 +60,7 @@ export function IsolatedDiary({
     const ro = new ResizeObserver(report);
     for (const el of Array.from(root.children)) ro.observe(el);
     return () => ro.disconnect();
-  }, [html]);
+  }, [hydratedHtml]);
 
   return (
     <div

@@ -84,7 +84,7 @@ async def get_media_file(
     """Permanent, non-expiring media endpoint. Streams the stored object for
     public media (and private media for its owner/admin). Returned URLs are
     baked into diary HTML, so unlike signed URLs they never expire."""
-    media, path = await resolve_media_file(media_id, variant, current_user)
+    media, path, is_private = await resolve_media_file(media_id, variant, current_user)
     obj = await fetch_media_object(path)
 
     content_type = media.get("mime_type") or "application/octet-stream"
@@ -100,7 +100,11 @@ async def get_media_file(
     return StreamingResponse(
         iter_chunks(),
         media_type=content_type,
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={
+            "Cache-Control": (
+                "private, no-store" if is_private else "public, max-age=86400"
+            )
+        },
     )
 
 
