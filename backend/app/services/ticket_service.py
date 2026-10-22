@@ -156,7 +156,9 @@ async def add_message(
 
     if is_admin:
         assigned_admin_id = ticket.get("assigned_admin_id")
-        if assigned_admin_id and str(assigned_admin_id) != sender_id:
+        if not assigned_admin_id:
+            raise PermissionDeniedException("Take the ticket before replying")
+        if str(assigned_admin_id) != sender_id:
             raise PermissionDeniedException("Only the assigned admin can reply to this ticket")
 
     msg_doc: dict = {
@@ -220,6 +222,14 @@ async def resolve_ticket(
     if ticket.get("status") == "closed":
         raise ValidationException("Ticket is already closed")
 
+    is_appeal = ticket.get("category") == "account_help" and str(
+        ticket.get("subject", "")
+    ).startswith("Appeal:")
+    if not is_appeal:
+        raise ValidationException("Only ban appeal tickets can be resolved as appeals")
+    if ticket.get("assigned_admin_id") is None or str(ticket["assigned_admin_id"]) != admin_id:
+        raise PermissionDeniedException("Only the assigned admin can resolve this appeal")
+
     target_user_id = str(ticket["user_id"])
 
     from app.repositories.user_repo import UserRepository
@@ -227,6 +237,9 @@ async def resolve_ticket(
 
     user_repo = UserRepository()
     target_user = await user_repo.get_by_id(target_user_id)
+
+    if not target_user or not target_user.get("is_banned"):
+        raise ValidationException("This appeal is not for a currently banned account")
 
     if action == "accept":
         if not target_user:
@@ -248,6 +261,7 @@ async def resolve_ticket(
                 },
             },
         )
+        await user_repo.refresh_banned_user_ids()
 
         _clear_appeal_rate_limits(target_user.get("username", ""))
 

@@ -15,7 +15,8 @@ class ReportRepository(BaseRepository):
         return str(result)
 
     async def find_duplicate(
-        self, reporter_id: str, target_type: str, target_id: str | None = None
+        self, reporter_id: str, target_type: str, target_id: str | None = None,
+        reason: str | None = None, description: str | None = None, url: str | None = None,
     ) -> dict | None:
         filter_dict: dict = {
             "reporter_id": ObjectId(reporter_id),
@@ -24,6 +25,8 @@ class ReportRepository(BaseRepository):
         }
         if target_type != "bug" and target_id:
             filter_dict["target_id"] = ObjectId(target_id)
+        if target_type == "bug":
+            filter_dict.update({"reason": reason, "description": description, "url": url})
         return await self.find_one(filter_dict)
 
     async def find_reports(
@@ -78,7 +81,7 @@ class ReportRepository(BaseRepository):
         if resolution_note:
             update_data["resolution_note"] = resolution_note
         result = await self._collection.update_one(
-            {"_id": ObjectId(report_id)},
+            {"_id": ObjectId(report_id), "status": "pending"},
             {"$set": update_data},
         )
         return result.modified_count > 0

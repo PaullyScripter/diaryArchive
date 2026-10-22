@@ -37,10 +37,15 @@ class DiaryRepository(BaseRepository):
             limit=limit,
         )
 
-    async def count_public_by_user(self, user_id: str) -> int:
+    async def count_public_by_user(
+        self, user_id: str, exclude_user_ids: list[ObjectId] | None = None
+    ) -> int:
+        user_oid = self._oid(user_id)
+        if exclude_user_ids and user_oid in exclude_user_ids:
+            return 0
         return await self.count(
             {
-                "user_id": self._oid(user_id),
+                "user_id": user_oid,
                 "privacy": "public",
             }
         )
@@ -190,6 +195,7 @@ class DiaryRepository(BaseRepository):
         await db.notifications.delete_many(
             {"target_type": "comment", "target_id": {"$in": comment_oids}}
         )
-        await db.reports.delete_many({"target_type": "diary", "target_id": oid})
+        # Preserve reports as moderation evidence; the admin queue renders a
+        # deleted target as [Deleted].
         result = await self._collection.delete_one({"_id": oid})
         return result.deleted_count

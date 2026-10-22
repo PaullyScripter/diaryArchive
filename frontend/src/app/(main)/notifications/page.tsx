@@ -29,10 +29,12 @@ function NotificationDetail({ notification }: { notification: NotificationItem }
   }, []);
 
   const handleConfirmUsernameChange = useCallback(async () => {
+    const username = window.prompt("Enter your new username:");
+    if (!username?.trim()) return;
     setConfirming(true);
     try {
-      await apiClient.put("/users/me/confirm-username-change");
-      showToast("Username change confirmed");
+      await apiClient.put("/users/me/username", { username: username.trim() });
+      showToast("Username changed and warning cleared");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||

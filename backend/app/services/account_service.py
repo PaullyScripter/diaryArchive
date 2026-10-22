@@ -247,8 +247,8 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     await db.follows.delete_many({"following_id": uid})
     await db.notifications.delete_many({"user_id": uid})
     await db.notifications.delete_many({"actor_id": uid})
-    await db.reports.delete_many({"reporter_id": uid})
-    await db.reports.delete_many({"target_type": "user", "target_id": uid})
+    # Preserve moderation reports as anonymized/orphaned evidence rather than
+    # allowing account deletion to erase the moderation history.
 
     # User-owned records + credentials.
     await db.tickets.delete_many({"user_id": uid})

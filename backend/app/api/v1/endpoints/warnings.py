@@ -2,10 +2,13 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
+from pymongo import ReturnDocument
 
 from app.api.deps import get_current_admin, get_current_user
+from app.core.config import settings
 from app.core.database import DatabaseManager
-from app.core.exceptions import NotFoundException, ValidationException
+from app.core.exceptions import NotFoundException, RateLimitException, ValidationException
+from app.core.security import check_rate_limit, get_client_ip
 from app.repositories.user_repo import UserRepository
 from app.services.audit_service import log_audit
 from app.services.notification_service import create_notification
@@ -32,6 +35,12 @@ async def issue_bio_warning(
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
+    limited, _ = await check_rate_limit(
+        f"rate_limit:admin_warning:{current_admin['_id']}",
+        *settings.get_rate_limit("admin_warning"),
+    )
+    if limited:
+        raise RateLimitException("Too many warning actions. Try again later.")
     user_id = body.get("user_id", "").strip()
     reason = body.get("reason", "").strip()
 
@@ -48,14 +57,11 @@ async def issue_bio_warning(
     if user.get("is_admin"):
         raise ValidationException("Cannot warn an admin")
 
-    bio_count = user.get("bio_warning_count", 0)
-    new_count = bio_count + 1
     now = datetime.now(UTC)
     deadline = now + timedelta(days=5)
 
     update_fields: dict = {
         "bio_warning_deadline": deadline,
-        "bio_warning_count": new_count,
         "bio_warning_reason": reason,
         # Snapshot of the offending bio at warning time. The user's own
         # "confirm bio change" is only honored after the server verifies the
@@ -64,6 +70,17 @@ async def issue_bio_warning(
         "bio_warning_about_snapshot": user.get("about"),
         "bio_warning_issued_at": now,
     }
+
+    # Increment in MongoDB so concurrent moderators cannot lose warnings by
+    # both reading the same previous count and writing the same next count.
+    updated_user = await user_repo._collection.find_one_and_update(
+        {"_id": user["_id"], "is_admin": {"$ne": True}},
+        {"$inc": {"bio_warning_count": 1}, "$set": update_fields},
+        return_document=ReturnDocument.AFTER,
+    )
+    if updated_user is None:
+        raise NotFoundException("User not found")
+    new_count = updated_user.get("bio_warning_count", 1)
 
     if new_count >= 3:
         duration = _escalation_duration(new_count)
@@ -74,7 +91,10 @@ async def issue_bio_warning(
         update_fields["bio_edit_banned_until"] = ban_until
         update_fields["about"] = None
 
-    await user_repo.update(user_id, update_fields)
+        await user_repo.update(
+            user_id,
+            {"bio_edit_banned_until": ban_until, "about": None},
+        )
 
     await create_notification(
         recipient_id=user_id,
@@ -84,7 +104,7 @@ async def issue_bio_warning(
         metadata={
             "title": "Bio Warning Received",
             "body": (
-                f"Hello {user['username']},\n\n"
+                f"Hello {updated_user['username']},\n\n"
                 f"Your bio has been flagged by our moderation team for the following reason:\n"
                 f'"{reason}"\n\n'
                 f"How to change your bio:\n"
@@ -114,13 +134,13 @@ async def issue_bio_warning(
             "bio_warning_count": new_count,
             "deadline": deadline.isoformat(),
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     return {
         "data": {
             "id": user_id,
-            "username": user["username"],
+            "username": updated_user["username"],
             "bio_warning_count": new_count,
             "bio_warning_deadline": deadline,
             "bio_edit_banned_until": update_fields.get("bio_edit_banned_until"),
@@ -134,6 +154,12 @@ async def issue_username_warning(
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
+    limited, _ = await check_rate_limit(
+        f"rate_limit:admin_warning:{current_admin['_id']}",
+        *settings.get_rate_limit("admin_warning"),
+    )
+    if limited:
+        raise RateLimitException("Too many warning actions. Try again later.")
     user_id = body.get("user_id", "").strip()
     reason = body.get("reason", "").strip()
 
@@ -172,11 +198,9 @@ async def issue_username_warning(
                 f"Your username has been flagged by our moderation team for the following reason:\n"
                 f'"{reason}"\n\n'
                 f"How to change your username:\n"
-                f"1. Go to Report > Open a Ticket\n"
-                f"2. Select the 'Username Change' category\n"
-                f"3. Set the subject to 'Username Change Request'\n"
-                f"4. In the description, explain the situation and provide a new username\n"
-                f"5. An admin will review your request and assist you\n\n"
+                f"1. Click 'I changed my username' in this notification\n"
+                f"2. Enter a new username that follows our guidelines\n"
+                f"3. Submit the change for server verification\n\n"
                 f"Please submit your username change request within 15 days. Failure to comply"
                 f" may result in your account being banned.\n\n"
                 f"Regards,\nDiaryArchive Moderation"
@@ -191,7 +215,7 @@ async def issue_username_warning(
         target_type="user",
         target_id=user_id,
         details={"reason": reason, "deadline": deadline.isoformat()},
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
     )
 
     return {
@@ -213,8 +237,8 @@ async def list_warned_users(
     db = DatabaseManager.get_db()
 
     filter_or = []
-    filter_or.append({"bio_warning_deadline": {"$exists": True}})
-    filter_or.append({"username_warning_deadline": {"$exists": True}})
+    filter_or.append({"bio_warning_deadline": {"$ne": None}})
+    filter_or.append({"username_warning_deadline": {"$ne": None}})
 
     cursor = db.users.find({"$or": filter_or}).skip(skip).limit(per_page)
     users = await cursor.to_list(length=per_page)

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BaseModel, Field, StrictBool, model_validator
 
 from app.api.deps import get_current_admin
 from app.core.config import settings
@@ -15,7 +16,7 @@ from app.core.exceptions import (
     RateLimitException,
     ValidationException,
 )
-from app.core.security import check_rate_limit
+from app.core.security import check_rate_limit, get_client_ip
 from app.models.report import ReportUpdate
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.refresh_token_repo import RefreshTokenRepository
@@ -25,6 +26,18 @@ from app.services.report_service import list_reports, update_report
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 logger = logging.getLogger(__name__)
+
+
+class BanUpdate(BaseModel):
+    is_banned: StrictBool
+    reason: str | None = Field(default=None, max_length=500)
+    ban_reason: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def normalize_reason(self):
+        if self.reason is None:
+            self.reason = self.ban_reason
+        return self
 
 SENSITIVE_FIELDS = {
     "password_hash",
@@ -55,7 +68,7 @@ async def _admin_rate_limit(
 
 
 def _client_ip(request: Request) -> str | None:
-    return request.client.host if getattr(request, "client", None) else None
+    return get_client_ip(request)
 
 
 def _sanitize_user(user: dict) -> dict:
@@ -116,7 +129,7 @@ async def admin_update_report(
         target_type="report",
         target_id=report_id,
         details={"resolution_note": body.resolution_note},
-        ip_address=request.client.host if request.client else None,
+        ip_address=_client_ip(request),
     )
 
     return {"data": result}
@@ -163,7 +176,7 @@ async def admin_hide_diary(
         target_type="diary",
         target_id=diary_id,
         details={"title": diary.get("title"), "reason": reason},
-        ip_address=request.client.host if request.client else None,
+        ip_address=_client_ip(request),
     )
 
     _remove_from_index(diary_id)
@@ -301,12 +314,12 @@ async def admin_list_users(
 @router.put("/users/{user_id}/ban")
 async def admin_ban_user(
     user_id: str,
-    body: dict,
+    body: BanUpdate,
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
-    is_banned = body.get("is_banned")
-    reason = body.get("reason", "").strip()
+    is_banned = body.is_banned
+    reason = (body.reason or "").strip()
 
     await _admin_rate_limit(request, current_admin)
 
@@ -340,6 +353,24 @@ async def admin_ban_user(
             revoked,
         )
         _remove_banned_user_from_search(user_id)
+        try:
+            from app.services.notification_service import create_notification
+
+            await create_notification(
+                recipient_id=user_id,
+                actor_id=str(current_admin["_id"]),
+                notification_type="account_help",
+                target_type="user",
+                metadata={
+                    "title": "Account Banned",
+                    "body": (
+                        "Your account has been banned by an administrator.\n\n"
+                        f"Reason: {reason}"
+                    ),
+                },
+            )
+        except Exception:
+            logger.warning("Failed to send ban notification", exc_info=True)
     else:
         _reindex_user_diaries_async(user_id)
 
@@ -354,7 +385,7 @@ async def admin_ban_user(
             "reason": reason or None,
             "target_username": target_user["username"],
         },
-        ip_address=request.client.host if request.client else None,
+        ip_address=_client_ip(request),
     )
 
     return {
@@ -401,7 +432,7 @@ async def admin_change_role(
         target_type="user",
         target_id=user_id,
         details={"is_admin": is_admin_flag, "target_username": target_user["username"]},
-        ip_address=request.client.host if request.client else None,
+        ip_address=_client_ip(request),
     )
 
     return {

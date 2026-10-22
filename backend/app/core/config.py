@@ -106,6 +106,7 @@ class Settings(BaseSettings):
         "admin_ticket_reply": (30, 60),
         "admin_ticket_close": (30, 60),
         "admin_ticket_resolve": (30, 60),
+        "admin_warning": (60, 60),
         # Admin mutations are globally throttled per admin account so a
         # compromised admin token cannot mass-delete/hide/ban at will.
         "admin_action": (120, 60),

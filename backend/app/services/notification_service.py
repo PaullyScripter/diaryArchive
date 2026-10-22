@@ -65,6 +65,7 @@ async def create_notification(
         "comment_deleted",
         "bio_warning",
         "username_warning",
+        "account_help",
     )
     if recipient_id == actor_id and not is_admin_action:
         logger.info("Notification skipped: self-notification type=%s", notification_type)
@@ -95,6 +96,7 @@ async def create_notification(
         "comment_deleted": "Your comment was removed",
         "bio_warning": "You received a bio warning",
         "username_warning": "You received a username warning",
+        "account_help": "Your account has been moderated",
     }
     message = messages.get(notification_type, f"{actor_username} interacted with your content")
 
