@@ -339,7 +339,12 @@ async def resolve_ticket(
 async def get_user_appeals(user_id: str) -> list[dict]:
     ticket_repo = TicketRepository()
     tickets = await ticket_repo.find_by_user(user_id)
-    appeal_tickets = [t for t in tickets if t.get("category") == "account_help"]
+    appeal_tickets = [
+        t
+        for t in tickets
+        if t.get("category") == "account_help"
+        and str(t.get("subject", "")).startswith("Appeal:")
+    ]
     return [_build_ticket_summary(t) for t in appeal_tickets]
 
 

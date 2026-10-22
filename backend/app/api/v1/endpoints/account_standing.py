@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_current_user
 from app.core.database import DatabaseManager
@@ -24,7 +24,11 @@ def _is_future(value: datetime | None, now: datetime) -> bool:
     return value > now
 
 
-async def build_account_standing(current_user: dict) -> dict:
+async def build_account_standing(
+    current_user: dict,
+    history_page: int = 1,
+    history_per_page: int = 50,
+) -> dict:
     """Return the authenticated user's current standing and permanent history."""
     db = DatabaseManager.get_db()
     user_id = str(current_user["_id"])
@@ -46,6 +50,8 @@ async def build_account_standing(current_user: dict) -> dict:
             },
         )
         .sort("created_at", -1)
+        .skip((history_page - 1) * history_per_page)
+        .limit(history_per_page)
     )
     moderation_history = []
     async for record in audit_cursor:
@@ -69,7 +75,9 @@ async def build_account_standing(current_user: dict) -> dict:
             "created_at": 1,
             "updated_at": 1,
         },
-    ).sort("created_at", -1)
+    ).sort("created_at", -1).skip(
+        (history_page - 1) * history_per_page
+    ).limit(history_per_page)
     tickets = []
     async for ticket in ticket_cursor:
         subject = ticket.get("subject", "")
@@ -85,6 +93,15 @@ async def build_account_standing(current_user: dict) -> dict:
                 "updated_at": ticket.get("updated_at"),
             }
         )
+
+    audit_total = await db.audit_logs.count_documents(
+        {
+            "target_type": "user",
+            "target_id": user_id,
+            "action": {"$in": sorted(MODERATION_ACTIONS)},
+        }
+    )
+    ticket_total = await db.tickets.count_documents({"user_id": ObjectId(user_id)})
 
     bio_deadline = current_user.get("bio_warning_deadline")
     username_deadline = current_user.get("username_warning_deadline")
@@ -121,6 +138,14 @@ async def build_account_standing(current_user: dict) -> dict:
             "moderation_history": moderation_history,
             "tickets": tickets,
             "appeals": [ticket for ticket in tickets if ticket["is_appeal"]],
+            "history_pagination": {
+                "page": history_page,
+                "per_page": history_per_page,
+                "audit_total": audit_total,
+                "ticket_total": ticket_total,
+                "has_next": history_page * history_per_page < max(audit_total, ticket_total),
+                "has_prev": history_page > 1,
+            },
             "history_policy": {
                 "permanent": True,
                 "message": (
@@ -135,5 +160,9 @@ async def build_account_standing(current_user: dict) -> dict:
 
 
 @router.get("")
-async def get_account_standing(current_user: dict = Depends(get_current_user)):
-    return await build_account_standing(current_user)
+async def get_account_standing(
+    history_page: int = Query(1, ge=1, le=100000),
+    history_per_page: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user),
+):
+    return await build_account_standing(current_user, history_page, history_per_page)

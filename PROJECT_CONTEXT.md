@@ -13,6 +13,16 @@ This is a high-signal map, not a substitute for reading affected source and
 tests. Historical plans can be stale; verify important claims against the
 current tree.
 
+## 0. Current hardening baseline
+
+The security/scalability hardening branch makes moderation history retention
+explicit, adds bounded Account Standing history pagination, requires password
+confirmation for account deletion, rate-limits account export, uses atomic
+Redis limiting with fail-closed behavior for security-critical outages, and
+removes obsolete moderation-history TTL indexes. Large deletion paths use
+cursor-based cleanup; deployment configuration requires the public application
+origin and the active repository CI workflow owns automatic deployment.
+
 ## 1. Product identity
 
 DiaryArchive is a privacy-first diary and community application. Users can keep

@@ -29,7 +29,7 @@ async def initialize_minio() -> None:
     if _bucket_initialized:
         return
 
-    async def _ensure_bucket():
+    def _ensure_bucket() -> bool:
         try:
             client = get_minio_client()
             found = client.bucket_exists(settings.minio_bucket)
@@ -44,4 +44,4 @@ async def initialize_minio() -> None:
             return False
 
     result = await asyncio.to_thread(_ensure_bucket)
-    _bucket_initialized = result
+    _bucket_initialized = bool(result)

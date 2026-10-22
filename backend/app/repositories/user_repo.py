@@ -129,8 +129,10 @@ class UserRepository(BaseRepository):
 
     async def _query_banned_user_ids(self) -> list[ObjectId]:
         cursor = self._collection.find({"is_banned": True}, {"_id": 1})
-        docs = await cursor.to_list(length=10000)
-        return [d["_id"] for d in docs]
+        ids: list[ObjectId] = []
+        async for doc in cursor:
+            ids.append(doc["_id"])
+        return ids
 
     async def _cache_banned_user_ids(self, ids: list[ObjectId]) -> None:
         if not ids:

@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.database import DatabaseManager
 from app.core.exceptions import NotFoundException, RateLimitException, ValidationException
 from app.core.security import check_rate_limit, get_client_ip
+from app.models.moderation import WarningCreate
 from app.repositories.user_repo import UserRepository
 from app.services.audit_service import log_audit
 from app.services.notification_service import create_notification
@@ -31,7 +32,7 @@ def _escalation_duration(bio_warning_count: int) -> timedelta | None:
 
 @router.post("/bio")
 async def issue_bio_warning(
-    body: dict,
+    body: WarningCreate,
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
@@ -41,8 +42,8 @@ async def issue_bio_warning(
     )
     if limited:
         raise RateLimitException("Too many warning actions. Try again later.")
-    user_id = body.get("user_id", "").strip()
-    reason = body.get("reason", "").strip()
+    user_id = body.user_id.strip()
+    reason = body.reason.strip()
 
     if not user_id:
         raise ValidationException("user_id is required")
@@ -150,7 +151,7 @@ async def issue_bio_warning(
 
 @router.post("/username")
 async def issue_username_warning(
-    body: dict,
+    body: WarningCreate,
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
@@ -160,8 +161,8 @@ async def issue_username_warning(
     )
     if limited:
         raise RateLimitException("Too many warning actions. Try again later.")
-    user_id = body.get("user_id", "").strip()
-    reason = body.get("reason", "").strip()
+    user_id = body.user_id.strip()
+    reason = body.reason.strip()
 
     if not user_id:
         raise ValidationException("user_id is required")

@@ -363,8 +363,9 @@ async def delete_media(media_id: str, current_user: dict) -> None:
             media_id,
             failed_paths,
         )
-    else:
-        logger.info("Deleted all MinIO objects for media %s", media_id)
+        # Keep metadata so a retry/repair job can find the orphaned object.
+        raise ValidationException("Media storage is temporarily unavailable; please retry")
+    logger.info("Deleted all MinIO objects for media %s", media_id)
 
     await repo.delete(media_id)
 
