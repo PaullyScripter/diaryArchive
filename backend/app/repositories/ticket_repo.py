@@ -55,7 +55,7 @@ class TicketRepository(BaseRepository):
         if not ObjectId.is_valid(ticket_id):
             return False
         result = await self._collection.update_one(
-            {"_id": ObjectId(ticket_id)},
+            {"_id": ObjectId(ticket_id), "assigned_admin_id": {"$exists": False}},
             {
                 "$set": {
                     "assigned_admin_id": ObjectId(admin_id),

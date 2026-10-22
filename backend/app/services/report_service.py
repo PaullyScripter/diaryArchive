@@ -48,10 +48,34 @@ async def submit_report(
             raise ValidationException("target_id is required for non-bug reports")
         await validate_target_exists(target_type, target_id)
 
+        reporter_oid = ObjectId(reporter_id)
+        if target_type == "user":
+            if reporter_oid == ObjectId(target_id):
+                raise ValidationException("You cannot report yourself")
+        elif target_type == "diary":
+            target = await DiaryRepository().get_by_id(target_id)
+            if target and target.get("user_id") == reporter_oid:
+                raise ValidationException("You cannot report your own diary")
+            if not target or target.get("privacy") != "public":
+                raise NotFoundException("Diary not found")
+        elif target_type == "comment":
+            target = await CommentRepository().get_by_id(target_id)
+            if target and target.get("is_deleted"):
+                raise NotFoundException("Comment not found")
+            if target and target.get("user_id") == reporter_oid:
+                raise ValidationException("You cannot report your own comment")
+            if target:
+                diary = await DiaryRepository().get_by_id(str(target.get("diary_id")))
+                if not diary or diary.get("privacy") != "public":
+                    raise NotFoundException("Comment not found")
+
     report_repo = ReportRepository()
     if target_type == "bug":
-        # Bug reports don't check duplicates - each bug is unique
-        pass
+        duplicate = await report_repo.find_duplicate(
+            reporter_id, target_type, None, reason=reason, description=description, url=url
+        )
+        if duplicate:
+            raise ConflictException("You have already submitted this pending bug report")
     elif target_type == "diary" or target_type == "comment" or target_type == "user":
         if not target_id:
             raise ValidationException("target_id is required for non-bug reports")

@@ -48,7 +48,7 @@ async def _verify_credentials(username: str, password: str, client_ip: str, acti
     lock_key = f"appeal_lockout:{username}"
     max_attempts, window = settings.get_rate_limit(f"appeal_{action}_lockout")
 
-    if await is_locked_out(lock_key, max_attempts):
+    if await is_locked_out(lock_key, max_attempts, window):
         raise RateLimitException(
             "Too many attempts. The account is temporarily locked. Please try again later."
         )
