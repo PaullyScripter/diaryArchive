@@ -224,6 +224,12 @@ TLS certificates are expected at `docker/nginx/certs/{fullchain,privkey}.pem` (e
 
 The full REST API v1 reference is in [`docs/api.md`](docs/api.md). Architecture, database design, monitoring setup, security configuration, milestone plans, and skill guides live under [`docs/`](docs/).
 
+For future contributors and Codex sessions, start with [`AGENTS.md`](AGENTS.md),
+the detailed [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md), and the
+[`documentation index`](docs/documentation-index.md). Recent work summaries are
+kept in [`sessions/`](sessions/), and milestone status is indexed in
+[`docs/milestones/README.md`](docs/milestones/README.md).
+
 ## License
 
 Licensed under the **Business Source License 1.1** (BUSL-1.1). Source is openly available; non-production, non-commercial use is free, but production or commercial use requires a separate license from the licensor. See [`LICENSE`](LICENSE).

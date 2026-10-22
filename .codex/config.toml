@@ -1,0 +1,6 @@
+# DiaryArchive project-local Codex configuration.
+# The repository root AGENTS.md is the primary instruction file.
+project_doc_max_bytes = 65536
+
+# Make the detailed checked-in project brief discoverable as project guidance.
+project_doc_fallback_filenames = ["PROJECT_CONTEXT.md"]
