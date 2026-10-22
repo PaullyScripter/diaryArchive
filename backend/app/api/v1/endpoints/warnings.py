@@ -51,7 +51,7 @@ async def issue_bio_warning(
     bio_count = user.get("bio_warning_count", 0)
     new_count = bio_count + 1
     now = datetime.now(UTC)
-    deadline = now + timedelta(minutes=5)
+    deadline = now + timedelta(days=5)
 
     update_fields: dict = {
         "bio_warning_deadline": deadline,
@@ -93,7 +93,7 @@ async def issue_bio_warning(
                 f"3. Edit the 'About' field with an appropriate bio\n"
                 f"4. Click 'Save' to update your profile\n"
                 f"5. Return to this notification and click 'I changed my bio'\n\n"
-                f"Please update your bio within 5 minutes. Failure to comply may result in"
+                f"Please update your bio within 5 days. Failure to comply may result in"
                 f" your bio being blanked"
                 + (" and your bio editing privileges being suspended." if new_count >= 3 else ".")
                 + "\n\nRepeated violations may result in account suspension or banning.\n\n"
@@ -150,7 +150,7 @@ async def issue_username_warning(
     if user.get("is_admin"):
         raise ValidationException("Cannot warn an admin")
 
-    deadline = datetime.now(UTC) + timedelta(minutes=5)
+    deadline = datetime.now(UTC) + timedelta(days=15)
 
     await user_repo.update(
         user_id,
@@ -177,7 +177,7 @@ async def issue_username_warning(
                 f"3. Set the subject to 'Username Change Request'\n"
                 f"4. In the description, explain the situation and provide a new username\n"
                 f"5. An admin will review your request and assist you\n\n"
-                f"Please submit your username change request within 15 minutes. Failure to comply"
+                f"Please submit your username change request within 15 days. Failure to comply"
                 f" may result in your account being banned.\n\n"
                 f"Regards,\nDiaryArchive Moderation"
             ),
