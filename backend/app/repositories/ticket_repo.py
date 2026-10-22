@@ -109,5 +109,6 @@ class TicketRepository(BaseRepository):
                 "user_id": ObjectId(user_id),
                 "category": "account_help",
                 "status": "open",
+                "subject": {"$regex": r"^Appeal:"},
             }
         )

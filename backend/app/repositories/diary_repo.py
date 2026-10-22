@@ -184,17 +184,24 @@ class DiaryRepository(BaseRepository):
     async def delete_cascade(self, diary_id: str) -> int:
         oid = self._oid(diary_id)
         db = self._collection.database
-        comment_ids = await db.comments.find({"diary_id": oid}, {"_id": 1}).to_list(length=10000)
-        comment_oids = [c["_id"] for c in comment_ids]
-        if comment_oids:
-            await db.comment_likes.delete_many({"comment_id": {"$in": comment_oids}})
+        comment_oids: list[ObjectId] = []
+        async for comment in db.comments.find({"diary_id": oid}, {"_id": 1}):
+            comment_oids.append(comment["_id"])
+            if len(comment_oids) >= 1000:
+                await db.comment_likes.delete_many({"comment_id": {"$in": comment_oids}})
+                await db.notifications.delete_many(
+                    {"target_type": "comment", "target_id": {"$in": comment_oids}}
+                )
+                comment_oids.clear()
         await db.comments.delete_many({"diary_id": oid})
         await db.likes.delete_many({"diary_id": oid})
         await db.bookmarks.delete_many({"diary_id": oid})
         await db.notifications.delete_many({"target_type": "diary", "target_id": oid})
-        await db.notifications.delete_many(
-            {"target_type": "comment", "target_id": {"$in": comment_oids}}
-        )
+        if comment_oids:
+            await db.comment_likes.delete_many({"comment_id": {"$in": comment_oids}})
+            await db.notifications.delete_many(
+                {"target_type": "comment", "target_id": {"$in": comment_oids}}
+            )
         # Preserve reports as moderation evidence; the admin queue renders a
         # deleted target as [Deleted].
         result = await self._collection.delete_one({"_id": oid})

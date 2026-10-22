@@ -801,6 +801,64 @@ Add or update the email on the current user's account.
 
 ---
 
+### GET /api/v1/users/me/account-standing
+
+Return the authenticated user's current account standing and moderation
+history, including recorded warnings, bans, appeals, and all user-owned
+tickets. Internal moderator IP addresses and unrelated user data are never
+included.
+
+The response explicitly treats moderation history as permanent: DiaryArchive
+does not promise any time or date when past warnings, appeals, tickets, bans,
+or related records will be removed. Resolved or expired records remain in the
+history.
+
+**Auth:** Bearer access token
+
+**Success (200):**
+```json
+{
+  "data": {
+    "standing": {
+      "status": "in_good_standing",
+      "is_banned": false,
+      "bio_warning_count": 0,
+      "active_warnings": { "bio": {}, "username": {} }
+    },
+    "warnings": [],
+    "moderation_history": [],
+    "tickets": [],
+    "appeals": [],
+    "history_policy": { "permanent": true, "message": "..." }
+  }
+}
+```
+
+---
+
+### POST /api/v1/auth/account-standing
+
+Show a banned user's limited account standing and moderation history after
+verifying their username and password. This endpoint does not create an access
+token or session and is rate-limited with account lockout protection. It is
+intended for the banned login/appeal flow.
+
+**Request:**
+```json
+{ "username": "user", "password": "..." }
+```
+
+**Success (200):** Same `data` shape as `GET /api/v1/users/me/account-standing`.
+
+**Errors:**
+
+| Code | Status | Condition |
+|------|--------|-----------|
+| `validation_error` | 422 | Invalid credentials or account is not banned |
+| `rate_limited` | 429 | Too many attempts or account lockout |
+
+---
+
 ### GET /api/v1/users/me/export
 
 Export a self-contained snapshot of every piece of data the current account
@@ -839,11 +897,10 @@ client holds the decryption keys.
 
 ### DELETE /api/v1/users/me
 
-Permanently delete the current account and **all** of its data across every
-collection that references the user, including diaries (and their cascade of
-comments, likes, bookmarks, notifications, reports), media objects, social
-rows, notifications, reports, tickets, achievements, refresh/verification
-tokens, and MinIO object files.
+Permanently delete the current account and its user-owned data across the
+application. Moderation reports are retained as historical evidence and may
+remain with an anonymized/orphaned reporter or target; tickets owned by the
+account are deleted as part of account deletion.
 
 **Auth:** Bearer access token
 

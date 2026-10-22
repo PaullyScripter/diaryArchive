@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight, Trash2, Image as ImageIcon } from "lucide
 import { useMediaGallery, useDeleteMedia, type MediaItem } from "@/hooks/use-media";
 import { Button } from "@/components/ui/button";
 import { resolveMediaUrl } from "@/lib/media-url";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import type { Editor } from "@tiptap/react";
 
 interface MediaGalleryModalProps {
@@ -73,6 +74,13 @@ export function MediaGalleryModal({
   };
 
   const handleDelete = async (item: MediaItem) => {
+    const confirmed = await confirmDialog({
+      title: "Delete media?",
+      description: `Delete ${item.filename || "this file"}? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
     await deleteMedia.mutateAsync(item.id);
   };
 
@@ -173,7 +181,7 @@ export function MediaGalleryModal({
                         onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
                         className="p-1 rounded bg-background text-destructive shadow hover:bg-destructive hover:text-white transition-colors"
                         aria-label={`Delete ${item.filename}`}
-                        tabIndex={-1}
+                        tabIndex={0}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

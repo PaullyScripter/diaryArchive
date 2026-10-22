@@ -80,6 +80,12 @@ function LoginForm() {
           >
             Appeal
           </a>
+          <a
+            href={`/appeal?username=${encodeURIComponent(username)}&view=standing`}
+            className="inline-block text-sm px-3 py-1.5 border border-border text-foreground hover:bg-overlay no-underline"
+          >
+            View account standing
+          </a>
         </div>
       </div>
     );

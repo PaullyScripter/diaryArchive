@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import ipaddress
 import logging
 import secrets
 import threading
@@ -139,33 +140,18 @@ _TRUSTED_PROXIES = {"127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.
 
 def _is_trusted_proxy(ip: str) -> bool:
     """Check if an IP is a known private/trusted proxy address."""
-    if ip in ("127.0.0.1", "::1", "unknown"):
-        return True
-    # Check common Docker/internal ranges
-    private_prefixes = (
-        "10.",
-        "172.16.",
-        "172.17.",
-        "172.18.",
-        "172.19.",
-        "172.20.",
-        "172.21.",
-        "172.22.",
-        "172.23.",
-        "172.24.",
-        "172.25.",
-        "172.26.",
-        "172.27.",
-        "172.28.",
-        "172.29.",
-        "172.30.",
-        "172.31.",
-        "192.168.",
+    if ip == "unknown":
+        return False
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return (
+        address.is_loopback
+        or address in ipaddress.ip_network("10.0.0.0/8")
+        or address in ipaddress.ip_network("172.16.0.0/12")
+        or address in ipaddress.ip_network("192.168.0.0/16")
     )
-    for prefix in private_prefixes:
-        if ip.startswith(prefix):
-            return True
-    return False
 
 
 def get_client_ip(request) -> str:
@@ -201,13 +187,22 @@ async def record_failed_attempt(key: str, max_attempts: int, window_seconds: int
         limited, _ = _fallback_consume(f"lockout:{key}", max_attempts, window_seconds)
         return limited
     try:
-        pipe = redis.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, window_seconds)
-        count, _ = await pipe.execute()
-        return count >= max_attempts
-    except Exception:
-        return False
+        count = await redis.eval(
+            """
+            local count = redis.call('INCR', KEYS[1])
+            redis.call('EXPIRE', KEYS[1], ARGV[1])
+            return count
+            """,
+            1,
+            key,
+            window_seconds,
+        )
+        return int(count) >= max_attempts
+    except Exception as exc:
+        # Authentication lockouts are security-critical. A Redis outage must
+        # not silently turn the account lockout into a brute-force bypass.
+        logger.error("Lockout counter unavailable; failing closed: %s", exc)
+        return True
 
 
 async def is_locked_out(key: str, max_attempts: int, window_seconds: int = 300) -> bool:
@@ -220,8 +215,9 @@ async def is_locked_out(key: str, max_attempts: int, window_seconds: int = 300) 
     try:
         count = await redis.get(key)
         return count is not None and int(count) >= max_attempts
-    except Exception:
-        return False
+    except Exception as exc:
+        logger.error("Lockout state unavailable; failing closed: %s", exc)
+        return True
 
 
 async def clear_attempts(key: str) -> None:
@@ -247,19 +243,30 @@ async def check_rate_limit(key: str, max_attempts: int, window_seconds: int) -> 
         now = int(time.time() * 1000)
         window_start = now - (window_seconds * 1000)
         member = f"{now}:{secrets.token_hex(4)}"
-        pipe = redis.pipeline()
-        pipe.zremrangebyscore(key, 0, window_start)
-        pipe.zcard(key)
-        pipe.zadd(key, {member: now})
-        pipe.expire(key, window_seconds)
-        _, count, _, _ = await pipe.execute()
+        limited, remaining = await redis.eval(
+            """
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[1])
+            local count = redis.call('ZCARD', KEYS[1])
+            if count >= tonumber(ARGV[3]) then
+                redis.call('EXPIRE', KEYS[1], ARGV[4])
+                return {1, 0}
+            end
+            redis.call('ZADD', KEYS[1], ARGV[2], ARGV[5])
+            redis.call('EXPIRE', KEYS[1], ARGV[4])
+            return {0, tonumber(ARGV[3]) - count - 1}
+            """,
+            1,
+            key,
+            window_start,
+            now,
+            max_attempts,
+            window_seconds,
+            member,
+        )
+        return bool(limited), int(remaining)
     except Exception:  # Redis down: fail closed.
-        logger.warning("Redis error; falling back to in-process rate limiting for %s", key)
-        return _fallback_consume(key, max_attempts, window_seconds)
-    remaining = max(0, max_attempts - count)
-    if count > max_attempts:
-        return True, remaining
-    return False, remaining
+        logger.error("Redis rate limiter unavailable; failing closed for %s", key)
+        return True, 0
 
 
 # ---------------------------------------------------------------------------
@@ -317,4 +324,6 @@ async def _is_token_invalidated(user_id: str, token_iat: datetime | int | float)
         return False
 
     issued_at = token_iat.timestamp() if isinstance(token_iat, datetime) else float(token_iat)
-    return issued_at < float(invalid_before)
+    # JWT iat has second precision. Reject the same-second token too, or a
+    # token created immediately before invalidation can survive the cutoff.
+    return issued_at <= float(invalid_before)

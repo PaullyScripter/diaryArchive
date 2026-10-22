@@ -234,9 +234,18 @@ export function NavBar() {
                     My Reports & Tickets
                   </Link>
                   <Link
-                    href="/me/bookmarks"
+                    href="/account-standing"
                     onClick={() => setMenuOpen(false)}
                     ref={(el) => { menuItemsRef.current[4] = el; }}
+                    className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
+                    role="menuitem"
+                  >
+                    Account Standing
+                  </Link>
+                  <Link
+                    href="/me/bookmarks"
+                    onClick={() => setMenuOpen(false)}
+                    ref={(el) => { menuItemsRef.current[5] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -245,7 +254,7 @@ export function NavBar() {
                   <Link
                     href="/me/likes"
                     onClick={() => setMenuOpen(false)}
-                    ref={(el) => { menuItemsRef.current[5] = el; }}
+                    ref={(el) => { menuItemsRef.current[6] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -254,7 +263,7 @@ export function NavBar() {
                   <Link
                     href="/settings"
                     onClick={() => setMenuOpen(false)}
-                    ref={(el) => { menuItemsRef.current[6] = el; }}
+                    ref={(el) => { menuItemsRef.current[7] = el; }}
                     className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     role="menuitem"
                   >
@@ -264,7 +273,7 @@ export function NavBar() {
                     <Link
                       href="/admin"
                       onClick={() => setMenuOpen(false)}
-                      ref={(el) => { menuItemsRef.current[7] = el; }}
+                      ref={(el) => { menuItemsRef.current[8] = el; }}
                       className="block px-3 py-1.5 text-xs text-muted hover:text-foreground hover:bg-overlay no-underline focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                       role="menuitem"
                     >
@@ -274,7 +283,7 @@ export function NavBar() {
                   <hr className="my-1 border-border" />
                   <button
                     onClick={handleLogout}
-                    ref={(el) => { menuItemsRef.current[8] = el; }}
+                    ref={(el) => { menuItemsRef.current[9] = el; }}
                     className="block w-full px-3 py-1.5 text-left text-xs text-destructive hover:bg-overlay cursor-pointer focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2"
                     type="button"
                     role="menuitem"
