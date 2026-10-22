@@ -300,3 +300,22 @@ class TestAccountStanding:
         assert len(data["appeals"]) == 1
         assert data["history_policy"]["permanent"] is True
         assert "time or date" in data["history_policy"]["message"]
+
+    async def test_banned_user_can_view_restricted_standing_without_session(
+        self, client: AsyncClient
+    ):
+        user = await _register(client, "bannedstanding")
+        admin = await _register(client, "standingadmin2", is_admin=True)
+        ban_response = await client.put(
+            f"/api/v1/admin/users/{user['id']}/ban",
+            json={"is_banned": True, "reason": "Repeated moderation violations"},
+            headers=_auth(admin["access_token"]),
+        )
+        assert ban_response.status_code == 200
+
+        response = await client.post(
+            "/api/v1/auth/account-standing",
+            json={"username": "bannedstanding", "password": "ValidPass1!"},
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["standing"]["is_banned"] is True

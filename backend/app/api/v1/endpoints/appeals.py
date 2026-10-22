@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, Request
 
+from app.api.v1.endpoints.account_standing import build_account_standing
 from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import (
@@ -111,6 +112,22 @@ async def get_appeal_status(body: dict, request: Request):
         }
 
     return {"data": {"has_appeal": False}}
+
+
+@router.post("/account-standing")
+async def get_restricted_account_standing(body: dict, request: Request):
+    """Show a banned user limited account history without creating a session."""
+    username = body.get("username", "").lower().strip()
+    password = body.get("password", "")
+
+    if not username or not password:
+        raise ValidationException("username and password are required")
+
+    user = await _verify_credentials(username, password, get_client_ip(request), "standing")
+    if not user.get("is_banned"):
+        raise ValidationException("This restricted view is only available to banned accounts")
+
+    return await build_account_standing(user)
 
 
 @router.post("/appeal/reply")

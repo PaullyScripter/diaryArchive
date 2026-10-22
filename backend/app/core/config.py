@@ -99,9 +99,11 @@ class Settings(BaseSettings):
         "appeal_status": (12, 300),
         "appeal_submit": (3, 3600),
         "appeal_reply": (5, 3600),
+        "appeal_standing": (5, 900),
         "appeal_status_lockout": (8, 900),
         "appeal_submit_lockout": (5, 3600),
         "appeal_reply_lockout": (8, 3600),
+        "appeal_standing_lockout": (5, 900),
         # admin
         "admin_ticket_reply": (30, 60),
         "admin_ticket_close": (30, 60),

@@ -836,6 +836,29 @@ history.
 
 ---
 
+### POST /api/v1/auth/account-standing
+
+Show a banned user's limited account standing and moderation history after
+verifying their username and password. This endpoint does not create an access
+token or session and is rate-limited with account lockout protection. It is
+intended for the banned login/appeal flow.
+
+**Request:**
+```json
+{ "username": "user", "password": "..." }
+```
+
+**Success (200):** Same `data` shape as `GET /api/v1/users/me/account-standing`.
+
+**Errors:**
+
+| Code | Status | Condition |
+|------|--------|-----------|
+| `validation_error` | 422 | Invalid credentials or account is not banned |
+| `rate_limited` | 429 | Too many attempts or account lockout |
+
+---
+
 ### GET /api/v1/users/me/export
 
 Export a self-contained snapshot of every piece of data the current account

@@ -29,6 +29,18 @@ interface ExistingAppeal {
   assigned_admin_username?: string;
 }
 
+interface RestrictedStanding {
+  standing: {
+    is_banned: boolean;
+    ban_reason: string | null;
+    banned_at: string | null;
+    bio_warning_count: number;
+  };
+  warnings: Array<{ id: string; action: string; created_at: string; details?: { reason?: string } }>;
+  tickets: Array<{ id: string; subject: string; category: string; status: string; is_appeal: boolean; created_at: string }>;
+  history_policy: { message: string };
+}
+
 function AppealForm() {
   const searchParams = useSearchParams();
   const initialUsername = searchParams.get("username") || "";
@@ -41,6 +53,9 @@ function AppealForm() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [existingAppeal, setExistingAppeal] = useState<ExistingAppeal | null>(null);
+  const [restrictedStanding, setRestrictedStanding] = useState<RestrictedStanding | null>(null);
+  const [showStanding, setShowStanding] = useState(searchParams.get("view") === "standing");
+  const [loadingStanding, setLoadingStanding] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const threadEndRef = useRef<HTMLDivElement>(null);
@@ -103,6 +118,30 @@ function AppealForm() {
       await checkStatus(username.trim(), password);
     }
   }, [username, password, checkStatus]);
+
+  const handleStanding = useCallback(async () => {
+    if (!username.trim() || !password) {
+      setError("Username and password are required");
+      return;
+    }
+    setError("");
+    setLoadingStanding(true);
+    try {
+      const response = await apiClient.post("/auth/account-standing", {
+        username: username.trim(),
+        password,
+      });
+      setRestrictedStanding(response.data?.data || response.data);
+      setShowStanding(true);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ||
+        "Could not load account standing.";
+      setError(msg);
+    } finally {
+      setLoadingStanding(false);
+    }
+  }, [username, password]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -324,14 +363,50 @@ function AppealForm() {
               />
             </div>
             {username.trim() && password && !existingAppeal && !success && (
-              <button
-                type="button"
-                onClick={handleCheck}
-                disabled={checking}
-                className="text-xs text-link hover:text-link-hover cursor-pointer bg-transparent border-0 underline"
-              >
-                {checking ? "Checking..." : "Check existing appeal"}
-              </button>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={handleCheck}
+                  disabled={checking}
+                  className="text-xs text-link hover:text-link-hover cursor-pointer bg-transparent border-0 underline"
+                >
+                  {checking ? "Checking..." : "Check existing appeal"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStanding}
+                  disabled={loadingStanding}
+                  className="text-xs text-link hover:text-link-hover cursor-pointer bg-transparent border-0 underline"
+                >
+                  {loadingStanding ? "Loading standing..." : "View account standing"}
+                </button>
+              </div>
+            )}
+            {showStanding && restrictedStanding && (
+              <div className="border border-border p-3 space-y-3" aria-live="polite">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-medium">Account standing</h2>
+                  <span className="text-sm text-destructive">Banned</span>
+                </div>
+                <p className="text-xs text-muted">{restrictedStanding.standing.ban_reason || "No ban reason provided"}</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="text-muted block">Banned</span>{restrictedStanding.standing.banned_at ? fmtDate(restrictedStanding.standing.banned_at) : "Not recorded"}</div>
+                  <div><span className="text-muted block">Bio warnings</span>{restrictedStanding.standing.bio_warning_count}</div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-medium mb-1">Warning history</h3>
+                  {restrictedStanding.warnings.length === 0 ? <p className="text-xs text-muted">No warnings recorded.</p> : restrictedStanding.warnings.map((warning) => (
+                    <p key={warning.id} className="text-xs text-muted">{warning.action.replaceAll("_", " ")} · {fmtDate(warning.created_at)}{warning.details?.reason ? ` · ${warning.details.reason}` : ""}</p>
+                  ))}
+                </div>
+                <div>
+                  <h3 className="text-xs font-medium mb-1">Appeals and tickets</h3>
+                  {restrictedStanding.tickets.length === 0 ? <p className="text-xs text-muted">No tickets recorded.</p> : restrictedStanding.tickets.map((ticket) => (
+                    <p key={ticket.id} className="text-xs text-muted">{ticket.is_appeal ? "Appeal" : "Ticket"}: {ticket.subject} · {ticket.status} · {fmtDate(ticket.created_at)}</p>
+                  ))}
+                </div>
+                <p className="text-xs text-muted border-t border-border pt-2">{restrictedStanding.history_policy.message}</p>
+              </div>
             )}
             {!existingAppeal && (
               <>
