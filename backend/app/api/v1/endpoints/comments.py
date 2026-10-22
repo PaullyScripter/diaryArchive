@@ -38,9 +38,16 @@ async def list_all(
     diary_id: str,
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=50),
+    highlight_id: str | None = Query(None, min_length=1, max_length=64),
     current_user: dict | None = Depends(_optional_user),
 ):
-    result = await list_comments(diary_id, page=page, per_page=per_page, current_user=current_user)
+    result = await list_comments(
+        diary_id,
+        page=page,
+        per_page=per_page,
+        current_user=current_user,
+        highlight_id=highlight_id,
+    )
     return result
 
 
@@ -49,9 +56,16 @@ async def get_replies(
     comment_id: str,
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=50),
+    highlight_id: str | None = Query(None, min_length=1, max_length=64),
     current_user: dict | None = Depends(_optional_user),
 ):
-    result = await list_replies(comment_id, page=page, per_page=per_page, current_user=current_user)
+    result = await list_replies(
+        comment_id,
+        page=page,
+        per_page=per_page,
+        current_user=current_user,
+        highlight_id=highlight_id,
+    )
     return result
 
 
