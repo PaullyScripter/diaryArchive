@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ReportButton } from "@/components/social/report-button";
 import { AdminWarnButton } from "@/components/admin/admin-warn-button";
+import { confirmDialog } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 
 interface CommentItemProps {
@@ -80,12 +81,18 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
 
   const isAdminDelete = currentUser?.is_admin && !comment.is_owner && !comment.is_diary_owner;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (isAdminDelete) {
       setShowAdminDeleteDialog(true);
       return;
     }
-    performDelete();
+    const confirmed = await confirmDialog({
+      title: "Delete comment?",
+      description: "This comment will be removed from the diary. This action cannot be undone.",
+      confirmLabel: "Delete comment",
+      variant: "destructive",
+    });
+    if (confirmed) performDelete();
   };
 
   const performDelete = () => {
@@ -239,6 +246,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
           diaryId={diaryId}
           parentAuthor={comment.author.username}
           parentContent={comment.content ?? undefined}
+          highlightCommentId={highlightCommentId}
         />
       )}
     </div>
@@ -288,13 +296,15 @@ function RepliesList({
   diaryId,
   parentAuthor,
   parentContent,
+  highlightCommentId,
 }: {
   commentId: string;
   diaryId: string;
   parentAuthor: string;
   parentContent?: string;
+  highlightCommentId?: string | null;
 }) {
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useReplies(commentId);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useReplies(commentId, highlightCommentId);
   const replies = data?.pages.flatMap((p) => p.data ?? []) ?? [];
 
   if (isLoading) {
