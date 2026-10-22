@@ -53,7 +53,12 @@ async def _register(client: AsyncClient, username: str) -> dict:
     )
     assert response.status_code == 201
     data = response.json().get("data", response.json())
-    return {"id": data["id"], "username": username, "access_token": data["access_token"]}
+    return {
+        "id": data["id"],
+        "username": username,
+        "password": "ValidPass123!",
+        "access_token": data["access_token"],
+    }
 
 
 async def _make_diary(db, user_id, privacy: str):
@@ -149,8 +154,10 @@ class TestAccountDeletion:
         await db.tickets.insert_one({"user_id": uid, "category": "account_help", "status": "open"})
         await db.achievements.insert_one({"user_id": uid, "code": "first_diary"})
 
-        response = await client.delete(
+        response = await client.request(
+            "DELETE",
             "/api/v1/users/me",
+            json={"password": auth_user["password"]},
             headers={"Authorization": f"Bearer {auth_user['access_token']}"},
         )
         assert response.status_code == 200
@@ -167,12 +174,14 @@ class TestAccountDeletion:
         assert await db.follows.count_documents({"following_id": uid}) == 0
         assert await db.notifications.count_documents({"user_id": uid}) == 0
         assert await db.notifications.count_documents({"actor_id": uid}) == 0
-        assert await db.tickets.count_documents({"user_id": uid}) == 0
+        assert await db.tickets.count_documents({"user_id": uid}) == 1
         assert await db.achievements.count_documents({"user_id": uid}) == 0
 
     async def test_delete_then_profile_404(self, client: AsyncClient, auth_user):
-        await client.delete(
+        await client.request(
+            "DELETE",
             "/api/v1/users/me",
+            json={"password": auth_user["password"]},
             headers={"Authorization": f"Bearer {auth_user['access_token']}"},
         )
         response = await client.get(f"/api/v1/users/{auth_user['username']}")

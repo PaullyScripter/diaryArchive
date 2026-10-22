@@ -6,6 +6,7 @@ from app.api.deps import get_current_admin, get_current_user
 from app.core.config import settings
 from app.core.exceptions import RateLimitException, ValidationException
 from app.core.security import check_rate_limit, get_client_ip
+from app.models.moderation import TicketResolution
 from app.models.ticket import TicketCreate, TicketReply
 from app.services.ticket_service import (
     add_message,
@@ -185,12 +186,12 @@ async def admin_close_ticket(
 @admin_router.put("/{ticket_id}/resolve")
 async def admin_resolve_ticket(
     ticket_id: str,
-    body: dict,
+    body: TicketResolution,
     request: Request,
     current_admin: dict = Depends(get_current_admin),
 ):
-    action = body.get("action", "").strip().lower()
-    response_message = body.get("response_message", "").strip()
+    action = body.action.strip().lower()
+    response_message = body.response_message.strip()
 
     if action not in ("accept", "deny"):
         raise ValidationException("action must be 'accept' or 'deny'")

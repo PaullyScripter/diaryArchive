@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 # creation is intentionally additive, so existing installations need an
 # explicit cleanup step when they upgrade.
 _OBSOLETE_MEDIA_INDEXES = frozenset({"idx_created_at_ttl", "created_at_1", "idx_orphan_ttl"})
+_OBSOLETE_RETENTION_INDEXES = {
+    "audit_logs": frozenset({"idx_created_at_ttl"}),
+    "reports": frozenset({"idx_created_at_ttl"}),
+    "notifications": frozenset({"idx_created_at_ttl"}),
+}
 
 
 async def remove_obsolete_media_indexes() -> list[str]:
@@ -33,12 +38,30 @@ async def remove_obsolete_media_indexes() -> list[str]:
     return removed
 
 
+async def remove_obsolete_retention_indexes() -> list[str]:
+    """Remove TTL indexes that contradict permanent user-visible history."""
+    db = DatabaseManager.get_db()
+    removed: list[str] = []
+    for collection_name, names in _OBSOLETE_RETENTION_INDEXES.items():
+        existing = await db[collection_name].index_information()
+        for name in names:
+            if name in existing:
+                await db[collection_name].drop_index(name)
+                removed.append(f"{collection_name}.{name}")
+                logger.warning("Removed obsolete retention index %s.%s", collection_name, name)
+    return removed
+
+
 async def create_indexes() -> None:
     db = DatabaseManager.get_db()
     try:
         await remove_obsolete_media_indexes()
     except Exception as e:
         logger.error("Failed to remove obsolete media indexes: %s", e)
+    try:
+        await remove_obsolete_retention_indexes()
+    except Exception as e:
+        logger.error("Failed to remove obsolete retention indexes: %s", e)
 
     for collection_name, indexes in ALL_INDEXES.items():
         try:

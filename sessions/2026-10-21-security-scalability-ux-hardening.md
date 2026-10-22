@@ -1,0 +1,8 @@
+# Security, scalability, and UX hardening
+
+- Request: Fix the project-wide security, scalability, and UX/UI issues identified in the current audit.
+- Findings: The highest-impact defects were fail-open authentication lockouts, non-atomic Redis limits, broken MinIO bucket initialization, silent retention TTL conflicts, unbounded moderation history, unsafe account deletion/export behavior, duplicate-report races, partial storage cleanup, and deployment configuration drift.
+- Changes: Hardened Redis lockouts/rate limits and token invalidation; corrected proxy IP parsing; fixed MinIO initialization; removed moderation-history TTL indexes and added Account Standing indexes/pagination; added bounded moderation request models; required password confirmation and throttling for account deletion/export; preserved tickets after deletion; made appeal classification consistent; changed large deletion cleanup to cursor/batched operations; protected media deletion metadata on storage failure; fixed production URL/CORS and CI/CD conditions; improved media-gallery deletion accessibility and confirmation.
+- Verification: Backend full suite: 322 passed, 8 warnings. Frontend typecheck passed, ESLint passed with no warnings/errors, and Vitest passed 83 tests. Ruff was unavailable in the local environment, so Ruff checks could not run.
+- Git: Changes are prepared on the new `security-scalability-ux-hardening` branch. Commit and push remain to be completed after final review.
+- Follow-up: Streaming account exports/media range requests, distributed worker claims/locks, full accessibility automation, and a dedicated metrics authentication boundary should be addressed in the next hardening iteration.

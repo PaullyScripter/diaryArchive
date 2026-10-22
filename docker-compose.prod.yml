@@ -191,6 +191,8 @@ services:
       MEILISEARCH_API_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY (>=32 chars, random)}
       EMAIL_ENCRYPTION_KEY: ${EMAIL_ENCRYPTION_KEY:?set EMAIL_ENCRYPTION_KEY (64-char hex, random)}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL (for example https://diaryarchive.com)}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.diaryarchive.com}
       CORS_ORIGINS: '["https://diaryarchive.com"]'
 
   frontend:

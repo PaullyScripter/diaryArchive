@@ -43,7 +43,7 @@ jobs:
       # --- Dependency audit ---
       - name: Audit Python dependencies
         working-directory: backend
-        run: pip install pip-audit && pip-audit --strict
+        run: pip install pip-audit && pip-audit -r requirements.txt --strict
 
       - name: Audit npm dependencies
         working-directory: frontend
@@ -114,7 +114,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'diaryarchive/diaryarchive'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'PaullyScripter/diaryArchive'
     environment: production
 
     steps:

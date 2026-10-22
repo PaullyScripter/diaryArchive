@@ -2,9 +2,15 @@ from fastapi import APIRouter, Depends, Query, Request, UploadFile
 
 from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import NotFoundException, RateLimitException, ValidationException
-from app.core.security import check_rate_limit
+from app.core.security import check_rate_limit, verify_password_async
 from app.core.utils import fmt_dt
-from app.models.user import EmailUpdate, EncryptionKeyUpdate, UsernameUpdate, UserUpdate
+from app.models.user import (
+    EmailUpdate,
+    EncryptionKeyUpdate,
+    PasswordConfirmation,
+    UsernameUpdate,
+    UserUpdate,
+)
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
 from app.repositories.user_repo import UserRepository
@@ -144,8 +150,14 @@ async def get_encryption_key(
 
 @router.get("/me/export")
 async def export_my_data(
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:account_export:{current_user['_id']}", 1, 86400
+    )
+    if is_limited:
+        raise RateLimitException("Only one account export may be requested per day")
     from app.services.account_service import export_user_data
 
     data = await export_user_data(str(current_user["_id"]))
@@ -154,8 +166,11 @@ async def export_my_data(
 
 @router.delete("/me")
 async def delete_my_account(
+    body: PasswordConfirmation,
     current_user: dict = Depends(get_current_user),
 ):
+    if not await verify_password_async(body.password, current_user["password_hash"]):
+        raise ValidationException("Password confirmation failed")
     from app.services.account_service import delete_account
 
     deleted = await delete_account(str(current_user["_id"]))

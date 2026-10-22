@@ -13,6 +13,7 @@ from app.core.security import (
     record_failed_attempt,
     verify_password_async,
 )
+from app.models.moderation import AppealCredentials, AppealReply, AppealSubmit
 from app.repositories.ticket_repo import TicketRepository
 from app.repositories.user_repo import UserRepository
 from app.services.ticket_service import add_message, create_ticket
@@ -78,9 +79,9 @@ async def _verify_credentials(username: str, password: str, client_ip: str, acti
 
 
 @router.post("/appeal/status")
-async def get_appeal_status(body: dict, request: Request):
-    username = body.get("username", "").lower().strip()
-    password = body.get("password", "")
+async def get_appeal_status(body: AppealCredentials, request: Request):
+    username = body.username.lower().strip()
+    password = body.password
 
     if not username or not password:
         raise ValidationException("username and password are required")
@@ -115,10 +116,10 @@ async def get_appeal_status(body: dict, request: Request):
 
 
 @router.post("/account-standing")
-async def get_restricted_account_standing(body: dict, request: Request):
+async def get_restricted_account_standing(body: AppealCredentials, request: Request):
     """Show a banned user limited account history without creating a session."""
-    username = body.get("username", "").lower().strip()
-    password = body.get("password", "")
+    username = body.username.lower().strip()
+    password = body.password
 
     if not username or not password:
         raise ValidationException("username and password are required")
@@ -132,12 +133,12 @@ async def get_restricted_account_standing(body: dict, request: Request):
 
 @router.post("/appeal/reply")
 async def reply_to_appeal(
-    body: dict,
+    body: AppealReply,
     request: Request,
 ):
-    username = body.get("username", "").lower().strip()
-    password = body.get("password", "")
-    message = body.get("message", "").strip()
+    username = body.username.lower().strip()
+    password = body.password
+    message = body.message.strip()
 
     if not username or not password:
         raise ValidationException("username and password are required")
@@ -168,12 +169,12 @@ async def reply_to_appeal(
 
 @router.post("/appeal")
 async def submit_appeal(
-    body: dict,
+    body: AppealSubmit,
     request: Request,
 ):
-    username = body.get("username", "").lower().strip()
-    password = body.get("password", "")
-    message = body.get("message", "").strip()
+    username = body.username.lower().strip()
+    password = body.password
+    message = body.message.strip()
 
     if not username or not password:
         raise ValidationException("username and password are required")

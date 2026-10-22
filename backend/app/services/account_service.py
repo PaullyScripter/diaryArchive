@@ -204,16 +204,16 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     # Diaries (cascade removes comments, likes, bookmarks, notifications,
     # reports and MinIO objects for each diary).
     diary_repo = DiaryRepository()
-    diary_ids = await db.diaries.find({"user_id": uid}, {"_id": 1}).to_list(length=100000)
-    for d in diary_ids:
+    diary_cursor = db.diaries.find({"user_id": uid}, {"_id": 1})
+    async for d in diary_cursor:
         try:
             await diary_repo.delete_cascade(str(d["_id"]))
         except Exception:
             logger.exception("PHASE 9: failed to cascade-delete diary %s", d["_id"])
 
     # Standalone media owned by the user (avatar-adjacent / not tied to a diary).
-    media = await db.media.find({"user_id": uid}).to_list(length=100000)
-    for m in media:
+    media_cursor = db.media.find({"user_id": uid})
+    async for m in media_cursor:
         for path_key in ("stored_path", "standard_path", "thumbnail_path"):
             path_val = m.get(path_key)
             if path_val:
@@ -233,11 +233,17 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
             logger.warning("PHASE 9: failed to delete avatar object %s", avatar_path)
 
     # Comments authored by the user and the likes on those comments.
-    comment_ids = await db.comments.find({"user_id": uid}, {"_id": 1}).to_list(length=100000)
-    comment_oids = [c["_id"] for c in comment_ids]
-    if comment_oids:
-        await db.comment_likes.delete_many({"comment_id": {"$in": comment_oids}})
-        await db.comments.delete_many({"_id": {"$in": comment_oids}})
+    comment_cursor = db.comments.find({"user_id": uid}, {"_id": 1})
+    comment_batch: list[ObjectId] = []
+    async for comment in comment_cursor:
+        comment_batch.append(comment["_id"])
+        if len(comment_batch) >= 1000:
+            await db.comment_likes.delete_many({"comment_id": {"$in": comment_batch}})
+            await db.comments.delete_many({"_id": {"$in": comment_batch}})
+            comment_batch.clear()
+    if comment_batch:
+        await db.comment_likes.delete_many({"comment_id": {"$in": comment_batch}})
+        await db.comments.delete_many({"_id": {"$in": comment_batch}})
     await db.comment_likes.delete_many({"user_id": uid})
 
     # Social + notification rows referencing the user in either direction.
@@ -251,7 +257,8 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     # allowing account deletion to erase the moderation history.
 
     # User-owned records + credentials.
-    await db.tickets.delete_many({"user_id": uid})
+    # Moderation tickets and appeals are permanent history. Keep these records
+    # after account deletion so administrators retain the audit trail.
     await db.achievements.delete_many({"user_id": uid})
     await db.refresh_tokens.delete_many({"user_id": uid})
     await db.email_verification_tokens.delete_many({"user_id": uid})
@@ -318,7 +325,8 @@ async def _download_media_files(uid: ObjectId, media_records: list[dict]) -> byt
                     except Exception:
                         logger.warning("Failed to download MinIO object %s", key)
         tar_buffer.seek(0)
-        return tar_buffer.getvalue() if tar_buffer.tell() > 0 else None
+        payload = tar_buffer.getvalue()
+        return payload or None
     except Exception:
         logger.warning("Failed to connect to MinIO for media export", exc_info=True)
         return None

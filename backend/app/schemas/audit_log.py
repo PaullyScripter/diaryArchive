@@ -12,10 +12,9 @@ audit_log_indexes: list[tuple[dict, dict]] = [
         {"name": "idx_admin_id_created_at"},
     ),
     (
-        {"created_at": 1},
+        {"target_type": 1, "target_id": 1, "created_at": -1},
         {
-            "name": "idx_created_at_ttl",
-            "expireAfterSeconds": 31536000,
+            "name": "idx_target_created_at",
         },
     ),
 ]

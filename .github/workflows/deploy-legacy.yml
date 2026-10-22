@@ -1,14 +1,13 @@
 name: Deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: github.repository == 'diaryarchive/diaryarchive'
+    # Manual emergency fallback only. Automatic deployment is owned by ci-cd.yml.
+    if: github.repository == 'PaullyScripter/diaryArchive'
     environment: production
 
     steps:
