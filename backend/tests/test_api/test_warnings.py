@@ -268,3 +268,35 @@ class TestBioWarningAutoBlank:
         db = DatabaseManager.get_db()
         raw = await db.users.find_one({"username": "compliantuser"})
         assert raw["about"] == "I fixed my bio"
+
+
+class TestAccountStanding:
+    async def test_account_standing_includes_moderation_history_and_policy(
+        self, client: AsyncClient
+    ):
+        user = await _register(client, "standinguser")
+        admin = await _register(client, "standingadmin", is_admin=True)
+
+        await _issue_bio_warning(client, admin["access_token"], user["id"])
+        ticket_resp = await client.post(
+            "/api/v1/tickets",
+            json={
+                "category": "account_help",
+                "subject": "Appeal: prior account action",
+                "description": "Please keep this historical appeal record.",
+            },
+            headers=_auth(user["access_token"]),
+        )
+        assert ticket_resp.status_code == 201
+
+        response = await client.get(
+            "/api/v1/users/me/account-standing",
+            headers=_auth(user["access_token"]),
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["standing"]["bio_warning_count"] == 1
+        assert any(item["action"] == "bio_warning" for item in data["warnings"])
+        assert len(data["appeals"]) == 1
+        assert data["history_policy"]["permanent"] is True
+        assert "time or date" in data["history_policy"]["message"]
