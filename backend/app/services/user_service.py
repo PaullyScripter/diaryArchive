@@ -77,6 +77,16 @@ async def get_user_profile(username: str, current_user: dict | None = None) -> d
 
 async def update_user_profile(user_id: str, update_data: dict) -> dict:
     user_repo = UserRepository()
+    existing_user = await user_repo.get_by_id(user_id)
+    if existing_user is None:
+        raise ValidationException("User not found")
+
+    bio_deadline = existing_user.get("bio_edit_banned_until")
+    if "about" in update_data and bio_deadline:
+        if bio_deadline.tzinfo is None:
+            bio_deadline = bio_deadline.replace(tzinfo=UTC)
+        if bio_deadline > datetime.now(UTC):
+            raise PermissionDeniedException("Bio editing is temporarily suspended")
 
     set_fields = {}
     for field in ("about", "favorite_quote", "currently_feeling"):
@@ -86,8 +96,7 @@ async def update_user_profile(user_id: str, update_data: dict) -> dict:
             set_fields[field] = None
 
     if "preferences" in update_data and update_data["preferences"] is not None:
-        existing_user = await user_repo.get_by_id(user_id)
-        existing_prefs = existing_user.get("preferences", {}) if existing_user else {}
+        existing_prefs = existing_user.get("preferences", {})
         incoming = update_data["preferences"]
         if isinstance(incoming, dict):
             merged = {**existing_prefs, **incoming}
@@ -96,14 +105,42 @@ async def update_user_profile(user_id: str, update_data: dict) -> dict:
             merged = {**existing_prefs, **merged}
         valid_themes = {"light", "dark", "system"}
         if merged.get("theme") not in valid_themes:
-            from app.core.exceptions import ValidationException
-
             raise ValidationException(f"Theme must be one of: {', '.join(valid_themes)}")
         set_fields["preferences"] = merged
 
     set_fields["updated_at"] = datetime.now(UTC)
 
     await user_repo.update(user_id, set_fields)
+    user = await user_repo.get_by_id(user_id)
+    return build_public_profile(user)
+
+
+async def update_username(user_id: str, username: str) -> dict:
+    user_repo = UserRepository()
+    username = username.lower().strip()
+    existing = await user_repo.get_by_username(username)
+    if existing and str(existing["_id"]) != user_id:
+        raise ConflictException("Username is already taken")
+    try:
+        updated = await user_repo._collection.update_one(
+            {"_id": user_repo._to_object_id(user_id)},
+            {
+                "$set": {
+                    "username": username,
+                    "username_warning_deadline": None,
+                    "username_warning_reason": None,
+                    "updated_at": datetime.now(UTC),
+                }
+            },
+        )
+    except Exception as exc:
+        from pymongo.errors import DuplicateKeyError
+
+        if isinstance(exc, DuplicateKeyError):
+            raise ConflictException("Username is already taken") from exc
+        raise
+    if updated.matched_count != 1:
+        raise ValidationException("User not found")
     user = await user_repo.get_by_id(user_id)
     return build_public_profile(user)
 

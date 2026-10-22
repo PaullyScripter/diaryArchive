@@ -15,9 +15,10 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   comment_deleted: <Wrench className="w-4 h-4 text-muted" />,
   bio_warning: <Wrench className="w-4 h-4 text-muted" />,
   username_warning: <Wrench className="w-4 h-4 text-muted" />,
+  account_help: <Wrench className="w-4 h-4 text-muted" />,
 };
 
-const ADMIN_TYPES = ["diary_hidden", "diary_deleted", "comment_deleted", "bio_warning", "username_warning"];
+const ADMIN_TYPES = ["diary_hidden", "diary_deleted", "comment_deleted", "bio_warning", "username_warning", "account_help"];
 
 function getTargetUrl(notification: NotificationItemType): string {
   switch (notification.type) {

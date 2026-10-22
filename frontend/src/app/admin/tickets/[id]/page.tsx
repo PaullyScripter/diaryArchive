@@ -381,7 +381,7 @@ export default function AdminTicketDetailPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {isOpen && (
+        {isAssignedToMe && isOpen && (
           <form onSubmit={handleReply} className="border border-border p-3 space-y-2">
             <label htmlFor="ticket-reply" className="text-xs text-muted">
               Add reply

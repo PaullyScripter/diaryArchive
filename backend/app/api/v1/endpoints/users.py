@@ -4,7 +4,7 @@ from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import NotFoundException, RateLimitException, ValidationException
 from app.core.security import check_rate_limit
 from app.core.utils import fmt_dt
-from app.models.user import EmailUpdate, EncryptionKeyUpdate, UserUpdate
+from app.models.user import EmailUpdate, EncryptionKeyUpdate, UsernameUpdate, UserUpdate
 from app.repositories.diary_repo import DiaryRepository
 from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
 from app.repositories.user_repo import UserRepository
@@ -14,6 +14,7 @@ from app.services.user_service import (
     update_encryption_key,
     update_user_email,
     update_user_profile,
+    update_username,
     upload_user_avatar,
 )
 
@@ -90,6 +91,20 @@ async def update_my_email(
         await verify_repo.create_token(str(current_user["_id"]), verification_token_hash)
         await send_email_verification(current_user, verification_token_raw)
 
+    return {"data": result}
+
+
+@router.put("/me/username")
+async def update_my_username(
+    body: UsernameUpdate,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:update_username:{current_user['_id']}", 5, 3600
+    )
+    if is_limited:
+        raise RateLimitException("Too many username change attempts")
+    result = await update_username(str(current_user["_id"]), body.username)
     return {"data": result}
 
 
@@ -176,7 +191,7 @@ async def get_user_diaries(
         limit=per_page,
         exclude_user_ids=banned_ids if banned_ids else None,
     )
-    total = await diary_repo.count_public_by_user(str(user["_id"]))
+    total = await diary_repo.count_public_by_user(str(user["_id"]), banned_ids)
 
     data = []
     for diary in diaries:
