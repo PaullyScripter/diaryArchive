@@ -59,5 +59,10 @@ frontend/.dev-stderr.log
 *.dev.log
 frontend-dev.log
 session-ses_0fe7.md
-sessions/
+# Keep durable session summaries in version control while ignoring raw/local
+# session exports and other temporary files that may be placed in this folder.
+sessions/*
+!sessions/README.md
+!sessions/*.md
+sessions/session-ses_*.md
 screenshots/
