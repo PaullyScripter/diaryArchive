@@ -64,6 +64,49 @@ async def _issue_bio_warning(
     return resp.json().get("data", resp.json())
 
 
+async def _issue_username_warning(
+    client: AsyncClient,
+    admin_token: str,
+    user_id: str,
+    reason: str = "Username violates community guidelines",
+) -> dict:
+    resp = await client.post(
+        "/api/v1/admin/warnings/username",
+        json={"user_id": user_id, "reason": reason},
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 200
+    return resp.json().get("data", resp.json())
+
+
+class TestWarningDeadlines:
+    async def test_bio_warning_deadline_is_five_days(self, client: AsyncClient):
+        from datetime import UTC, datetime
+
+        user = await _register(client, "bio_deadline_user")
+        admin = await _register(client, "bio_deadline_admin", is_admin=True)
+
+        data = await _issue_bio_warning(client, admin["access_token"], user["id"])
+        deadline = data["bio_warning_deadline"]
+        deadline_dt = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        remaining = deadline_dt - datetime.now(UTC)
+
+        assert remaining.total_seconds() == pytest.approx(5 * 24 * 60 * 60, abs=5)
+
+    async def test_username_warning_deadline_is_fifteen_days(self, client: AsyncClient):
+        from datetime import UTC, datetime
+
+        user = await _register(client, "userdeadline")
+        admin = await _register(client, "admindeadline", is_admin=True)
+
+        data = await _issue_username_warning(client, admin["access_token"], user["id"])
+        deadline = data["username_warning_deadline"]
+        deadline_dt = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+        remaining = deadline_dt - datetime.now(UTC)
+
+        assert remaining.total_seconds() == pytest.approx(15 * 24 * 60 * 60, abs=5)
+
+
 class TestBioConfirmServerVerification:
     async def test_confirm_rejected_when_bio_unchanged(self, client: AsyncClient):
         user = await _register(client, "warneduser")

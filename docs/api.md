@@ -1904,6 +1904,14 @@ Submit a report against a diary, comment, or user.
 
 ---
 
+### Moderation warnings
+
+Administrators can issue profile warnings through the admin warning endpoints.
+Bio warnings give the user **5 days** to change the flagged bio. Username
+warnings give the user **15 days** to submit a username-change ticket. The
+background warning checker enforces these deadlines; an unchanged bio is
+blanked, while an expired username warning bans the account.
+
 ## 14. Tags & Emotions
 
 ### GET /api/v1/tags/popular
