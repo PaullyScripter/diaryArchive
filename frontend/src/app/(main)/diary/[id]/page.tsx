@@ -60,7 +60,11 @@ export default function DiaryReaderPage() {
   const isAdmin = user?.is_admin ?? false;
   const isPrivate = diary?.privacy === "private";
 
-  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const hash = window.location.hash;
+    return hash.startsWith("#comment-") ? hash.slice("#comment-".length) || null : null;
+  });
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doneRef = useRef(false);
   const [readingProgress, setReadingProgress] = useState(0);

@@ -42,9 +42,9 @@ export interface UserListItem {
   is_following: boolean;
 }
 
-async function fetchComments(diaryId: string, pageParam = 1) {
+async function fetchComments(diaryId: string, pageParam = 1, highlightId?: string | null) {
   const response = await apiClient.get(`/diaries/${diaryId}/comments`, {
-    params: { page: pageParam, per_page: 50 },
+    params: { page: pageParam, per_page: 50, highlight_id: pageParam === 1 ? highlightId : undefined },
   });
   return response.data;
 }
@@ -104,9 +104,9 @@ async function fetchFollowing(username: string, pageParam = 1) {
   return response.data;
 }
 
-async function fetchReplies(commentId: string, pageParam = 1) {
+async function fetchReplies(commentId: string, pageParam = 1, highlightId?: string | null) {
   const response = await apiClient.get(`/comments/${commentId}/replies`, {
-    params: { page: pageParam, per_page: 10 },
+    params: { page: pageParam, per_page: 10, highlight_id: pageParam === 1 ? highlightId : undefined },
   });
   return response.data;
 }
@@ -116,10 +116,10 @@ async function toggleCommentLike(commentId: string) {
   return response.data.data;
 }
 
-export function useComments(diaryId: string) {
+export function useComments(diaryId: string, highlightId?: string | null) {
   return useInfiniteQuery({
-    queryKey: ["comments", diaryId],
-    queryFn: ({ pageParam }) => fetchComments(diaryId, pageParam as number),
+    queryKey: ["comments", diaryId, highlightId ?? null],
+    queryFn: ({ pageParam }) => fetchComments(diaryId, pageParam as number, highlightId),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta?.has_next ? lastPage.meta.page + 1 : undefined,
@@ -232,10 +232,10 @@ export function useFollowing(username: string) {
   });
 }
 
-export function useReplies(commentId: string) {
+export function useReplies(commentId: string, highlightId?: string | null) {
   return useInfiniteQuery({
-    queryKey: ["replies", commentId],
-    queryFn: ({ pageParam }) => fetchReplies(commentId, pageParam as number),
+    queryKey: ["replies", commentId, highlightId ?? null],
+    queryFn: ({ pageParam }) => fetchReplies(commentId, pageParam as number, highlightId),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.meta?.has_next ? lastPage.meta.page + 1 : undefined,

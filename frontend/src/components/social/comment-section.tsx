@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function CommentSection({ diaryId, highlightCommentId }: { diaryId: string; highlightCommentId?: string | null }) {
   const user = useAuthStore((s) => s.user);
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useComments(diaryId);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useComments(diaryId, highlightCommentId);
   const createComment = useCreateComment(diaryId);
 
   const [content, setContent] = useState("");

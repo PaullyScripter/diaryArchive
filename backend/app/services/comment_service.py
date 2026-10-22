@@ -1,6 +1,7 @@
 import logging
 from datetime import UTC, datetime
 
+from bson import ObjectId
 from app.core.exceptions import (
     NotFoundException,
     PermissionDeniedException,
@@ -180,6 +181,7 @@ async def list_comments(
     page: int = 1,
     per_page: int = 50,
     current_user: dict | None = None,
+    highlight_id: str | None = None,
 ) -> dict:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
@@ -203,6 +205,22 @@ async def list_comments(
     banned_ids = await user_repo.get_banned_user_ids()
 
     comment_repo = CommentRepository()
+    if highlight_id and ObjectId.is_valid(highlight_id):
+        target = await comment_repo.get_by_id(highlight_id)
+        if target and str(target.get("diary_id")) == diary_id:
+            root_id = target.get("root_comment_id") or target["_id"]
+            root = await comment_repo.get_by_id(str(root_id))
+            if root and root.get("parent_comment_id") is None:
+                before_filter = {
+                    "diary_id": diary["_id"],
+                    "parent_comment_id": None,
+                    "is_deleted": {"$ne": True},
+                    "created_at": {"$lt": root.get("created_at")},
+                }
+                if banned_ids:
+                    before_filter["user_id"] = {"$nin": banned_ids}
+                before = await comment_repo._collection.count_documents(before_filter)
+                page = (before // per_page) + 1
     skip = (page - 1) * per_page
     comments = await comment_repo.find_by_diary(
         diary_id,
@@ -223,6 +241,7 @@ async def list_replies(
     page: int = 1,
     per_page: int = 10,
     current_user: dict | None = None,
+    highlight_id: str | None = None,
 ) -> dict:
     comment_repo = CommentRepository()
     parent = await comment_repo.get_by_id(comment_id)
@@ -250,6 +269,18 @@ async def list_replies(
 
     banned_ids = await user_repo.get_banned_user_ids()
 
+    if highlight_id and ObjectId.is_valid(highlight_id):
+        target = await comment_repo.get_by_id(highlight_id)
+        if target and str(target.get("parent_comment_id")) == comment_id:
+            before_filter = {
+                "parent_comment_id": ObjectId(comment_id),
+                "is_deleted": {"$ne": True},
+                "created_at": {"$lt": target.get("created_at")},
+            }
+            if banned_ids:
+                before_filter["user_id"] = {"$nin": banned_ids}
+            before = await comment_repo._collection.count_documents(before_filter)
+            page = (before // per_page) + 1
     skip = (page - 1) * per_page
     comments = await comment_repo.find_replies(
         comment_id,
