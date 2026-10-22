@@ -17,18 +17,23 @@ accounts.
 ## Changes
 
 - Added authenticated `GET /api/v1/users/me/account-standing`.
+- Added a credential-verified, no-session `POST /api/v1/auth/account-standing`
+  path for banned users who cannot obtain a normal session.
 - Added `/account-standing` with current standing, active warnings, warning and
   ban history, appeals, all tickets, and permanent-history policy language.
-- Added Account Standing to the authenticated user menu.
+- Added Account Standing to the authenticated user menu and to the banned
+  login/appeal flow.
 - Documented the endpoint and clarified report-evidence retention in the API
   documentation.
 - Added a regression test covering warning history, appeal classification, and
   the permanent-history policy.
+- Seeded two clearly labeled demo warnings and two demo appeal tickets for the
+  existing `paully` account, without changing its current standing.
 
 ## Verification
 
-- `python -m pytest -q tests/test_api/test_warnings.py` — 10 passed.
-- `python -m pytest -q` — 321 passed, 8 existing warnings.
+- `python -m pytest -q tests/test_api/test_warnings.py` — 11 passed.
+- `python -m pytest -q` — pending after restricted-flow changes.
 - `python -m ruff check app` — passed.
 - `python -m compileall -q backend/app` — passed.
 - Frontend `npm run typecheck` — passed.

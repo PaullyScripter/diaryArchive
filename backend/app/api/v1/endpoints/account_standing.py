@@ -24,8 +24,7 @@ def _is_future(value: datetime | None, now: datetime) -> bool:
     return value > now
 
 
-@router.get("")
-async def get_account_standing(current_user: dict = Depends(get_current_user)):
+async def build_account_standing(current_user: dict) -> dict:
     """Return the authenticated user's current standing and permanent history."""
     db = DatabaseManager.get_db()
     user_id = str(current_user["_id"])
@@ -133,3 +132,8 @@ async def get_account_standing(current_user: dict = Depends(get_current_user)):
             },
         }
     }
+
+
+@router.get("")
+async def get_account_standing(current_user: dict = Depends(get_current_user)):
+    return await build_account_standing(current_user)
