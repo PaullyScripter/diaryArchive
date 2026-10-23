@@ -33,7 +33,7 @@ export default function PolicyPage() {
     <LegalDocShell
       title="Privacy Policy"
       subtitle="How DiaryArchive handles your data, privacy, security, and your rights."
-      updated="August 22, 2026"
+      updated="October 22, 2026"
       sections={SECTIONS}
     >
       <Section title="1. What We Collect">
@@ -123,8 +123,11 @@ export default function PolicyPage() {
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
-              Public media served directly. Private media uses
-              <strong className="text-foreground"> 15-minute signed URLs</strong>.
+              Media is served through a stable DiaryArchive media endpoint. Public
+              media can be fetched by visitors to the public diary; private media
+              requires an authenticated owner or administrator request. Diary
+              content uses stable application media references rather than expiring
+              signed URLs.
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
@@ -167,9 +170,11 @@ export default function PolicyPage() {
             { label: "User accounts", value: "Until deleted by you" },
             { label: "Public diaries", value: "Until deleted by you or moderated" },
             { label: "Private diaries", value: "Until deleted by you" },
-            { label: "Notifications", value: "90 days (auto-cleaned)" },
+            { label: "Notifications", value: "While the account exists; removed with the account or during orphan cleanup" },
             { label: "Refresh tokens", value: "7 days or until logout" },
-            { label: "Audit logs", value: "1 year (legal compliance)" },
+            { label: "Moderation reports", value: "Permanent moderation history; no promised removal date" },
+            { label: "Support tickets and appeals", value: "Permanent moderation/support history; no promised removal date" },
+            { label: "Audit logs", value: "Permanent security and moderation history; no promised removal date" },
             { label: "IP address logs", value: "30 days (rate limiting and abuse prevention)" },
             { label: "Orphaned media", value: "24 hours (auto-cleaned)" },
           ]}
@@ -190,9 +195,14 @@ export default function PolicyPage() {
           <InfoCard>
             <h3 className="text-sm font-semibold text-foreground mb-2">Delete</h3>
             <p className="text-sm leading-relaxed text-muted">
-              Delete your account anytime from Settings. Removes all diaries,
-              comments, likes, bookmarks, follows, notifications, and media.
-              Audit logs are retained anonymized.
+              Delete your account anytime from Settings after confirming your
+              password. This removes the active profile, diaries, comments,
+              likes, bookmarks, follows, notifications, media, and authentication
+              credentials. Moderation reports, support tickets, appeals, and
+              security or moderation audit history are retained permanently for
+              moderation and legal integrity. We do not promise a date or time
+              when those historical records will be removed, and they may no
+              longer be accessible through a deleted account.
             </p>
           </InfoCard>
           <InfoCard>
@@ -256,11 +266,14 @@ export default function PolicyPage() {
       <Section title="9. Third-Party Sharing">
         <InfoCard>
           <p className="text-base leading-relaxed text-muted">
-            <strong className="text-foreground">None.</strong> We do not share
-            data with any third party. No Google Analytics. No advertising
-            networks. No social media integrations. No behavioral tracking.
-            No data selling - ever. All infrastructure (database, search,
-            storage, caching) is self-hosted.
+            We do not intentionally share account data with third parties. There
+            is no Google Analytics, advertising network, social-media integration,
+            behavioral tracking, or data selling. Core infrastructure (database,
+            search, storage, and caching) is self-hosted. However, a Public diary
+            may contain an external HTTPS image in Advanced Editor content. A
+            reader&apos;s browser then requests that image directly from the external
+            host, which may receive the reader&apos;s IP address and request metadata;
+            DiaryArchive does not control that host&apos;s privacy practices.
           </p>
         </InfoCard>
       </Section>
@@ -301,7 +314,8 @@ export default function PolicyPage() {
       <Section title="11. Account Deletion">
         <p className="text-sm leading-relaxed text-muted mb-4">
           Delete your account at <strong className="text-foreground">Settings
-          &rarr; Account &rarr; Danger Zone</strong>. This removes:
+          &rarr; Account &rarr; Danger Zone</strong> after confirming your password.
+          This removes:
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
           {["User profile", "All diaries", "All comments", "Likes & bookmarks",
@@ -314,7 +328,10 @@ export default function PolicyPage() {
         </div>
         <p className="text-xs text-subtle">
           A structured audit log entry is recorded with timestamps and deletion
-          counts for legal compliance. Logs are retained anonymized.
+          counts. Moderation reports, support tickets, appeals, and security or
+          moderation audit records remain permanent history; there is no promised
+          removal date. These records may retain historical account identifiers
+          needed to preserve moderation integrity.
         </p>
       </Section>
 
@@ -361,6 +378,22 @@ export default function PolicyPage() {
             that a diary platform should protect free expression - moderation
             exists only to keep the community safe, not to police thought.
           </p>
+          <p className="text-sm leading-relaxed text-muted mt-4">
+            Users can view their current account standing, warnings, bans, appeals,
+            and moderation tickets through the Account Standing area. A bio warning
+            provides <strong className="text-foreground">5 days</strong> to fix the
+            issue; a username warning provides <strong className="text-foreground">15 days</strong>.
+            Unresolved violations may escalate to restrictions or a ban. Banned
+            users can use the restricted standing and appeal flow after
+            authentication where available.
+          </p>
+          <p className="text-sm leading-relaxed text-muted mt-3">
+            Warnings, bans, reports, appeals, tickets, and related moderation or
+            audit records remain in the account&apos;s history permanently. There is
+            no promised date or time for removing a past warning, appeal, ticket,
+            or other moderation record, including after an account is restored or
+            deleted.
+          </p>
         </InfoCard>
       </Section>
 
@@ -400,7 +433,7 @@ export default function PolicyPage() {
         <p className="text-sm leading-relaxed text-muted">
           Material changes will be announced via a notice on the homepage.
           Continued use after changes constitutes acceptance. Last updated
-          August 22, 2026.
+          October 22, 2026.
         </p>
       </Section>
 
