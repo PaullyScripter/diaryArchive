@@ -44,7 +44,7 @@ export default function TermsPage() {
     <LegalDocShell
       title="Terms of Service"
       subtitle="The agreement that governs your use of the DiaryArchive platform."
-      updated="August 22, 2026"
+      updated="October 22, 2026"
       sections={SECTIONS}
     >
       <WarningCard>
@@ -313,6 +313,8 @@ export default function TermsPage() {
             "Illegal content",
             "Spam or automated posting",
             "Impersonation",
+            "Harassment, targeted abuse, or threats",
+            "Content that promotes self-harm",
           ].map((item) => (
             <li key={item} className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
@@ -327,6 +329,23 @@ export default function TermsPage() {
           reserve the right to suspend or terminate accounts for repeated or severe
           violations, and we are not obligated to provide prior notice where doing
           so would be impractical or unlawful.
+        </p>
+        <p className="text-sm leading-relaxed text-muted mt-3">
+          A bio warning normally gives <strong className="text-foreground">5 days</strong>
+          to correct the issue, while a username warning normally gives
+          <strong className="text-foreground"> 15 days</strong>. These are correction
+          deadlines, not promises that a warning or any other record will later be
+          removed. Account Standing shows current status, warnings, bans, appeals,
+          and moderation tickets. Banned users may use the restricted standing and
+          appeal flow after authentication where available; an appeal does not
+          guarantee reinstatement or a particular response time.
+        </p>
+        <p className="text-sm leading-relaxed text-muted mt-3">
+          Users may delete their own comments. Diary owners may remove comments
+          from their diaries, and administrators may remove comments as a moderation
+          action. Warnings, bans, reports, appeals, tickets, and related security or
+          moderation audit history remain permanently recorded, with no promised
+          removal date or time.
         </p>
         <InfoCard>
           <p className="text-sm leading-relaxed text-muted">
@@ -489,7 +508,7 @@ export default function TermsPage() {
             "You may terminate these Terms at any time by deleting your account and discontinuing use of the service.",
             "We may suspend or terminate your access and account, in whole or in part, at any time and for any reason, including, without limitation, for breach of these Terms or as required by law.",
             "Upon termination, your right to access the service ceases immediately. We will use reasonable efforts to honor data export requests that are pending at the time of termination, subject to the encryption limitations in Section 6.",
-            "Deleting your account removes your profile, diaries, comments, interactions, and media as described in the Privacy Policy. Audit logs are retained anonymized for legal compliance.",
+            "Deleting your account removes the active profile, diaries, comments, interactions, notifications, media, and authentication credentials as described in the Privacy Policy. Moderation reports, support tickets, appeals, and security or moderation audit history remain permanently retained; no removal date or time is promised, and those records may no longer be accessible through a deleted account.",
             "Sections that by their nature should survive termination will survive, including Sections 6, 9, 15, 16, 17, 21, 22, and 25.",
           ].map((item) => (
             <li key={item} className="flex gap-2">
@@ -621,7 +640,7 @@ export default function TermsPage() {
 
       <div className="border-t border-border pt-8 mt-4">
         <p className="text-sm text-muted leading-relaxed">
-          These Terms were last updated on August 22, 2026. If you have questions
+          These Terms were last updated on October 22, 2026. If you have questions
           about these Terms, please contact{" "}
           <a href="mailto:legal@diaryarchive.com" className="text-link hover:text-link-hover font-medium">
             legal@diaryarchive.com
