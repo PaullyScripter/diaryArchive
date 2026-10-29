@@ -5,9 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-21
 
-**Last prompt synchronization:** 2026-10-28 — Collected the implementation
-inputs needed for a pseudonymous multi-asset donation page; see the dated
-session summary.
+**Last prompt synchronization:** 2026-10-28 — Added the static pseudonymous
+donation page for BTC, ETH, LTC, USDC on Ethereum, and USDT on Ethereum; see
+the dated session summary.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
@@ -54,6 +54,9 @@ Core product areas:
 - public-diary comments, likes, bookmarks, follows, notifications, and feeds;
 - full-text discovery/search for eligible public diaries through Meilisearch;
 - achievements and badges, including the Bug Catcher badge;
+- a static pseudonymous donation page with copyable BTC, ETH, LTC, Ethereum
+  USDC, and Ethereum USDT addresses; it collects no donor information, does
+  not custody funds, and intentionally omits XMR for now;
 - reports, support tickets, appeals, warnings, bans, audit logs, roles, admin
   statistics, and health views;
 - production-oriented deployment, rate limiting, caching, monitoring, backup,

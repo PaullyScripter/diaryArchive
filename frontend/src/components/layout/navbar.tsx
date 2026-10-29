@@ -32,6 +32,7 @@ function NavLinks({ vertical = false, onClick }: { vertical?: boolean; onClick?:
     { href: "/diary/new", label: "Write" },
     { href: "/diary/random", label: "Random" },
     { href: "/report", label: "Report" },
+    { href: "/donate", label: "Donate" },
   ];
 
   return (
