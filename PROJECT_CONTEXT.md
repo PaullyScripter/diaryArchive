@@ -5,6 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-21
 
+**Last prompt synchronization:** 2026-10-28 — Added the mandatory two-file
+synchronization policy.
+
 **Repository:** `PaullyScripter/diaryArchive`
 
 **Working branch at reconciliation:** `chore/footer-tagline`
@@ -309,14 +312,35 @@ Start with `docs/documentation-index.md`. Key references:
 - `docs/milestones/`: implementation plans and validation reports.
 - `docs/diary-*` and `docs/ops`: focused domain and operational guides.
 
-## 15. New-chat operating procedure
+## 15. Mandatory prompt synchronization
+
+Every user prompt handled in this repository must modify both `AGENTS.md` and
+`PROJECT_CONTEXT.md` before the response is finished. At the beginning of each
+prompt, read both files. At the end, update the `Last prompt synchronization`
+line in both with the current date and a concise description of the prompt or
+change.
+
+If the prompt changes code, configuration, documentation structure,
+directories, APIs, data flow, behavior, tests, or any other part of the
+codebase, summarize the durable impact in both files during the same change.
+If it does not change the codebase, still update both synchronization lines so
+every prompt leaves an auditable synchronization point. Never update only one
+file. Keep the entries concise and do not copy prompts, transcripts, secrets,
+private diary content, or unredacted logs; link to detailed technical docs or
+session summaries when necessary.
+
+Both files must be included in the same commit as any related codebase change
+and pushed according to the repository's Git workflow.
+
+## 16. New-chat operating procedure
 
 For each new request: read `AGENTS.md` and this file; check
 `git status --short`; identify the affected flow; read the relevant source,
 tests, and docs; reproduce/trace a bug end-to-end; make a focused `apply_patch`
-change; run relevant validation; update durable docs/session history when the
-project context changed; and commit/push the completed codebase change with a
-detailed message according to the project convention.
+change; run relevant validation; modify both Markdown files under the mandatory
+synchronization policy; update durable docs/session history when the project
+context changed; and commit/push the completed codebase change with a detailed
+message according to the project convention.
 
 This is deliberately redundant: `AGENTS.md` supplies rules, this file supplies
 the product/architecture model, `docs/` supplies detailed contracts, and

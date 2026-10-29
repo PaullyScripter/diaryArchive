@@ -1,5 +1,8 @@
 # DiaryArchive — persistent project instructions
 
+**Last prompt synchronization:** 2026-10-28 — Added the mandatory two-file
+synchronization policy below.
+
 ## Read this first
 
 DiaryArchive is a privacy-first diary platform. It combines public and private
@@ -124,6 +127,27 @@ python -m pytest -q
 The local development stack is started with `.\scripts\dev.ps1`; documented
 service URLs are frontend `http://localhost:3000`, backend
 `http://localhost:8000`, and API docs `http://localhost:8000/docs`.
+
+## Mandatory two-file synchronization
+
+For every user prompt handled in this repository, read both `AGENTS.md` and
+`PROJECT_CONTEXT.md` before working, then modify both files before finishing
+the prompt. Update the `Last prompt synchronization` line in both files with
+the current date and a concise description of what was reviewed or changed.
+
+Whenever a prompt changes code, configuration, documentation structure,
+directories, APIs, data flow, behavior, tests, or any other part of the
+codebase, the durable impact must be reflected in both Markdown files during
+the same change. Never update only one of them. If the prompt does not change
+the codebase, still modify both files by updating the synchronization line so
+that every prompt leaves an auditable synchronization point.
+
+Keep these updates concise and factual; do not paste the full user prompt,
+chat transcript, secrets, private diary content, or unredacted logs. If a
+change is too detailed for these two files, summarize it there and link to the
+canonical technical document or session summary. Include both Markdown files
+in the same commit as the related codebase change, and push according to the
+project's Git workflow.
 
 ## Context maintenance
 
