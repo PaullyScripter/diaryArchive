@@ -1,8 +1,8 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-28 — Reviewed feasibility and privacy
-boundaries for a pseudonymous multi-asset donation page; see the dated session
-summary.
+**Last prompt synchronization:** 2026-10-28 — Collected the implementation
+inputs needed for a pseudonymous multi-asset donation page; see the dated
+session summary.
 
 ## Read this first
 
