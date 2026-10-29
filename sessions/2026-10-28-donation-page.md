@@ -30,6 +30,8 @@ are shown next to the USDC and USDT addresses.
   four rows, while the fifth row contains only the selected address and copy
   control. Removed redundant visual labels for the crypto list, address, and
   caution section.
+- Replaced the selected-network dot with a stronger accent border, highlight,
+  ring, and shadow while retaining `aria-pressed` semantics.
 - Added the appreciation and no-site-rewards disclosure requested by the
   project owner.
 - Added Donate links to the main and footer navigation.

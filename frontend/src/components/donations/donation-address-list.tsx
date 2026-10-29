@@ -99,9 +99,9 @@ export function DonationAddressList() {
                     setCopiedId(null);
                     setCopyError(null);
                   }}
-                  className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2 ${
+                  className={`flex min-h-16 w-full items-center gap-3 rounded-md border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2 ${
                     isSelected
-                      ? "border-foreground bg-overlay/10 text-foreground"
+                      ? "border-accent bg-accent/10 font-semibold text-foreground ring-1 ring-accent/40 shadow-sm"
                       : "border-border bg-background text-muted hover:bg-overlay/5 hover:text-foreground"
                   }`}
                   aria-pressed={isSelected}
@@ -110,7 +110,6 @@ export function DonationAddressList() {
                     <span className="block text-sm font-semibold">{item.asset}</span>
                     <span className="mt-1 block text-xs">{item.network}</span>
                   </span>
-                  <span aria-hidden="true" className="text-lg leading-none">{isSelected ? "•" : ""}</span>
                 </button>
               );
             })}
