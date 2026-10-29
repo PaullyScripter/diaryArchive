@@ -86,10 +86,12 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key="refresh_token",
         value=token,
         httponly=True,
-        secure=True,
+        # Local development runs over HTTP; production is always HTTPS and
+        # therefore keeps the cookie Secure.
+        secure=not settings.debug,
         samesite="strict",
         path="/api/v1/auth",
-        max_age=604800,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
     )
 
 
@@ -431,7 +433,9 @@ async def logout(
 
     await invalidate_all_user_tokens(str(current_user["_id"]))
     _clear_refresh_cookie(response)
-    return Response(status_code=204)
+    final_response = Response(status_code=204)
+    final_response.raw_headers.extend(response.raw_headers)
+    return final_response
 
 
 @router.get("/me")

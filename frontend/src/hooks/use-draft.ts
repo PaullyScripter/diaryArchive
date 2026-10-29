@@ -15,12 +15,7 @@ interface DraftData {
   updatedAt: number;
 }
 
-const DRAFT_KEY = "diaryarchive-draft";
 const DEBOUNCE_MS = 5000;
-
-function getDraftKey(userId: string): string {
-  return `diaryarchive-draft:${userId}`;
-}
 
 export function useDraft() {
   const [draft, setDraft] = useState<DraftData | null>(null);
@@ -29,40 +24,26 @@ export function useDraft() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userId = useAuthStore((s) => s.user?.id);
 
+  // Never recover plaintext diary content from browser storage. Private
+  // entries must remain confidential even on a shared browser profile.
+  // Durable recovery is provided by server-side draft diaries; this hook only
+  // retains an in-memory recovery candidate for the current tab.
   useEffect(() => {
-    if (!userId) return;
-    try {
-      const saved = localStorage.getItem(getDraftKey(userId));
-      if (saved) {
-        const data = JSON.parse(saved) as DraftData;
-        setDraft(data);
-        setHasRecoveredDraft(true);
-      }
-    } catch {
-      // ignore
-    }
+    setDraft(null);
+    setHasRecoveredDraft(false);
   }, [userId]);
 
   const persist = useCallback((data: DraftData) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       if (!userId) return;
-      try {
-        localStorage.setItem(getDraftKey(userId), JSON.stringify(data));
-        setDraft(data);
-      } catch {
-        // localStorage might be full or blocked
-      }
+      setDraft(data);
+      setHasRecoveredDraft(true);
     }, DEBOUNCE_MS);
   }, [userId]);
 
   const discard = useCallback(() => {
     if (!userId) return;
-    try {
-      localStorage.removeItem(getDraftKey(userId));
-    } catch {
-      // ignore
-    }
     if (timerRef.current) clearTimeout(timerRef.current);
     setDraft(null);
     setHasRecoveredDraft(false);
@@ -71,11 +52,6 @@ export function useDraft() {
 
   const clear = useCallback(() => {
     if (!userId) return;
-    try {
-      localStorage.removeItem(getDraftKey(userId));
-    } catch {
-      // ignore
-    }
     if (timerRef.current) clearTimeout(timerRef.current);
     setDraft(null);
     setHasRecoveredDraft(false);

@@ -116,8 +116,10 @@ def _build_diary_response(diary: dict, author: dict, current_user: dict | None =
         "content_html": diary.get("content_html"),
         "content_text": diary.get("content_text"),
         "author": _build_author(author),
-        "tags": diary.get("tags", []),
-        "emotion": diary.get("emotion"),
+        # Private metadata is part of the encrypted client payload. Never
+        # expose legacy plaintext values or persist them as searchable fields.
+        "tags": [] if diary.get("privacy") == "private" else diary.get("tags", []),
+        "emotion": None if diary.get("privacy") == "private" else diary.get("emotion"),
         "comments_enabled": diary.get("comments_enabled", True),
         "comments_locked": diary.get("comments_locked", False),
         "stats": diary.get("stats", {"like_count": 0, "comment_count": 0, "bookmark_count": 0}),
@@ -146,8 +148,8 @@ def _build_diary_list_item(diary: dict, author: dict, current_user: dict | None 
         "title": diary.get("title"),
         "excerpt": content_text[:200] if content_text else None,
         "author": _build_author(author),
-        "tags": diary.get("tags", []),
-        "emotion": diary.get("emotion"),
+        "tags": [] if diary.get("privacy") == "private" else diary.get("tags", []),
+        "emotion": None if diary.get("privacy") == "private" else diary.get("emotion"),
         "stats": diary.get("stats", {"like_count": 0, "comment_count": 0, "bookmark_count": 0}),
         "is_liked": diary.get("is_liked", False),
         "is_bookmarked": diary.get("is_bookmarked", False),
@@ -263,8 +265,10 @@ async def create_diary(user: dict, data: dict) -> dict:
     if privacy != "private" and len(content_text.encode("utf-8")) > 51200:
         raise ValidationException("Content text exceeds 50KB limit")
 
-    tags = _validate_tags(data.get("tags", []))
-    emotion = _validate_emotion(data.get("emotion"))
+    # Private tags/emotion are encrypted inside encrypted_data. Do not copy
+    # client-provided plaintext metadata into MongoDB.
+    tags = [] if privacy == "private" else _validate_tags(data.get("tags", []))
+    emotion = None if privacy == "private" else _validate_emotion(data.get("emotion"))
 
     content_warnings = data.get("content_warnings", [])
     if not isinstance(content_warnings, list):
@@ -422,10 +426,10 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
             if not isinstance(ed, dict) or not all(k in ed for k in ("ciphertext", "iv", "salt")):
                 raise ValidationException("encrypted_data must contain ciphertext, iv, and salt")
             set_fields["encrypted_data"] = ed
-        if "tags" in updates and updates["tags"] is not None:
-            set_fields["tags"] = _validate_tags(updates["tags"])
-        if "emotion" in updates:
-            set_fields["emotion"] = _validate_emotion(updates["emotion"])
+        # Private metadata lives only inside encrypted_data. Remove any
+        # legacy plaintext values while updating the encrypted payload.
+        set_fields["tags"] = []
+        set_fields["emotion"] = None
     else:
         if "title" in updates and updates["title"] is not None:
             title = updates["title"]

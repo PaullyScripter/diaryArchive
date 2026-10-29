@@ -64,9 +64,9 @@ async def _create_diary(
         payload = {
             "privacy": "private",
             "encrypted_data": {
-                "ciphertext": "abc123",
-                "iv": "iv123",
-                "salt": "salt123",
+                    "ciphertext": "ab" * 16,
+                    "iv": "ab" * 12,
+                    "salt": "ab" * 16,
             },
         }
     resp = await client.post("/api/v1/diaries", json=payload, headers=_auth_headers(token))

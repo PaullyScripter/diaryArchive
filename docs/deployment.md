@@ -1,8 +1,8 @@
 # Deployment
 
 Production deployment for DiaryArchive targets a single-host Docker Compose
-stack sized for an initial ~10,000 users. Every service is designed to scale
-horizontally later.
+stack sized for an initial ~10,000 users. Maintenance work is lease-protected
+through Redis; true horizontal worker scaling requires a durable job runner.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ Cloudflare (TLS, CDN, DDoS)
 | `docker-compose.yml` | Base definition; internal services `expose:` only |
 | `docker-compose.infra.yml` | Local dev: publishes MongoDB/Redis/Meilisearch/MinIO ports |
 | `docker-compose.override.yml` | Dev-only port publishing (dev native-run workflow) |
-| `docker-compose.prod.yml` | Production overlay: nginx on 80/443, replicas, hardened containers |
+| `docker-compose.prod.yml` | Production overlay: nginx on 80/443 and hardened containers |
 
 Production uses `docker-compose.yml` + `docker-compose.prod.yml`. Hardening
 applied to the prod overlay includes `read_only`, `no-new-privileges`,
@@ -34,8 +34,13 @@ applied to the prod overlay includes `read_only`, `no-new-privileges`,
 - Key variables include: `MONGODB_URI`, `REDIS_URI`, `MEILISEARCH_URL` /
   `MEILISEARCH_API_KEY`, `MINIO_*`, `SECRET_KEY`, `BACKUP_ENCRYPTION_KEY`,
   `PUBLIC_API_URL`, `PUBLIC_MEDIA_BASE_URL`, `MONGO_ROOT_USER` /
-  `MONGO_ROOT_PASSWORD`, and the log-retention / backup-retention knobs in
+  `MONGO_ROOT_PASSWORD`, `MONGO_APP_USER` / `MONGO_APP_PASSWORD`, and the log-retention / backup-retention knobs in
   `backend/app/core/config.py`.
+
+The production overlay starts MongoDB with authentication and creates the
+dedicated application user before the backend starts. Root credentials are
+used only by the one-shot provisioning step and must not be used in
+`MONGODB_URI`.
 
 ## Provisioning a new server
 
@@ -98,7 +103,8 @@ independently of the application containers.
 - `GET /api/v1/health` reports per-dependency status (MongoDB, Redis, MinIO,
   Meilisearch) and returns 503 when any dependency is unreachable.
 - `GET /api/v1/metrics` exposes lightweight Prometheus-formatted counters
-  (request totals/errors by route, request latency, periodic-task summaries)
+  (request totals/errors by normalized route, request latency, periodic-task
+  summaries) without user-controlled identifier cardinality.
   for scraping by Prometheus/Grafana.
 
 ## Related

@@ -13,6 +13,7 @@ scraper computes rates/deltas itself).
 
 import threading
 import time
+import re
 from datetime import UTC, datetime
 
 _LOCK = threading.Lock()
@@ -40,17 +41,28 @@ _REDIS_CONNECTED: bool = False
 # P2.9: Active request tracking.
 _ACTIVE_REQUESTS: int = 0
 
+_PATH_ID = re.compile(r"/[0-9a-fA-F]{24}(?=/|$)")
+_PATH_NUMERIC = re.compile(r"/\d+(?=/|$)")
+
 # P2.9: Startup probe state (set by startup-check endpoint).
 _STARTUP_COMPLETE: bool = False
 
 
 def record_request(route: str, status_code: int, elapsed_seconds: float) -> None:
+    route = _normalize_route(route)
+    status_code = status_code or 500
     with _LOCK:
         _REQUESTS[route] = _REQUESTS.get(route, 0) + 1
         _DURATION_SUM[route] = _DURATION_SUM.get(route, 0.0) + elapsed_seconds
         _DURATION_COUNT[route] = _DURATION_COUNT.get(route, 0) + 1
         if status_code >= 400:
             _ERRORS[route] = _ERRORS.get(route, 0) + 1
+
+
+def _normalize_route(route: str) -> str:
+    """Prevent user-controlled IDs from creating unbounded metric labels."""
+    route = _PATH_ID.sub("/{id}", route)
+    return _PATH_NUMERIC.sub("/{id}", route)
 
 
 def record_task_run(task: str, summary: dict) -> None:

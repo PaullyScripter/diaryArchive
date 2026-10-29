@@ -11,7 +11,7 @@ DiaryArchive is a privacy-first diary platform with **client-side end-to-end enc
 - **Rich text editor** - Tiptap (headings, task lists, links, underlines, custom resizable images, font-family/size, character count).
 - **Community** - comments (threaded), likes, bookmarks, follows, notifications, user profiles, achievements/badges.
 - **Moderation & admin suite** - reports, support tickets, ban appeals, user management, role management, warnings system, content hiding, audit logs, health, and dashboard stats.
-- **Media** - image/video/audio uploads with MIME sniffing and size/dimension validation, stored in MinIO; presigned URLs for private media.
+- **Media** - image/video/audio uploads with MIME sniffing and size/dimension validation, stored in MinIO; authorization-aware proxying for mutable/private media.
 - **Full-text search** - Meilisearch with an enriched, resumable index (excludes banned users, retries with backoff).
 - **Hardenable production deploy** - Docker Compose + Nginx reverse proxy with TLS, rate limiting, caching, security headers, and fail-closed secret validation.
 

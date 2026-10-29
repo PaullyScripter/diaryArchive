@@ -1,4 +1,5 @@
 import pytest
+from bson import ObjectId
 from httpx import ASGITransport, AsyncClient
 
 from app.core.database import DatabaseManager
@@ -43,6 +44,29 @@ async def auth_user(auth_token):
 
 
 class TestCreateDiary:
+    async def test_private_metadata_is_not_stored_as_plaintext(
+        self, client: AsyncClient, auth_token: str
+    ):
+        response = await client.post(
+            "/api/v1/diaries",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json={
+                "privacy": "private",
+                "tags": ["secret"],
+                "emotion": "sad",
+                "encrypted_data": {
+                    "ciphertext": "ab" * 16,
+                    "iv": "ab" * 12,
+                    "salt": "ab" * 16,
+                },
+            },
+        )
+        assert response.status_code == 201
+        diary_id = response.json()["data"]["id"]
+        diary = await DatabaseManager.get_db().diaries.find_one({"_id": ObjectId(diary_id)})
+        assert diary["tags"] == []
+        assert diary["emotion"] is None
+
     async def test_create_public_diary(self, client: AsyncClient, auth_token: str):
         response = await client.post(
             "/api/v1/diaries",

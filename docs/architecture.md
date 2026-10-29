@@ -1807,6 +1807,11 @@ A single modern server (8 CPU cores, 32 GB RAM) running Docker Compose can handl
 
 Each service is designed to scale independently:
 
+Maintenance loops and search synchronization use Redis leases and MongoDB
+outbox claims so multiple API replicas do not duplicate scheduled work. Full
+search rebuilds are explicit maintenance operations rather than automatic
+startup work.
+
 | Service | Scaling Strategy |
 |---------|-----------------|
 | Next.js | Multiple containers behind Nginx load balancer |

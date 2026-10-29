@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -14,6 +15,7 @@ from app.core.exceptions import DiaryArchiveException
 from app.core.indexes import create_indexes
 from app.core.middleware import (
     CSPSecurityMiddleware,
+    RequestBodyLimitMiddleware,
     RequestIDMiddleware,
     RequestLoggingMiddleware,
 )
@@ -56,18 +58,46 @@ async def _run_cleanup():
         logger.warning("Cleanup run failed", exc_info=True)
 
 
+async def _run_singleton_job(name: str, job) -> None:
+    """Run a maintenance job under a short Redis lease when available."""
+    token = uuid.uuid4().hex
+    key = f"maintenance:lease:{name}"
+    redis = None
+    acquired = True
+    try:
+        redis = DatabaseManager.get_redis()
+        acquired = bool(await redis.set(key, token, nx=True, ex=300))
+    except Exception:
+        logger.warning("Maintenance lease unavailable for %s; running locally", name)
+    if not acquired:
+        return
+    try:
+        await job()
+    finally:
+        if redis is not None:
+            try:
+                await redis.eval(
+                    "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+                    1,
+                    key,
+                    token,
+                )
+            except Exception:
+                logger.warning("Failed to release maintenance lease %s", name)
+
+
 async def _warning_check_loop():
     interval = settings.warnings_check_interval_hours * 3600
     while True:
         await asyncio.sleep(interval)
-        await _run_warning_checks()
+        await _run_singleton_job("warnings", _run_warning_checks)
 
 
 async def _cleanup_loop():
     interval = settings.cleanup_interval_hours * 3600
     while True:
         await asyncio.sleep(interval)
-        await _run_cleanup()
+        await _run_singleton_job("cleanup", _run_cleanup)
 
 
 async def _search_outbox_loop():
@@ -76,7 +106,14 @@ async def _search_outbox_loop():
         from app.search.sync import process_outbox
 
         try:
-            summary = await process_outbox()
+            result: dict = {}
+
+            async def _process():
+                nonlocal result
+                result = await process_outbox()
+
+            await _run_singleton_job("search-outbox", _process)
+            summary = result
             if summary["processed"]:
                 from app.core.metrics import record_task_run
 
@@ -164,19 +201,23 @@ async def lifespan(app: FastAPI):
     await initialize_search_indexes()
     await initialize_minio()
 
-    async def _initial_reindex():
-        try:
-            count = await full_reindex()
-            logger.info("Initial Meilisearch re-index complete: %d diaries indexed", count)
-        except Exception:
-            logger.warning("Initial Meilisearch re-index skipped (search unavailable)")
+    background_tasks: set[asyncio.Task] = set()
 
-    asyncio.create_task(_initial_reindex())
+    if settings.startup_full_reindex:
+        async def _initial_reindex():
+            try:
+                count = await full_reindex()
+                logger.info("Initial Meilisearch re-index complete: %d diaries indexed", count)
+            except Exception:
+                logger.warning("Initial Meilisearch re-index skipped (search unavailable)")
 
-    asyncio.create_task(_run_warning_checks())
+        background_tasks.add(asyncio.create_task(_initial_reindex()))
+
+    background_tasks.add(asyncio.create_task(_run_warning_checks()))
     warning_task = asyncio.create_task(_warning_check_loop())
     cleanup_task = asyncio.create_task(_cleanup_loop())
     outbox_task = asyncio.create_task(_search_outbox_loop())
+    background_tasks.update({warning_task, cleanup_task, outbox_task})
 
     from app.core.metrics import mark_startup_complete
 
@@ -184,9 +225,9 @@ async def lifespan(app: FastAPI):
     logger.info("Startup complete")
     yield
     logger.info("Shutting down...")
-    warning_task.cancel()
-    cleanup_task.cancel()
-    outbox_task.cancel()
+    for task in background_tasks:
+        task.cancel()
+    await asyncio.gather(*background_tasks, return_exceptions=True)
     await DatabaseManager.close_mongo()
     await DatabaseManager.close_redis()
     logger.info("Shutdown complete")
@@ -219,6 +260,7 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
     application.add_middleware(RequestIDMiddleware)
+    application.add_middleware(RequestBodyLimitMiddleware)
     application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(CSPSecurityMiddleware)
 

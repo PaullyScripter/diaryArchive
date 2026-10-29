@@ -38,7 +38,25 @@ async def upload(
     if is_daily_limited:
         raise RateLimitException(f"Daily upload limit reached ({settings.max_daily_uploads} files)")
 
-    file_data = await file.read()
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_UPLOAD_SIZE + 1024 * 1024:
+        raise ValidationException(
+            f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
+        )
+
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_SIZE:
+            raise ValidationException(
+                f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
+            )
+        chunks.append(chunk)
+    file_data = b"".join(chunks)
     if len(file_data) > MAX_UPLOAD_SIZE:
         raise ValidationException(
             f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
@@ -97,7 +115,10 @@ async def get_media_file(
     return StreamingResponse(
         iter_chunks(),
         media_type=content_type,
-        headers={"Cache-Control": ("private, no-store" if is_private else "public, max-age=86400")},
+        # Visibility is mutable (public -> private, deletion, moderation).
+        # Do not let a previously public response survive in a browser/CDN
+        # cache after authorization changes.
+        headers={"Cache-Control": "private, no-store"},
     )
 
 

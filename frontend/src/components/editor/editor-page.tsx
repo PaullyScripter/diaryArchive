@@ -457,8 +457,6 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
         payload = {
           privacy: "private",
           encrypted_data: encryptedPayload,
-          tags,
-          emotion: emotion || null,
           fixed_width: fixedEnabled ? fixedWidth : null,
           fixed_height: fixedEnabled ? fixedHeight : null,
           media_ids: mediaIds,
