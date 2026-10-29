@@ -85,13 +85,13 @@ GET /api/v1/metrics
 ```
 
 ### Available Metrics
-- `http_requests_total` — Total HTTP requests
-- `http_request_duration_seconds` — Request duration histogram
-- `http_requests_active` — Active requests gauge
-- `http_errors_total` — Total error responses
-- `app_uptime_seconds` — Application uptime
-- `mongodb_connections_active` — MongoDB connection pool
-- `redis_connections_active` — Redis connection pool
+- `request_requests_total{route}` — Total HTTP requests by normalized route
+- `request_duration_seconds_sum{route}` / `request_duration_seconds_count{route}` — Request duration totals and counts
+- `http_requests_in_flight` — Active requests gauge
+- `request_errors_total{route}` — Total error responses by normalized route
+- `process_uptime_seconds` — Process uptime
+- `mongo_pool_ready` / `mongo_pool_open` — MongoDB pool snapshots
+- `redis_connected` — Redis reachability gauge
 
 ## Alerting
 

@@ -41,7 +41,6 @@ services:
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./docker/nginx/certs:/etc/nginx/certs:ro
-      - nginx_logs:/var/log/nginx
     depends_on:
       backend:
         condition: service_healthy
@@ -60,8 +59,8 @@ services:
       retries: 3
       start_period: 10s
     restart: always
-
   mongodb:
+    command: ["mongod", "--replSet", "diaryarchive", "--auth", "--keyFile", "/etc/mongo/keyfile", "--bind_ip_all"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}
@@ -79,6 +78,21 @@ services:
         reservations:
           memory: 1G
     restart: always
+
+  mongo-app-user:
+    image: mongo:7.0
+    restart: "no"
+    environment:
+      MONGO_ROOT_USER: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}
+      MONGO_APP_USER: ${MONGO_APP_USER:?set MONGO_APP_USER}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./docker/mongo/create-app-user.sh:/usr/local/bin/create-app-user.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/create-app-user.sh"]
 
   redis:
     image: redis:7.2-alpine
@@ -152,6 +166,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      mongo-app-user:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     logging:
       driver: json-file
       options:
@@ -184,7 +203,7 @@ services:
       COMMIT_HASH: ${COMMIT_HASH:-unknown}
       DEPLOYED_AT: ${DEPLOYED_AT:-}
       REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-128mb}
-      MONGODB_URI: mongodb://${MONGO_ROOT_USER:?set MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}@mongodb:27017/diaryarchive?authSource=admin&replicaSet=diaryarchive&maxPoolSize=20&minPoolSize=2
+      MONGODB_URI: mongodb://${MONGO_APP_USER:?set MONGO_APP_USER}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}@mongodb:27017/diaryarchive?authSource=diaryarchive&replicaSet=diaryarchive&maxPoolSize=20&minPoolSize=2
       REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
@@ -194,6 +213,7 @@ services:
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set PUBLIC_APP_URL (for example https://diaryarchive.com)}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.diaryarchive.com}
       CORS_ORIGINS: '["https://diaryarchive.com"]'
+      TRUSTED_PROXY_CIDRS: '["172.16.0.0/12"]'
 
   frontend:
     read_only: true
@@ -230,6 +250,3 @@ services:
           cpus: "0.5"
           memory: 256M
     restart: always
-
-volumes:
-  nginx_logs:

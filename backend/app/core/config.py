@@ -50,10 +50,12 @@ class Settings(BaseSettings):
     public_api_url: str | None = None
 
     cors_origins: list[str] = ["http://localhost:3000"]
+    trusted_proxy_cidrs: list[str] = ["127.0.0.1/32", "::1/128"]
 
     max_media_per_user: int = 500
     max_media_per_diary: int = 20
     max_daily_uploads: int = 50
+    max_export_records_per_collection: int = 10_000
 
     # Privacy: client IP address retention.
     #   - If true, request logs store a truncated/anon IP (first three octets).
@@ -78,6 +80,9 @@ class Settings(BaseSettings):
 
     # How often the durable search-sync outbox worker polls for pending entries.
     search_outbox_interval_seconds: int = 30
+    # Full search rebuilds are an explicit maintenance action in production;
+    # running one on every replica startup causes a thundering herd.
+    startup_full_reindex: bool = False
 
     # Centralized rate limits: key -> (max_attempts, window_seconds). Endpoints
     # read from here via get_rate_limit so policy is tunable in one place rather

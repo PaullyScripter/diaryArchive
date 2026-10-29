@@ -25,6 +25,7 @@ from bson import ObjectId
 
 from app.core.config import settings
 from app.core.database import DatabaseManager
+from app.core.exceptions import ValidationException
 from app.core.minio_client import get_minio_client
 from app.core.utils import fmt_dt
 from app.repositories.audit_log_repo import AuditLogRepository
@@ -65,32 +66,48 @@ async def export_user_data(user_id: str) -> dict:
     uid = _oid(user_id)
     user = await db.users.find_one({"_id": uid})
 
+    # Keep the synchronous compatibility endpoint bounded. Large accounts
+    # must use the future asynchronous export worker rather than exhausting
+    # backend memory with a single request.
+    collections = ("diaries", "comments", "likes", "bookmarks", "follows", "notifications", "achievements", "tickets", "media")
+    counts = {
+        name: await db[name].count_documents({"user_id": uid})
+        for name in collections
+    }
+    over_limit = [
+        name for name, count in counts.items() if count > settings.max_export_records_per_collection
+    ]
+    if over_limit:
+        raise ValidationException(
+            "This account is too large for an inline export. Please use the asynchronous export workflow."
+        )
+
     diaries = await db.diaries.find(
         {"user_id": uid},
-    ).to_list(length=100000)
+    ).to_list(length=settings.max_export_records_per_collection)
 
     comments = await db.comments.find(
         {"user_id": uid},
-    ).to_list(length=100000)
+    ).to_list(length=settings.max_export_records_per_collection)
 
-    likes = await db.likes.find({"user_id": uid}, {"_id": 0}).to_list(length=100000)
-    bookmarks = await db.bookmarks.find({"user_id": uid}, {"_id": 0}).to_list(length=100000)
-    follows = await db.follows.find({"user_id": uid}, {"_id": 0}).to_list(length=100000)
+    likes = await db.likes.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
+    bookmarks = await db.bookmarks.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
+    follows = await db.follows.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
     notifications = await db.notifications.find(
         {"user_id": uid},
         {"_id": 0},
-    ).to_list(length=100000)
+    ).to_list(length=settings.max_export_records_per_collection)
     achievements = await db.achievements.find(
         {"user_id": uid},
         {"_id": 0},
-    ).to_list(length=100000)
-    tickets = await db.tickets.find({"user_id": uid}, {"_id": 0}).to_list(length=100000)
+    ).to_list(length=settings.max_export_records_per_collection)
+    tickets = await db.tickets.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
 
     # P2.7: Include media metadata and download actual files from MinIO.
     media_records = await db.media.find(
         {"user_id": uid},
         {"_id": 0},
-    ).to_list(length=100000)
+    ).to_list(length=settings.max_export_records_per_collection)
     media_tar_bytes = await _download_media_files(uid, media_records)
 
     return {

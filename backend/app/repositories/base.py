@@ -23,6 +23,8 @@ class BaseRepository:
         skip: int = 0,
         limit: int = 20,
     ) -> list[dict]:
+        skip = max(0, skip)
+        limit = min(max(1, limit), 100)
         cursor = self._collection.find(filter or {})
         if sort:
             cursor = cursor.sort(sort)

@@ -4,7 +4,7 @@ import uuid
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from app.core.config import settings
 from app.core.metrics import record_request, record_request_end, record_request_start
@@ -73,11 +73,29 @@ def _build_csp() -> str:
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        request_id = str(uuid.uuid4())
+        supplied = request.headers.get("X-Request-ID", "")
+        request_id = supplied if len(supplied) <= 64 and all(
+            c.isalnum() or c in "-_." for c in supplied
+        ) else str(uuid.uuid4())
         request.state.request_id = request_id
         response: Response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
+
+
+class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
+    """Protect direct backend access when Nginx is bypassed."""
+
+    async def dispatch(self, request: Request, call_next):
+        raw_length = request.headers.get("content-length")
+        if raw_length and raw_length.isdigit():
+            limit = 52 * 1024 * 1024 if request.url.path.endswith("/media/upload") else 512 * 1024
+            if int(raw_length) > limit:
+                return JSONResponse(
+                    {"error": {"code": "payload_too_large", "message": "Request body is too large"}},
+                    status_code=413,
+                )
+        return await call_next(request)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -86,7 +104,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         record_request_start()
         start = time.perf_counter()
-        request_id = request.headers.get("X-Request-ID", "unknown")
+        request_id = getattr(request.state, "request_id", "unknown")
         client_ip = getattr(request.client, "host", "unknown")
         if settings.anonymize_ip_in_logs:
             client_ip = _anonymize_ip(client_ip)

@@ -254,7 +254,7 @@ export default function PolicyPage() {
         </p>
         <DataTable
           rows={[
-            { label: "refresh_token", value: "Session persistence - HTTP only, Secure, SameSite Strict - 7 days" },
+            { label: "refresh_token", value: "Session persistence - HTTP only, Secure in production, SameSite Strict - 7 days" },
           ]}
         />
         <p className="text-xs text-subtle mt-3">

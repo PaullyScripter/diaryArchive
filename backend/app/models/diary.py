@@ -20,9 +20,12 @@ VALID_EMOTIONS = frozenset(
 
 
 class EncryptedData(BaseModel):
-    ciphertext: str
-    iv: str
-    salt: str
+    # The browser currently serializes Web Crypto values as hexadecimal.
+    # Bound both shape and size before data reaches MongoDB so an attacker
+    # cannot use the private-diary endpoint as an unbounded document sink.
+    ciphertext: str = Field(..., min_length=32, max_length=250_000, pattern=r"^[0-9a-fA-F]+$")
+    iv: str = Field(..., min_length=24, max_length=24, pattern=r"^[0-9a-fA-F]{24}$")
+    salt: str = Field(..., min_length=32, max_length=32, pattern=r"^[0-9a-fA-F]{32}$")
 
 
 class DiaryCreate(BaseModel):

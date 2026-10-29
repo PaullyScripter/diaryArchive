@@ -100,6 +100,14 @@ async def create_search_sync_outbox(db) -> None:
     here before being pushed to Meilisearch (MED-3)."""
     await db.search_sync_outbox.create_index([("status", 1), ("created_at", 1)])
     await db.search_sync_outbox.create_index([("status", 1), ("attempt_count", 1)])
+    await db.search_sync_outbox.create_index(
+        [("status", 1), ("next_attempt_at", 1), ("created_at", 1)],
+        name="idx_search_outbox_claimable",
+    )
+    await db.search_sync_outbox.create_index(
+        [("status", 1), ("lease_until", 1)],
+        name="idx_search_outbox_leases",
+    )
 
 
 async def unique_report_index(db) -> None:
@@ -164,6 +172,25 @@ async def reconcile_media_privacy(db) -> None:
     )
 
 
+async def remove_private_plaintext_metadata(db) -> None:
+    """Remove metadata that must never remain outside private ciphertext."""
+    await db.diaries.update_many(
+        {"privacy": "private"},
+        {"$set": {"tags": [], "emotion": None}},
+    )
+
+
+async def add_search_outbox_lease_indexes(db) -> None:
+    await db.search_sync_outbox.create_index(
+        [("status", 1), ("next_attempt_at", 1), ("created_at", 1)],
+        name="idx_search_outbox_claimable",
+    )
+    await db.search_sync_outbox.create_index(
+        [("status", 1), ("lease_until", 1)],
+        name="idx_search_outbox_leases",
+    )
+
+
 MIGRATIONS: list[Migration] = [
     # v1: create the durable search-sync outbox collection and its indexes.
     Migration(
@@ -186,6 +213,16 @@ MIGRATIONS: list[Migration] = [
         version=4,
         name="reconcile_media_privacy",
         apply=reconcile_media_privacy,
+    ),
+    Migration(
+        version=5,
+        name="remove_private_plaintext_metadata",
+        apply=remove_private_plaintext_metadata,
+    ),
+    Migration(
+        version=6,
+        name="add_search_outbox_lease_indexes",
+        apply=add_search_outbox_lease_indexes,
     ),
 ]
 

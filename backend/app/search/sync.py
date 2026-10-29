@@ -3,6 +3,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from app.core.database import DatabaseManager
 from app.search.config import INDEX_SETTINGS, PUBLIC_DIARIES_INDEX, get_client
@@ -16,6 +17,7 @@ _reindex_lock = asyncio.Lock()
 OUTBOX_MAX_ATTEMPTS = 6
 OUTBOX_BACKOFF_SECONDS = 30
 OUTBOX_BATCH_SIZE = 200
+OUTBOX_LEASE_SECONDS = 120
 
 
 async def enqueue_sync(diary_id: str, action: str = "index") -> None:
@@ -84,11 +86,34 @@ async def process_outbox(max_entries: int | None = None) -> dict:
     now = datetime.now(UTC)
     limit = max_entries or OUTBOX_BATCH_SIZE
 
-    pending = (
-        await db.search_sync_outbox.find({"status": "pending", "next_attempt_at": {"$lte": now}})
-        .sort("created_at", 1)
-        .to_list(length=limit)
-    )
+    # Claim work atomically so multiple backend replicas cannot process the
+    # same entry concurrently. Expired claims are recoverable after a worker
+    # crash.
+    pending = []
+    for _ in range(limit):
+        entry = await db.search_sync_outbox.find_one_and_update(
+            {
+                "$or": [
+                    {"status": "pending", "next_attempt_at": {"$lte": now}},
+                    {
+                        "status": "processing",
+                        "lease_until": {"$lte": now},
+                    },
+                ]
+            },
+            {
+                "$set": {
+                    "status": "processing",
+                    "lease_until": now + timedelta(seconds=OUTBOX_LEASE_SECONDS),
+                    "updated_at": now,
+                }
+            },
+            sort=[("created_at", 1)],
+            return_document=ReturnDocument.AFTER,
+        )
+        if entry is None:
+            break
+        pending.append(entry)
 
     summary = {"processed": 0, "succeeded": 0, "failed": 0, "left_pending": len(pending)}
 
@@ -102,27 +127,29 @@ async def process_outbox(max_entries: int | None = None) -> dict:
 
         if ok:
             await db.search_sync_outbox.update_one(
-                {"_id": entry["_id"]}, {"$set": {"status": "done", "updated_at": now}}
+                {"_id": entry["_id"], "status": "processing"},
+                {"$set": {"status": "done", "updated_at": now}, "$unset": {"lease_until": ""}},
             )
             summary["succeeded"] += 1
         else:
             attempts = entry.get("attempt_count", 0) + 1
             if attempts >= OUTBOX_MAX_ATTEMPTS:
                 await db.search_sync_outbox.update_one(
-                    {"_id": entry["_id"]},
+                    {"_id": entry["_id"], "status": "processing"},
                     {
                         "$set": {
                             "status": "failed",
                             "attempt_count": attempts,
                             "updated_at": now,
                         }
+                        , "$unset": {"lease_until": ""}
                     },
                 )
                 summary["failed"] += 1
             else:
                 backoff = OUTBOX_BACKOFF_SECONDS * (2 ** (attempts - 1))
                 await db.search_sync_outbox.update_one(
-                    {"_id": entry["_id"]},
+                    {"_id": entry["_id"], "status": "processing"},
                     {
                         "$set": {
                             "status": "pending",
@@ -130,6 +157,7 @@ async def process_outbox(max_entries: int | None = None) -> dict:
                             "next_attempt_at": now + timedelta(seconds=backoff),
                             "updated_at": now,
                         }
+                        , "$unset": {"lease_until": ""}
                     },
                 )
             summary["failed"] += 1

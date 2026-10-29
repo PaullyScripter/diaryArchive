@@ -85,6 +85,8 @@ class EmailUpdate(BaseModel):
 
 
 class EncryptionKeyUpdate(BaseModel):
-    encrypted_master_key: str = Field(..., min_length=1)
-    master_key_salt: str = Field(..., min_length=1)
-    master_key_iv: str = Field(..., min_length=1)
+    encrypted_master_key: str = Field(
+        ..., min_length=96, max_length=256, pattern=r"^[0-9a-fA-F]+$"
+    )
+    master_key_salt: str = Field(..., min_length=32, max_length=32, pattern=r"^[0-9a-fA-F]{32}$")
+    master_key_iv: str = Field(..., min_length=24, max_length=24, pattern=r"^[0-9a-fA-F]{24}$")

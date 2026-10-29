@@ -217,7 +217,11 @@ class TestMediaUpload:
             "/api/v1/diaries",
             json={
                 "privacy": "private",
-                "encrypted_data": {"ciphertext": "x", "iv": "y", "salt": "z"},
+                "encrypted_data": {
+                    "ciphertext": "ab" * 16,
+                    "iv": "ab" * 12,
+                    "salt": "ab" * 16,
+                },
             },
             headers={"Authorization": f"Bearer {token}"},
         )
@@ -423,7 +427,7 @@ class TestMediaFileStream:
         assert resp.status_code == 200
         assert resp.content.startswith(b"\x52\x49\x46\x46")  # RIFF (webp) header
         assert "image/webp" in resp.headers["content-type"]
-        assert resp.headers["cache-control"] == "public, max-age=86400"
+        assert resp.headers["cache-control"] == "private, no-store"
 
     async def test_private_media_requires_owner(self, client: AsyncClient):
         user = await _register_user(client)

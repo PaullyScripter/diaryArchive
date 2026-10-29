@@ -5,8 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-21
 
-**Last prompt synchronization:** 2026-10-28 — Completed a repository-wide
-security, scalability, UX, and privacy audit; see the dated session summary.
+**Last prompt synchronization:** 2026-10-28 — Implemented the requested
+security, scalability, privacy, operations, and UX hardening pass; see the
+dated session summary.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
@@ -25,6 +26,14 @@ Redis limiting with fail-closed behavior for security-critical outages, and
 removes obsolete moderation-history TTL indexes. Large deletion paths use
 cursor-based cleanup; deployment configuration requires the public application
 origin and the active repository CI workflow owns automatic deployment.
+
+The 2026-10-28 hardening pass keeps private metadata inside encrypted payloads,
+validates and bounds encrypted key material, uses Redis-backed token-revocation
+caching and leased maintenance/outbox work, bounds uploads/exports/pagination,
+removes plaintext browser draft persistence, serves mutable media as no-store,
+and enables production MongoDB authentication with a dedicated application
+user. Production search rebuilds are explicit rather than automatic startup
+work.
 
 ## 1. Product identity
 

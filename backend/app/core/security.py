@@ -135,23 +135,21 @@ def _fallback_count(key: str, window_seconds: int) -> int:
         return len(hits)
 
 
-_TRUSTED_PROXIES = {"127.0.0.1", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"}
-
-
 def _is_trusted_proxy(ip: str) -> bool:
-    """Check if an IP is a known private/trusted proxy address."""
+    """Check if an IP is in the explicitly configured proxy allowlist."""
     if ip == "unknown":
         return False
     try:
         address = ipaddress.ip_address(ip)
     except ValueError:
         return False
-    return (
-        address.is_loopback
-        or address in ipaddress.ip_network("10.0.0.0/8")
-        or address in ipaddress.ip_network("172.16.0.0/12")
-        or address in ipaddress.ip_network("192.168.0.0/16")
-    )
+    for cidr in settings.trusted_proxy_cidrs:
+        try:
+            if address in ipaddress.ip_network(cidr, strict=False):
+                return True
+        except ValueError:
+            logger.error("Invalid trusted proxy CIDR configured: %s", cidr)
+    return False
 
 
 def get_client_ip(request) -> str:
@@ -313,17 +311,48 @@ async def invalidate_all_user_tokens(user_id: str) -> None:
 
 async def _is_token_invalidated(user_id: str, token_iat: datetime | int | float) -> bool:
     """Check whether a token was issued before the user's invalidation timestamp."""
-    db = DatabaseManager.get_db()
     if not ObjectId.is_valid(user_id):
         return True
-    user = await db.users.find_one({"_id": ObjectId(user_id)}, {"tokens_invalid_before": 1})
-    if user is None:
-        return True
-    invalid_before = user.get("tokens_invalid_before")
-    if invalid_before is None:
-        return False
+
+    key = f"{_TOKEN_INVALIDATION_PREFIX}{user_id}"
+    invalid_before = None
+    cache_available = False
+    try:
+        redis: Redis = DatabaseManager.get_redis()
+        cached = await redis.get(key)
+        cache_available = True
+        if cached is not None:
+            invalid_before = float(cached)
+    except Exception:
+        # MongoDB remains authoritative when Redis is unavailable.
+        logger.warning("Token invalidation cache lookup failed; using MongoDB")
+
+    if not cache_available or invalid_before is None:
+        db = DatabaseManager.get_db()
+        user = await db.users.find_one({"_id": ObjectId(user_id)}, {"tokens_invalid_before": 1})
+        if user is None:
+            return True
+        invalid_before = user.get("tokens_invalid_before")
+        if invalid_before is None:
+            # Cache a short-lived negative result to avoid a MongoDB read on
+            # every authenticated request while preserving prompt revocation.
+            if cache_available:
+                try:
+                    await redis.set(key, "0", ex=settings.access_token_expire_minutes * 60)
+                except Exception:
+                    pass
+            return False
+        if cache_available:
+            try:
+                await redis.set(
+                    key,
+                    int(invalid_before),
+                    ex=settings.access_token_expire_minutes * 2 * 60,
+                )
+            except Exception:
+                pass
 
     issued_at = token_iat.timestamp() if isinstance(token_iat, datetime) else float(token_iat)
     # JWT iat has second precision. Reject the same-second token too, or a
     # token created immediately before invalidation can survive the cutoff.
-    return issued_at <= float(invalid_before)
+    return float(invalid_before) > 0 and issued_at <= float(invalid_before)

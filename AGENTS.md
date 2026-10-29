@@ -1,7 +1,8 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-28 — Completed a repository-wide
-security, scalability, UX, and privacy audit; see the dated session summary.
+**Last prompt synchronization:** 2026-10-28 — Implemented the requested
+security, scalability, privacy, operations, and UX hardening pass; see the
+dated session summary.
 
 ## Read this first
 

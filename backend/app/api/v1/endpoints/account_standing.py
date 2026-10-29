@@ -161,7 +161,7 @@ async def build_account_standing(
 
 @router.get("")
 async def get_account_standing(
-    history_page: int = Query(1, ge=1, le=100000),
+    history_page: int = Query(1, ge=1, le=1000),
     history_per_page: int = Query(50, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):

@@ -453,9 +453,9 @@ class TestEncryptionKeyManagement:
             "/api/v1/users/me/encryption-key",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={
-                "encrypted_master_key": "ab12cd34ef56",
-                "master_key_salt": "a1b2c3d4e5f6",
-                "master_key_iv": "iv12iv34iv56",
+                "encrypted_master_key": "ab" * 48,
+                "master_key_salt": "a1" * 16,
+                "master_key_iv": "12" * 12,
             },
         )
         assert response.status_code == 200
@@ -468,9 +468,9 @@ class TestEncryptionKeyManagement:
             "/api/v1/users/me/encryption-key",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={
-                "encrypted_master_key": "ab12cd34ef56",
-                "master_key_salt": "a1b2c3d4e5f6",
-                "master_key_iv": "iv12iv34iv56",
+                "encrypted_master_key": "ab" * 48,
+                "master_key_salt": "a1" * 16,
+                "master_key_iv": "12" * 12,
             },
         )
         response = await client.get(
@@ -480,9 +480,9 @@ class TestEncryptionKeyManagement:
         assert response.status_code == 200
         body = response.json()
         data = body.get("data", body)
-        assert data["encrypted_master_key"] == "ab12cd34ef56"
-        assert data["master_key_salt"] == "a1b2c3d4e5f6"
-        assert data["master_key_iv"] == "iv12iv34iv56"
+        assert data["encrypted_master_key"] == "ab" * 48
+        assert data["master_key_salt"] == "a1" * 16
+        assert data["master_key_iv"] == "12" * 12
         assert data["has_master_key"] is True
 
     async def test_encryption_key_requires_auth(self, client: AsyncClient):
@@ -522,18 +522,18 @@ class TestEncryptionKeyManagement:
             "/api/v1/users/me/encryption-key",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={
-                "encrypted_master_key": "firstkey",
-                "master_key_salt": "firstsalt",
-                "master_key_iv": "firstiv",
+                "encrypted_master_key": "ab" * 48,
+                "master_key_salt": "a1" * 16,
+                "master_key_iv": "12" * 12,
             },
         )
         response = await client.put(
             "/api/v1/users/me/encryption-key",
             headers={"Authorization": f"Bearer {auth_token}"},
             json={
-                "encrypted_master_key": "secondkey",
-                "master_key_salt": "secondsalt",
-                "master_key_iv": "secondiv",
+                "encrypted_master_key": "cd" * 48,
+                "master_key_salt": "b2" * 16,
+                "master_key_iv": "34" * 12,
             },
         )
         assert response.status_code == 200
@@ -544,6 +544,6 @@ class TestEncryptionKeyManagement:
         )
         body = response.json()
         data = body.get("data", body)
-        assert data["encrypted_master_key"] == "secondkey"
-        assert data["master_key_salt"] == "secondsalt"
-        assert data["master_key_iv"] == "secondiv"
+        assert data["encrypted_master_key"] == "cd" * 48
+        assert data["master_key_salt"] == "b2" * 16
+        assert data["master_key_iv"] == "34" * 12

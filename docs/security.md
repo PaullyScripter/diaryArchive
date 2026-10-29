@@ -25,13 +25,17 @@ This document covers production security configuration for DiaryArchive.
 - [ ] Rate limiting on register (5 req/min)
 - [ ] Account lockout after 5 failed attempts (15 min cooldown)
 - [ ] Password requirements enforced (8+ chars, complexity)
+- [ ] CSRF posture reviewed: refresh cookie is `SameSite=Strict`, path-scoped,
+  and never used as an API authorization bearer token
 
 ### Data Protection
 - [ ] End-to-end encryption for private diaries
-- [ ] AES-256-CBC for email encryption
+- [ ] AES-256-GCM for email encryption
 - [ ] MinIO bucket not publicly accessible
 - [ ] MongoDB authentication enabled
 - [ ] Redis password required
+- [ ] Private diary metadata is contained inside the client-encrypted payload
+- [ ] Mutable media is authorization-proxied with `private, no-store` caching
 
 ### Infrastructure
 - [ ] UFW firewall enabled (only 22, 80, 443 open)
@@ -42,6 +46,8 @@ This document covers production security configuration for DiaryArchive.
 - [ ] Docker containers have `no-new-privileges`
 - [ ] Docker containers have `read_only` filesystem
 - [ ] Docker containers drop all capabilities
+- [ ] Backend uses a dedicated MongoDB application user; root credentials are
+  reserved for database administration
 
 ### Secrets Management
 - [ ] No secrets in version control
@@ -125,7 +131,7 @@ cd /opt/diaryarchive
 - **Meilisearch:** Search indices
 
 ### Backup Encryption
-- All backups encrypted with AES-256-CBC
+- All backups encrypted with an authenticated encryption scheme (AES-256-GCM or an equivalent envelope-encryption service)
 - Encryption keys stored separately from backups
 - Off-site backup storage (R2/S3)
 - Daily automated backups with 30-day retention
