@@ -1,7 +1,7 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-28 — Added the mandatory two-file
-synchronization policy below.
+**Last prompt synchronization:** 2026-10-28 — Completed a repository-wide
+security, scalability, UX, and privacy audit; see the dated session summary.
 
 ## Read this first
 

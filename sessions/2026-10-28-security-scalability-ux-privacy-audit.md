@@ -1,0 +1,8 @@
+# Repository-wide security, scalability, UX, and privacy audit
+
+- Request: Review the current codebase and identify changes needed to improve security, scalability, user experience, and privacy.
+- Findings: Current tests pass, but the review identified high-priority privacy and reliability work. Private diary tags/emotions are persisted and returned outside encrypted payloads; encrypted payload fields lack strict size/encoding validation; access-token revocation performs a MongoDB user lookup on every authenticated request; search/background jobs are in-process and lack durable claiming, graceful shutdown, and multi-replica coordination; account export materializes up to 100,000 records per collection; logout clears the cookie on an injected response but returns a different response object; trusted-proxy IP handling is broader than a deployment-specific allowlist; and production documentation/configuration needs reconciliation around media, CSP, retention, and dependency/operational evidence.
+- Changes: No product behavior was changed. The required prompt synchronization lines were updated in `AGENTS.md` and `PROJECT_CONTEXT.md`.
+- Verification: Backend `python -m pytest -q`: 322 passed. Frontend `npm run typecheck`, `npm run lint`, and `npm test -- --run`: passed; 83 frontend tests passed. Existing untracked helper files were preserved. Build and external dependency audits were not rerun in this review.
+- Git: Pending commit for this audit record and synchronization updates.
+- Follow-up: Address P0 privacy/auth issues first, then durable job processing, bounded export/pagination, revocation caching, deployment hardening, accessibility/manual UX review, and documentation drift.
