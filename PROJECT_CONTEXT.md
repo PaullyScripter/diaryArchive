@@ -5,9 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-21
 
-**Last prompt synchronization:** 2026-10-28 — Added the static pseudonymous
-donation page for BTC, ETH, LTC, USDC on Ethereum, and USDT on Ethereum; see
-the dated session summary.
+**Last prompt synchronization:** 2026-10-28 — Redesigned the donation page
+to match the requested crypto selector, local QR codes, address copy control,
+and caution layout; see the dated session summary.
 
 **Repository:** `PaullyScripter/diaryArchive`
 

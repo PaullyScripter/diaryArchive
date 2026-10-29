@@ -22,17 +22,23 @@ are shown next to the USDC and USDT addresses.
   transfer/network warnings.
 - Added browser-local copy buttons with an accessible live status and no
   server request.
+- Added a responsive reference-inspired layout with a crypto selector, a
+  locally rendered QR code for the selected address, and a copyable address
+  panel beneath it. QR values are generated in the browser; no QR service is
+  contacted.
 - Added the appreciation and no-site-rewards disclosure requested by the
   project owner.
 - Added Donate links to the main and footer navigation.
 - Added focused rendering, copy behavior, XMR omission, and accessibility
   tests.
+- Added the local `qrcode.react` frontend dependency for QR rendering.
 
 ## Verification
 
 - `npm run typecheck` — passed.
 - `npm run lint` — passed.
 - `npm test -- --run src/tests/donation-page.test.tsx` — passed: 3 tests.
+- `git diff --check` — passed.
 
 ## Git
 
