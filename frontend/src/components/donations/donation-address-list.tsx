@@ -86,13 +86,8 @@ export function DonationAddressList() {
 
   return (
     <div aria-label="Donation addresses">
-      <div className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:items-stretch">
-        <div className="flex items-center lg:justify-center">
-          <span className="text-xl font-medium uppercase tracking-tight text-foreground lg:[writing-mode:horizontal-tb]">Cryptos</span>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)]">
-          <div className="space-y-2" role="group" aria-label="Choose a cryptocurrency">
+      <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] md:grid-rows-5 md:gap-x-4">
+          <div className="contents" role="group" aria-label="Choose a cryptocurrency">
             {DONATION_ADDRESSES.map((item) => {
               const isSelected = item.id === selected.id;
               return (
@@ -104,7 +99,7 @@ export function DonationAddressList() {
                     setCopiedId(null);
                     setCopyError(null);
                   }}
-                  className={`flex w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2 ${
+                  className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-md border px-4 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-link focus-visible:outline-offset-2 ${
                     isSelected
                       ? "border-foreground bg-overlay/10 text-foreground"
                       : "border-border bg-background text-muted hover:bg-overlay/5 hover:text-foreground"
@@ -121,22 +116,21 @@ export function DonationAddressList() {
             })}
           </div>
 
-          <div className="flex min-h-64 items-center justify-center rounded-md border border-border bg-background p-5">
+          <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border border-border bg-background md:col-start-2 md:row-span-4 md:row-start-1">
             <QRCodeSVG
               value={selected.address}
-              size={220}
-              includeMargin
+              size={320}
+              includeMargin={false}
               role="img"
               aria-label={`${selected.asset} donation address QR code`}
               bgColor="var(--color-background)"
               fgColor="var(--color-foreground)"
-              className="h-auto max-w-full"
+              className="block h-full w-full"
             />
           </div>
 
-          <div className="md:col-start-2">
-            <p className="mb-2 text-xs font-medium text-muted">{selected.asset} address</p>
-            <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 sm:flex-row sm:items-center">
+          <div className="md:col-start-2 md:row-start-5">
+            <div className="flex h-full flex-col gap-2 rounded-md border border-border bg-background p-3 sm:flex-row sm:items-center">
               <code className="min-w-0 flex-1 break-all text-xs leading-relaxed text-foreground">{selected.address}</code>
               <button
                 type="button"
@@ -148,12 +142,10 @@ export function DonationAddressList() {
               </button>
             </div>
           </div>
-        </div>
       </div>
 
       <div className="mt-5 border-t border-border pt-4">
-        <p className="text-center text-xs font-medium uppercase tracking-wide text-muted">Cautions</p>
-        <ul className="mx-auto mt-2 max-w-2xl space-y-1 text-center text-xs leading-relaxed text-muted">
+        <ul className="mx-auto max-w-2xl space-y-1 text-center text-xs leading-relaxed text-muted">
           <li>Verify the asset and network before sending. Cryptocurrency transfers are irreversible.</li>
           <li>USDC and USDT accept Ethereum mainnet (ERC-20) transfers only.</li>
           {selected.note && <li className="text-amber-700 dark:text-amber-300">{selected.note}</li>}

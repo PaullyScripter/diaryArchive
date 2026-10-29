@@ -5,9 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-21
 
-**Last prompt synchronization:** 2026-10-28 — Redesigned the donation page
-to match the requested crypto selector, local QR codes, address copy control,
-and caution layout; see the dated session summary.
+**Last prompt synchronization:** 2026-10-28 — Refined the donation layout to
+remove redundant labels, align the QR panel with the first four asset rows,
+and reserve the fifth row for the address control; see the session summary.
 
 **Repository:** `PaullyScripter/diaryArchive`
 

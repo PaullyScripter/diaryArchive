@@ -26,6 +26,10 @@ are shown next to the USDC and USDT addresses.
   locally rendered QR code for the selected address, and a copyable address
   panel beneath it. QR values are generated in the browser; no QR service is
   contacted.
+- Refined the layout into five aligned rows: the QR panel spans the first
+  four rows, while the fifth row contains only the selected address and copy
+  control. Removed redundant visual labels for the crypto list, address, and
+  caution section.
 - Added the appreciation and no-site-rewards disclosure requested by the
   project owner.
 - Added Donate links to the main and footer navigation.
