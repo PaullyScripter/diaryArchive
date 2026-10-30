@@ -1,8 +1,8 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-28 — Strengthened the selected
-network state with an accent border, highlight, ring, and shadow instead of a
-selection dot; see the session summary.
+**Last prompt synchronization:** 2026-10-30 — Fixed authenticated diary image
+hydration being removed by the reader sanitizer after the initial render; see
+the session summary.
 
 ## Read this first
 

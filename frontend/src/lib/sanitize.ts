@@ -76,6 +76,11 @@ export function scrubCssText(css: string): string {
 
 const STYLE_BLOCK_RE = /<style[^>]*>([\s\S]*?)<\/style>/gi;
 
+// Keep DOMPurify's safe URI schemes and add only the http(s)-backed blob URLs
+// created by URL.createObjectURL for authenticated media hydration. The later
+// image-source policy still decides whether a retained image may render.
+const ALLOWED_URI_REGEXP = /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|blob:https?:\/\/|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
+
 // Inline style="" attributes are allowed through DOMPurify but are NOT covered
 // by the <style> block scrub above. Scrub them with the same blocklist so a
 // value like `background: url(https://evil.example/beacon)` — a tracking /
@@ -139,6 +144,11 @@ export function isAllowedImageSource(
   const v = (value ?? "").trim();
   if (!v) return false;
   if (v.startsWith("/")) return true; // same-origin relative
+  // Authenticated media is fetched with Axios and rendered through a browser
+  // object URL. These URLs are transient, browser-local references created by
+  // the app; rejecting them here makes images flash once and then disappear
+  // when the hydrated HTML is sanitized.
+  if (/^blob:https?:\/\//i.test(v)) return true;
   const origin = apiOrigin();
   if (origin) {
     try {
@@ -160,6 +170,7 @@ export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
+    ALLOWED_URI_REGEXP,
     FORCE_BODY: true,
   });
 

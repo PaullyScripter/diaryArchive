@@ -216,6 +216,12 @@ describe("sanitizeHtml", () => {
     expect(result).toContain("/api/v1/media/file/abc");
   });
 
+  it("keeps browser object URLs used by authenticated media hydration", () => {
+    const input = '<img src="blob:https://diaryarchive.example/9c2f" alt="m">';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("blob:https://diaryarchive.example/9c2f");
+  });
+
   it("keeps the app-owned media id on uploaded images", () => {
     const mediaId = "507f1f77bcf86cd799439011";
     const input = `<img src="/api/v1/media/file/${mediaId}?v=original" data-media-id="${mediaId}" alt="photo">`;

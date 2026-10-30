@@ -5,9 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-21
 
-**Last prompt synchronization:** 2026-10-28 — Strengthened the selected
-network state with an accent border, highlight, ring, and shadow instead of a
-selection dot; see the session summary.
+**Last prompt synchronization:** 2026-10-30 — Fixed authenticated diary image
+hydration being removed by the reader sanitizer after the initial render; see
+the session summary.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
@@ -215,6 +215,10 @@ Never persist a short-lived signed URL as the permanent diary image source.
 Public images may use the stable proxy directly. Private images may need an
 authenticated fetch, a browser object URL, and hydration in both the editor and
 preview dialog. Compatibility helpers still handle legacy direct URLs.
+
+The reader sanitizer preserves the transient `blob:https://...` image URLs
+created by authenticated hydration, while continuing to reject other image
+schemes through its source policy.
 
 Recent image work fixed a long-lived failure mode involving obsolete media TTL
 indexes and expiring/unauthenticated references, and fixed preview-dialog image
