@@ -27,7 +27,7 @@ including private-media loading paths.
 
 ## Git
 
-Commit `9563f4a` (`fix: preserve hydrated diary media images`) was created.
+Commit `d50dbaf` (`fix: preserve hydrated diary media images`) was created.
 Push was not completed because the environment requires explicit approval for
 exporting repository contents to the configured `origin` remote.
 
