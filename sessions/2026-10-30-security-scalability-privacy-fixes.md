@@ -48,9 +48,9 @@ and feed/cache, CSS, pagination, and social retry behavior needed hardening.
 
 ## Git
 
-Implementation commit is recorded in the repository history after validation.
-The changes were not pushed because this prompt did not explicitly authorize
-publishing to GitHub.
+Implementation commit: `953886b` — `security: harden privacy, scalability,
+and media flows`. The changes were not pushed because this prompt did not
+explicitly authorize publishing to GitHub.
 
 ## Follow-up
 
