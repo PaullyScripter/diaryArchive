@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
+from app.models.social import SocialStateRequest
 from app.services.social_service import (
     list_followers,
     list_following,
@@ -30,6 +31,28 @@ async def like_diary(
     return {"data": result}
 
 
+@router.put("/diaries/{diary_id}/like")
+async def set_diary_like(
+    diary_id: str,
+    body: SocialStateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(f"rate_limit:toggle_like:{current_user['_id']}", 30, 60)
+    if is_limited:
+        raise RateLimitException("Too many like attempts")
+    result = await toggle_like(diary_id, current_user, desired=body.active)
+    return {"data": result}
+
+
+@router.delete("/diaries/{diary_id}/like")
+async def remove_diary_like(
+    diary_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    result = await toggle_like(diary_id, current_user, desired=False)
+    return {"data": result}
+
+
 @router.post("/diaries/{diary_id}/bookmark")
 async def bookmark_diary(
     diary_id: str,
@@ -42,6 +65,30 @@ async def bookmark_diary(
     if is_limited:
         raise RateLimitException("Too many bookmark attempts")
     result = await toggle_bookmark(diary_id, current_user)
+    return {"data": result}
+
+
+@router.put("/diaries/{diary_id}/bookmark")
+async def set_diary_bookmark(
+    diary_id: str,
+    body: SocialStateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:toggle_bookmark:{current_user['_id']}", 30, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many bookmark attempts")
+    result = await toggle_bookmark(diary_id, current_user, desired=body.active)
+    return {"data": result}
+
+
+@router.delete("/diaries/{diary_id}/bookmark")
+async def remove_diary_bookmark(
+    diary_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    result = await toggle_bookmark(diary_id, current_user, desired=False)
     return {"data": result}
 
 
@@ -60,10 +107,34 @@ async def follow_user(
     return {"data": result}
 
 
+@router.put("/users/{username}/follow")
+async def set_follow(
+    username: str,
+    body: SocialStateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:toggle_follow:{current_user['_id']}", 20, 60
+    )
+    if is_limited:
+        raise RateLimitException("Too many follow attempts")
+    result = await toggle_follow(username, current_user, desired=body.active)
+    return {"data": result}
+
+
+@router.delete("/users/{username}/follow")
+async def remove_follow(
+    username: str,
+    current_user: dict = Depends(get_current_user),
+):
+    result = await toggle_follow(username, current_user, desired=False)
+    return {"data": result}
+
+
 @router.get("/users/{username}/followers")
 async def get_followers(
     username: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_user: dict | None = Depends(_optional_user),
 ):
@@ -74,7 +145,7 @@ async def get_followers(
 @router.get("/users/{username}/following")
 async def get_following(
     username: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_user: dict | None = Depends(_optional_user),
 ):
@@ -85,7 +156,7 @@ async def get_following(
 @router.get("/me/likes")
 async def get_my_likes(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):
@@ -96,7 +167,7 @@ async def get_my_likes(
 @router.get("/me/bookmarks")
 async def get_my_bookmarks(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):

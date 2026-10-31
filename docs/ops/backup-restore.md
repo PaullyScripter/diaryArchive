@@ -11,12 +11,15 @@ for DiaryArchive. It is the operational companion to the scripts in
 
 | Component | Method | Encryption |
 |-----------|--------|-----------|
-| MongoDB | `mongodump --archive` | AES-256-CBC, PBKDF2 (200k iters) |
-| MinIO object data | `tar` of `/data` | AES-256-CBC, PBKDF2 (200k iters) |
+| MongoDB | `mongodump --archive` | AES-256-CBC/PBKDF2 (200k iters), HMAC-SHA256 authenticated |
+| MinIO object data | `tar` of `/data` | AES-256-CBC/PBKDF2 (200k iters), HMAC-SHA256 authenticated |
 | Meilisearch | excluded (rebuildable) | n/a |
 
 Both dumps are piped through `openssl enc -aes-256-cbc` immediately, so
-plaintext never touches disk.
+plaintext never touches disk. Every encrypted artifact also has a `.mac`
+sidecar; restore and verification validate the HMAC before decrypting. OpenSSL
+`enc` does not provide AEAD, so this is an encrypt-then-MAC envelope until a
+managed AEAD/envelope-encryption service is deployed.
 
 ## Encryption key
 
@@ -107,6 +110,7 @@ old key remains required to decrypt them. To rotate:
 4. Retain the old key until all archives encrypted under it have expired from
    retention, then destroy it.
 
-If you must re-encrypt historical archives, decrypt each with the old key and
-re-encrypt with the new one using `openssl enc -d` / `openssl enc` with the
-same PBKDF2 parameters (`-pbkdf2 -iter 200000`).
+If you must re-encrypt historical archives, verify the old `.mac`, decrypt each
+with the old key, re-encrypt with the new one using the same PBKDF2 parameters
+(`-pbkdf2 -iter 200000`), and regenerate the `.mac` sidecar before deleting
+the old copy.

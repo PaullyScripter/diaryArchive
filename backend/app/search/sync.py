@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from bson import ObjectId
@@ -208,8 +209,21 @@ async def _do_reindex(max_retries: int) -> int:
                 )
                 return 0
 
-    indexer = DiaryIndexer()
-    await indexer.clear_index()
+    client = get_client()
+    rebuild_index = f"{PUBLIC_DIARIES_INDEX}_rebuild_{uuid.uuid4().hex[:12]}"
+    try:
+        await asyncio.to_thread(
+            lambda: client.create_index(rebuild_index, {"primaryKey": "id"})
+        )
+        rebuild = client.index(rebuild_index)
+        await asyncio.to_thread(lambda: rebuild.update_settings(INDEX_SETTINGS))
+    except Exception:
+        logger.warning("Could not create temporary Meilisearch rebuild index", exc_info=True)
+        return 0
+
+    # Build in isolation. The live index remains available and consistent if
+    # MongoDB or Meilisearch fails partway through the rebuild.
+    indexer = DiaryIndexer(index_name=rebuild_index)
 
     db = DatabaseManager.get_db()
 
@@ -226,7 +240,6 @@ async def _do_reindex(max_retries: int) -> int:
             "_id": 1,
             "title": 1,
             "content_text": 1,
-            "content_html": 1,
             "tags": 1,
             "emotion": 1,
             "year": 1,
@@ -280,14 +293,37 @@ async def _do_reindex(max_retries: int) -> int:
                     skipped += 1
             batch = []
             logger.info("Indexed final batch individually, total: %d, skipped: %d", total, skipped)
-            return total
+            if skipped:
+                await asyncio.to_thread(lambda: client.delete_index(rebuild_index))
+                return 0
         total += len(batch)
         logger.info("Indexed final batch of %d, total: %d", len(batch), total)
 
+    if skipped:
+        await asyncio.to_thread(lambda: client.delete_index(rebuild_index))
+        logger.warning("Full re-index left live index unchanged; %d documents failed", skipped)
+        return 0
+
+    try:
+        task = await asyncio.to_thread(
+            lambda: client.swap_indexes(
+                [{"indexes": [PUBLIC_DIARIES_INDEX, rebuild_index]}]
+            )
+        )
+        task_uid = getattr(task, "task_uid", getattr(task, "uid", None))
+        if task_uid is not None:
+            await asyncio.to_thread(client.wait_for_task, task_uid, 30000, 100)
+        await asyncio.to_thread(lambda: client.delete_index(rebuild_index))
+    except Exception:
+        logger.warning("Could not atomically publish rebuilt search index", exc_info=True)
+        try:
+            await asyncio.to_thread(lambda: client.delete_index(rebuild_index))
+        except Exception:
+            pass
+        return 0
+
     mongo_count = await db.diaries.count_documents({"privacy": "public"})
-    index_stats = await asyncio.to_thread(
-        lambda: get_client().index(PUBLIC_DIARIES_INDEX).get_stats()
-    )
+    index_stats = await asyncio.to_thread(lambda: client.index(PUBLIC_DIARIES_INDEX).get_stats())
     index_count = index_stats.number_of_documents
 
     logger.info(

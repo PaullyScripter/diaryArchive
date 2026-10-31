@@ -4,6 +4,7 @@ from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import RateLimitException
 from app.core.security import check_rate_limit
 from app.models.comment import CommentCreate, CommentDelete
+from app.models.social import SocialStateRequest
 from app.services.comment_service import (
     create_comment,
     delete_comment,
@@ -36,7 +37,7 @@ async def create(
 @router.get("/diaries/{diary_id}/comments")
 async def list_all(
     diary_id: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(50, ge=1, le=50),
     highlight_id: str | None = Query(None, min_length=1, max_length=64),
     current_user: dict | None = Depends(_optional_user),
@@ -54,7 +55,7 @@ async def list_all(
 @router.get("/comments/{comment_id}/replies")
 async def get_replies(
     comment_id: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(10, ge=1, le=50),
     highlight_id: str | None = Query(None, min_length=1, max_length=64),
     current_user: dict | None = Depends(_optional_user),
@@ -79,6 +80,31 @@ async def like_comment(
     if is_limited:
         raise RateLimitException("Too many comment like attempts")
     result = await toggle_comment_like(comment_id, current_user)
+    return {"data": result}
+
+
+@router.put("/comments/{comment_id}/like")
+async def set_comment_like(
+    comment_id: str,
+    body: SocialStateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(f"rate_limit:comment_like:{current_user['_id']}", 30, 60)
+    if is_limited:
+        raise RateLimitException("Too many comment like attempts")
+    result = await toggle_comment_like(comment_id, current_user, desired=body.active)
+    return {"data": result}
+
+
+@router.delete("/comments/{comment_id}/like")
+async def remove_comment_like(
+    comment_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    is_limited, _ = await check_rate_limit(f"rate_limit:comment_like:{current_user['_id']}", 30, 60)
+    if is_limited:
+        raise RateLimitException("Too many comment like attempts")
+    result = await toggle_comment_like(comment_id, current_user, desired=False)
     return {"data": result}
 
 

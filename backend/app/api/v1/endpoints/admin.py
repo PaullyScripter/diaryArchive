@@ -95,7 +95,7 @@ def _build_admin_user_item(user: dict) -> dict:
 async def admin_list_reports(
     status: str = Query("pending", description="pending, resolved, dismissed, all"),
     target_type: str = Query(None, description="bug, diary, comment, user"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):
@@ -273,7 +273,7 @@ def _index_diary(diary: dict) -> None:
 async def admin_list_users(
     q: str = Query(None, description="Username search prefix"),
     status: str = Query("all", description="active, banned, all"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):
@@ -454,7 +454,7 @@ async def admin_audit_logs(
     target_type: str = Query(None),
     from_date: str = Query(None, description="ISO date string"),
     to_date: str = Query(None, description="ISO date string"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):

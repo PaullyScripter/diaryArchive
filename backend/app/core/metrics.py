@@ -11,9 +11,9 @@ values reset on process restart, which is acceptable for basic alerting (the
 scraper computes rates/deltas itself).
 """
 
+import re
 import threading
 import time
-import re
 from datetime import UTC, datetime
 
 _LOCK = threading.Lock()

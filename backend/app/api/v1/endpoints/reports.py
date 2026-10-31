@@ -37,7 +37,7 @@ async def create_report(
 
 @router.get("")
 async def list_my_reports(
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):

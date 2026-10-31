@@ -13,12 +13,6 @@ scrape_configs:
         labels:
           service: "backend"
 
-  - job_name: "diaryarchive-nginx"
-    static_configs:
-      - targets: ["nginx:80"]
-        labels:
-          service: "nginx"
-
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]

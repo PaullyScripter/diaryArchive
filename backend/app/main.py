@@ -77,7 +77,8 @@ async def _run_singleton_job(name: str, job) -> None:
         if redis is not None:
             try:
                 await redis.eval(
-                    "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+                    "if redis.call('GET', KEYS[1]) == ARGV[1] then "
+                    "return redis.call('DEL', KEYS[1]) else return 0 end",
                     1,
                     key,
                     token,
@@ -121,6 +122,23 @@ async def _search_outbox_loop():
                 logger.info("Search outbox processed: %s", summary)
         except Exception:
             logger.warning("Search outbox processing failed", exc_info=True)
+
+
+async def _run_export_jobs():
+    from app.services.account_service import process_export_job
+
+    result = await process_export_job()
+    if result:
+        logger.info("Account export job processed: %s", result)
+
+
+async def _export_job_loop():
+    while True:
+        await asyncio.sleep(settings.export_job_poll_interval_seconds)
+        try:
+            await _run_singleton_job("account-exports", _run_export_jobs)
+        except Exception:
+            logger.warning("Account export processing failed", exc_info=True)
 
 
 async def _init_replica_set():
@@ -217,7 +235,8 @@ async def lifespan(app: FastAPI):
     warning_task = asyncio.create_task(_warning_check_loop())
     cleanup_task = asyncio.create_task(_cleanup_loop())
     outbox_task = asyncio.create_task(_search_outbox_loop())
-    background_tasks.update({warning_task, cleanup_task, outbox_task})
+    export_task = asyncio.create_task(_export_job_loop())
+    background_tasks.update({warning_task, cleanup_task, outbox_task, export_task})
 
     from app.core.metrics import mark_startup_complete
 

@@ -79,16 +79,13 @@ async def _delete_object_async(stored_path: str) -> bool:
 def _permanent_media_url(
     media_id: str, stored_path: str, variant: str, allow_public_base: bool = True
 ) -> str:
-    """Return a non-expiring, browser-resolvable URL for public media.
+    """Return a stable authorization-aware URL for mutable media.
 
-    Prefers a configured public/CDN base URL. When none is configured, falls
-    back to the app's own media proxy endpoint, which streams the object on
-    demand and never expires (unlike short-lived signed URLs that get baked
-    into diary HTML and then break).
+    Public object URLs are deliberately not returned here. Diary visibility,
+    moderation, and deletion are mutable; a CDN/object URL could remain usable
+    after the database says the media is private. The proxy is cache-controlled
+    and checks effective diary visibility on every request.
     """
-    base = settings.public_media_base_url
-    if base and allow_public_base:
-        return f"{base.rstrip('/')}/{settings.minio_bucket}/{stored_path}"
     return f"/api/v1/media/file/{media_id}?v={variant}"
 
 
@@ -176,13 +173,25 @@ async def resolve_media_file(
     return media, path, effective_is_private
 
 
-async def fetch_media_object(path: str):
+async def fetch_media_object(path: str, offset: int | None = None, length: int | None = None):
     """Open the stored object for streaming, or raise 404 if it is gone."""
     client = get_minio_client()
     try:
-        return await asyncio.to_thread(client.get_object, settings.minio_bucket, path)
+        if offset is None:
+            return await asyncio.to_thread(client.get_object, settings.minio_bucket, path)
+        return await asyncio.to_thread(
+            client.get_object, settings.minio_bucket, path, offset, length
+        )
     except Exception:
         raise NotFoundException("Media not found")
+
+
+async def get_media_object_size(path: str) -> int:
+    try:
+        stat = await asyncio.to_thread(get_minio_client().stat_object, settings.minio_bucket, path)
+        return int(stat.size)
+    except Exception as exc:
+        raise NotFoundException("Media not found") from exc
 
 
 async def upload_media(
@@ -219,10 +228,9 @@ async def upload_media(
 
     detected_mime = detect_mime_type(file_data)
     logger.info(
-        "Upload detected_mime=%s content_type_header=%s filename=%s size=%d",
+        "Upload detected_mime=%s content_type_header=%s size=%d",
         detected_mime,
         content_type_header,
-        original_filename,
         len(file_data),
     )
 
@@ -470,11 +478,21 @@ async def get_media_signed_url(media_id: str, current_user: dict) -> dict:
 async def cascade_delete_diary_media(diary_id: str) -> int:
     repo = MediaRepository()
     media_list = await repo.find_by_diary(diary_id)
+    failures: list[str] = []
     for m in media_list:
         for path_key in ("stored_path", "standard_path", "thumbnail_path"):
             path_val = m.get(path_key)
             if path_val:
-                await _delete_object_async(path_val)
+                try:
+                    if not await _delete_object_async(path_val):
+                        failures.append(str(path_val))
+                except Exception:
+                    logger.exception("Failed to delete media object %s", path_val)
+                    failures.append(str(path_val))
+    if failures:
+        raise ValidationException(
+            "Diary media could not be fully deleted; the diary was left unchanged."
+        )
     deleted = await repo.delete_by_diary(diary_id)
     return deleted
 

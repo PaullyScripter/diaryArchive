@@ -149,8 +149,9 @@ tests (`backend/tests/test_security_hardening.py`). Backend suite: 242 passed.
   rightmost `X-Forwarded-For` value; nginx now overwrites `X-Forwarded-For $remote_addr`.
 - **SEV-002** FIXED: shared `_verify_credentials` helper adds per-account lockout
   (`appeal_*_lockout` limits) and keys rate limits by username+IP (no more IP-only oracle).
-- **PRI-001** FIXED: new `public_media_base_url` setting; when unset, public media
-  uses short-lived signed URLs instead of leaking the internal MinIO host.
+- **PRI-001** FIXED: media responses now always use the same-origin,
+  authorization-aware proxy; `public_media_base_url` is only an allowlist/CSP
+  setting and is never emitted as a mutable media URL.
 - **SEV-005** FIXED: `TicketReply.message` requires `min_length=1`; user reply is rate limited.
 - **SEV-003** FIXED: my likes/bookmarks counts use a DB-side aggregation, no `to_list(10000)`.
 - **SEV-004** NO CODE CHANGE NEEDED: already mitigated by the existing unique
@@ -167,3 +168,29 @@ tests (`backend/tests/test_security_hardening.py`). Backend suite: 242 passed.
 Also fixed an existing bug in the in-process rate-limit fallback
 (`_fallback_consume`), which previously pruned its key on essentially every call
 and so never actually limited when Redis was down.
+
+## 6. Supplemental hardening — 2026-10-30
+
+The follow-up repository-wide review added the following durable protections:
+
+- refresh-token rotation now detects reuse and revokes the whole token family;
+  JWTs require issuer, audience, subject, issued-at, and token id claims;
+- account exports require password confirmation, run as leased background jobs,
+  produce bounded private MinIO archives, and expose owner-only status/download
+  endpoints; account deletion cancels exports and records durable deletion
+  phases;
+- backup artifacts use encrypt-then-MAC verification, deployments resolve and
+  check out the requested commit before metadata/migrations, and the Mongo
+  application user is reconciled to `readWrite` only;
+- public search rebuilds use a temporary index and atomic swap, failed index
+  operations remain retryable, feed cache keys are hashed/versioned, and
+  pagination, request bodies, media ranges, and export records are bounded;
+- social and comment likes/follows/bookmarks have idempotent state-setting
+  routes, media deletion preserves metadata when object cleanup fails, and
+  high-impact diary CSS declarations are blocked consistently on client and
+  server.
+
+Validation for this pass: backend `323 passed`, frontend `87 passed`, frontend
+typecheck/lint passed, backend Ruff checks passed. The repository's existing
+Ruff format drift remains outside the touched files; `ruff format --check .`
+reports legacy files that were not reformatted in this change.

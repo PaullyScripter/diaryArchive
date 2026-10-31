@@ -2,6 +2,7 @@ import logging
 from datetime import UTC, datetime
 
 from bson import ObjectId
+
 from app.core.exceptions import (
     NotFoundException,
     PermissionDeniedException,
@@ -428,7 +429,11 @@ async def delete_comment(
         _index_diary_async(updated_diary)
 
 
-async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
+async def toggle_comment_like(
+    comment_id: str,
+    current_user: dict,
+    desired: bool | None = None,
+) -> dict:
     comment_repo = CommentRepository()
     comment = await comment_repo.get_by_id(comment_id)
     if comment is None:
@@ -444,6 +449,22 @@ async def toggle_comment_like(comment_id: str, current_user: dict) -> dict:
     user_id = str(current_user["_id"])
 
     async with await _toggle_guard(("comment_like", user_id, comment_id)):
+        if desired is False:
+            removed = await comment_repo.ensure_comment_unliked(comment_id, user_id)
+            if removed:
+                await comment_repo.inc_like_count(comment_id, -1)
+            comment = await comment_repo.get_by_id(comment_id)
+            return {"is_liked": False, "like_count": comment["like_count"] if comment else 0}
+
+        if desired is True:
+            added = await comment_repo.ensure_comment_liked(comment_id, user_id)
+            if added:
+                await comment_repo.inc_like_count(comment_id, 1)
+            comment = await comment_repo.get_by_id(comment_id)
+            return {"is_liked": True, "like_count": comment["like_count"] if comment else 0}
+
+        # Preserve the legacy POST toggle for older clients. New clients use
+        # PUT/DELETE so retries are idempotent.
         removed = await comment_repo.ensure_comment_unliked(comment_id, user_id)
         if removed:
             await comment_repo.inc_like_count(comment_id, -1)

@@ -29,8 +29,8 @@ async def _meili_call_retry(operation, *args, attempts: int = 3, **kwargs):
 
 
 class DiaryIndexer:
-    def __init__(self):
-        self.index = get_client().index(PUBLIC_DIARIES_INDEX)
+    def __init__(self, index_name: str = PUBLIC_DIARIES_INDEX):
+        self.index = get_client().index(index_name)
 
     async def index_diary(self, diary: dict) -> None:
         if diary.get("privacy") != "public":
@@ -40,12 +40,14 @@ class DiaryIndexer:
             await _meili_call_retry(self.index.add_documents, [doc], primary_key="id")
         except Exception:
             logger.warning("Failed to index diary %s", diary.get("_id"), exc_info=True)
+            raise
 
     async def remove_diary(self, diary_id: str) -> None:
         try:
             await _meili_call_retry(self.index.delete_document, diary_id)
         except Exception:
             logger.warning("Failed to remove diary %s from index", diary_id, exc_info=True)
+            raise
 
     async def bulk_index(self, diaries: list[dict]) -> None:
         docs = [self._build_document(d) for d in diaries if d.get("privacy") == "public"]
@@ -55,12 +57,14 @@ class DiaryIndexer:
             await _meili_call_retry(self.index.add_documents, docs, primary_key="id")
         except Exception:
             logger.warning("Failed to bulk index %d diaries", len(docs), exc_info=True)
+            raise
 
     async def clear_index(self) -> None:
         try:
             await _meili_call_retry(self.index.delete_all_documents)
         except Exception:
             logger.warning("Failed to clear Meilisearch index", exc_info=True)
+            raise
 
     def _build_document(self, diary: dict) -> dict:
         content_text = diary.get("content_text") or ""
@@ -68,7 +72,6 @@ class DiaryIndexer:
             "id": str(diary["_id"]),
             "title": diary.get("title") or "",
             "content_text": content_text,
-            "content_html": diary.get("content_html") or "",
             "tags": diary.get("tags", []),
             "emotion": diary.get("emotion"),
             "year": diary.get("year"),

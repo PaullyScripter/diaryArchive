@@ -8,7 +8,12 @@ report_indexes: list[tuple[dict, dict]] = [
         {
             "name": "idx_pending_target_unique",
             "unique": True,
-            "partialFilterExpression": {"status": "pending", "target_type": {"$ne": "bug"}},
+            # MongoDB partial indexes do not support $ne/$not. Enumerate the
+            # supported report targets so bug reports remain unconstrained.
+            "partialFilterExpression": {
+                "status": "pending",
+                "target_type": {"$in": ["user", "diary", "comment"]},
+            },
         },
     ),
     (

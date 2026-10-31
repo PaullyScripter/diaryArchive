@@ -34,8 +34,8 @@ This document covers production security configuration for DiaryArchive.
 - [ ] MinIO bucket not publicly accessible
 - [ ] MongoDB authentication enabled
 - [ ] Redis password required
-- [ ] Private diary metadata is contained inside the client-encrypted payload
-- [ ] Mutable media is authorization-proxied with `private, no-store` caching
+- [x] Private diary metadata is contained inside the client-encrypted payload
+- [x] Mutable media is authorization-proxied with `private, no-store` caching
 
 ### Infrastructure
 - [ ] UFW firewall enabled (only 22, 80, 443 open)
@@ -46,7 +46,8 @@ This document covers production security configuration for DiaryArchive.
 - [ ] Docker containers have `no-new-privileges`
 - [ ] Docker containers have `read_only` filesystem
 - [ ] Docker containers drop all capabilities
-- [ ] Backend uses a dedicated MongoDB application user; root credentials are
+- [x] Backend uses a dedicated MongoDB application user with only `readWrite`;
+  root credentials are
   reserved for database administration
 
 ### Secrets Management
@@ -131,7 +132,7 @@ cd /opt/diaryarchive
 - **Meilisearch:** Search indices
 
 ### Backup Encryption
-- All backups encrypted with an authenticated encryption scheme (AES-256-GCM or an equivalent envelope-encryption service)
+- All backups use an authenticated encrypt-then-MAC envelope (AES-256-CBC/PBKDF2 plus HMAC-SHA256); migrate to a managed AEAD/envelope-encryption service when available
 - Encryption keys stored separately from backups
 - Off-site backup storage (R2/S3)
 - Daily automated backups with 30-day retention

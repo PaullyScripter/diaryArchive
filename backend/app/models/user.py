@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class UserPreferences(BaseModel):
@@ -30,8 +30,48 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=20)
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    new_encrypted_master_key: str | None = Field(
+        None, min_length=96, max_length=250_000, pattern=r"^[0-9a-fA-F]+$"
+    )
+    new_master_key_salt: str | None = Field(
+        None, min_length=32, max_length=32, pattern=r"^[0-9a-fA-F]{32}$"
+    )
+    new_master_key_iv: str | None = Field(
+        None, min_length=24, max_length=24, pattern=r"^[0-9a-fA-F]{24}$"
+    )
+
+    @model_validator(mode="after")
+    def validate_master_key_fields(self):
+        fields = (
+            self.new_encrypted_master_key,
+            self.new_master_key_salt,
+            self.new_master_key_iv,
+        )
+        if any(value is not None for value in fields) and not all(
+            value is not None for value in fields
+        ):
+            raise ValueError("All new master-key fields must be provided together")
+        return self
+
+
+class PasswordResetRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20)
+
+
+class PasswordResetSubmit(BaseModel):
+    token: str = Field(..., min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
 
 
 class PasswordConfirmation(BaseModel):

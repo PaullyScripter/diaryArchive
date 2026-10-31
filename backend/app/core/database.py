@@ -19,7 +19,10 @@ class DatabaseManager:
                 maxIdleTimeMS=30000,
                 connectTimeoutMS=5000,
                 serverSelectionTimeoutMS=5000,
+                socketTimeoutMS=10000,
+                waitQueueTimeoutMS=5000,
                 heartbeatFrequencyMS=10000,
+                retryWrites=True,
             )
         return cls._client
 

@@ -230,7 +230,7 @@ async def issue_username_warning(
 
 @router.get("")
 async def list_warned_users(
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):

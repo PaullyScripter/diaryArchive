@@ -21,7 +21,7 @@ export function LikeButton({ diaryId, initialCount, initialIsLiked }: LikeButton
     setOptimisticIsLiked(!prevLiked);
     setOptimisticCount(prevLiked ? prevCount - 1 : prevCount + 1);
 
-    toggleLike.mutate(undefined, {
+    toggleLike.mutate(!prevLiked, {
       onError: () => {
         setOptimisticIsLiked(prevLiked);
         setOptimisticCount(prevCount);

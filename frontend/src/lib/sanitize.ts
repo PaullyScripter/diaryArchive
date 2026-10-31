@@ -27,6 +27,10 @@ const ALLOWED_ATTR = [
 // Constructs that must never survive inside a CSS value or <style> block.
 // The DISABLED- prefix neuters the token while keeping surrounding CSS intact.
 const CSS_DANGEROUS_PATTERNS: RegExp[] = [
+  // Prevent author CSS from creating overlays or UI-redress surfaces inside
+  // rendered diary containers. Layout and typography remain available, but
+  // positioning/layering/filtering is controlled by the application shell.
+  /(^|[;{]\s*)(position|top|right|bottom|left|inset|z-index|filter|backdrop-filter|content|transform|transform-origin)\s*:/gim,
   /url\s*\(/gi,
   /expression\s*\(/gi,
   /@import/gi,
@@ -63,7 +67,14 @@ export function scrubCssText(css: string): string {
   // Decode escapes first so the blocklist sees "url(", "javascript:", etc.
   // even when the author wrote them escaped.
   let out = decodeCssEscapes(css);
-  for (const pattern of CSS_DANGEROUS_PATTERNS) {
+  // Keep the declaration delimiter in place and prefix the property itself.
+  // Prefixing the whole match would produce `DISABLED-;position:` and leave
+  // the dangerous declaration active in the browser.
+  out = out.replace(
+    CSS_DANGEROUS_PATTERNS[0],
+    (_match, delimiter: string, property: string) => `${delimiter}DISABLED-${property}:`,
+  );
+  for (const pattern of CSS_DANGEROUS_PATTERNS.slice(1)) {
     out = out.replace(pattern, (match) => `DISABLED-${match}`);
   }
   // Decoding can turn an escape like "\3c/style\3e" into "</style>". Re-encode

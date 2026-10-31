@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_user, get_db, get_optional_current_user
 from app.core.config import settings
 from app.core.exceptions import (
     AuthenticationException,
@@ -30,7 +30,14 @@ from app.core.security import (
 )
 from app.core.utils import fmt_dt
 from app.models.token import AuthResponse, RegisterResponse, TokenResponse
-from app.models.user import UserCreate, UserLogin
+from app.models.user import (
+    ChangePasswordRequest,
+    EmailVerificationRequest,
+    PasswordResetRequest,
+    PasswordResetSubmit,
+    UserCreate,
+    UserLogin,
+)
 from app.repositories.audit_log_repo import AuditLogRepository
 from app.repositories.email_verification_token_repo import EmailVerificationTokenRepository
 from app.repositories.password_reset_token_repo import PasswordResetTokenRepository
@@ -143,12 +150,22 @@ def _validate_password(password: str) -> None:
         raise ValidationException("Password must contain at least one special character")
 
 
-async def _generate_tokens(response: Response, user_id: str, original_login_at=None) -> str:
+async def _generate_tokens(
+    response: Response,
+    user_id: str,
+    original_login_at=None,
+    family_id: str | None = None,
+    parent_token_hash: str | None = None,
+) -> str:
     refresh_token_raw = generate_refresh_token()
     refresh_token_hash = hash_token(refresh_token_raw)
     refresh_repo = RefreshTokenRepository()
     await refresh_repo.create_token(
-        user_id, refresh_token_hash, original_login_at=original_login_at
+        user_id,
+        refresh_token_hash,
+        original_login_at=original_login_at,
+        family_id=family_id,
+        parent_token_hash=parent_token_hash,
     )
     _set_refresh_cookie(response, refresh_token_raw)
     return refresh_token_raw
@@ -384,9 +401,15 @@ async def refresh(
 
     token_hash = hash_token(refresh_token)
     refresh_repo = RefreshTokenRepository()
-    stored = await refresh_repo.find_one_and_delete(token_hash)
+    stored = await refresh_repo.consume_token(token_hash)
 
     if stored is None:
+        reused = await refresh_repo.find_by_hash(token_hash)
+        if reused and reused.get("used_at"):
+            family_id = reused.get("family_id")
+            if family_id:
+                await refresh_repo.revoke_family(family_id)
+            await refresh_repo.delete_all_for_user(str(reused["user_id"]))
         raise AuthenticationException("Invalid refresh token")
 
     if stored["expires_at"].replace(tzinfo=UTC) < datetime.now(UTC):
@@ -410,11 +433,17 @@ async def refresh(
         raise PermissionDeniedException("Your account has been banned")
 
     access_token = create_access_token(str(user["_id"]), user["username"])
-    await _generate_tokens(
-        response,
-        str(user["_id"]),
-        original_login_at=stored.get("original_login_at"),
-    )
+    try:
+        await _generate_tokens(
+            response,
+            str(user["_id"]),
+            original_login_at=stored.get("original_login_at"),
+            family_id=stored.get("family_id") or token_hash,
+            parent_token_hash=token_hash,
+        )
+    except Exception:
+        await refresh_repo.revoke_family(stored.get("family_id") or token_hash)
+        raise
 
     return {"data": TokenResponse(access_token=access_token)}
 
@@ -423,7 +452,7 @@ async def refresh(
 async def logout(
     request: Request,
     response: Response,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_optional_current_user),
 ):
     refresh_token = request.cookies.get("refresh_token")
     if refresh_token:
@@ -431,7 +460,8 @@ async def logout(
         refresh_repo = RefreshTokenRepository()
         await refresh_repo.delete_by_hash(token_hash)
 
-    await invalidate_all_user_tokens(str(current_user["_id"]))
+    if current_user:
+        await invalidate_all_user_tokens(str(current_user["_id"]))
     _clear_refresh_cookie(response)
     final_response = Response(status_code=204)
     final_response.raw_headers.extend(response.raw_headers)
@@ -447,14 +477,18 @@ async def get_me(
 
 @router.put("/change-password")
 async def change_password(
-    body: dict,
+    body: ChangePasswordRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
-    current_password = body.get("current_password")
-    new_password = body.get("new_password")
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:change_password:{current_user['_id']}", 5, 3600
+    )
+    if is_limited:
+        raise RateLimitException("Too many password change attempts")
 
-    if not current_password or not new_password:
-        raise ValidationException("Both current_password and new_password are required")
+    current_password = body.current_password
+    new_password = body.new_password
 
     if not await verify_password_async(current_password, current_user["password_hash"]):
         raise AuthenticationException("Current password is incorrect")
@@ -464,16 +498,18 @@ async def change_password(
     user_repo = UserRepository()
     update_fields = {"password_hash": await hash_password_async(new_password)}
 
-    if "new_encrypted_master_key" in body and "new_master_key_salt" in body:
-        if body.get("new_encrypted_master_key") and body.get("new_master_key_salt"):
-            update_fields["encrypted_master_key"] = body["new_encrypted_master_key"]
-            update_fields["master_key_salt"] = body["new_master_key_salt"]
-            if "new_master_key_iv" in body:
-                update_fields["master_key_iv"] = body["new_master_key_iv"]
-        elif current_user.get("encrypted_master_key"):
-            update_fields["encrypted_master_key"] = None
-            update_fields["master_key_salt"] = None
-            update_fields["master_key_iv"] = None
+    if (
+        body.new_encrypted_master_key
+        and body.new_master_key_salt
+        and body.new_master_key_iv
+    ):
+        update_fields["encrypted_master_key"] = body.new_encrypted_master_key
+        update_fields["master_key_salt"] = body.new_master_key_salt
+        update_fields["master_key_iv"] = body.new_master_key_iv
+    elif current_user.get("encrypted_master_key"):
+        update_fields["encrypted_master_key"] = None
+        update_fields["master_key_salt"] = None
+        update_fields["master_key_iv"] = None
 
     await user_repo.update(str(current_user["_id"]), update_fields)
 
@@ -492,12 +528,17 @@ async def change_password(
 
 @router.post("/request-password-reset")
 async def request_password_reset(
-    body: dict,
+    body: PasswordResetRequest,
     request: Request,
 ):
-    username = body.get("username", "").lower().strip()
-    if not username:
-        raise ValidationException("Username is required")
+    username = body.username.lower().strip()
+    client_ip = get_client_ip(request)
+    is_limited, _ = await check_rate_limit(
+        "rate_limit:password_reset_request_ip:" + client_ip,
+        *settings.get_rate_limit("password_reset_request"),
+    )
+    if is_limited:
+        raise RateLimitException("Too many password reset requests")
 
     user_repo = UserRepository()
     user = await user_repo.get_by_username(username)
@@ -528,14 +569,11 @@ async def request_password_reset(
 
 @router.post("/reset-password")
 async def reset_password(
-    body: dict,
+    body: PasswordResetSubmit,
     request: Request,
 ):
-    token = body.get("token", "")
-    new_password = body.get("new_password", "")
-
-    if not token or not new_password:
-        raise ValidationException("Token and new_password are required")
+    token = body.token
+    new_password = body.new_password
 
     client_ip = get_client_ip(request)
     is_limited, _ = await check_rate_limit(
@@ -589,12 +627,10 @@ async def reset_password(
 
 @router.post("/verify-email")
 async def verify_email(
-    body: dict,
+    body: EmailVerificationRequest,
     request: Request,
 ):
-    token = body.get("token", "")
-    if not token:
-        raise ValidationException("Token is required")
+    token = body.token
 
     client_ip = get_client_ip(request)
     is_limited, _ = await check_rate_limit(

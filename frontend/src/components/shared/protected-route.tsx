@@ -17,7 +17,10 @@ export function ProtectedRoute({
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      const redirect = encodeURIComponent(window.location.pathname);
+      // Preserve local query state (filters, editor ids) without accepting an
+      // arbitrary external redirect target.
+      const target = `${window.location.pathname}${window.location.search}`;
+      const redirect = encodeURIComponent(target);
       router.push(`/login?redirect=${redirect}`);
     }
   }, [isAuthenticated, isLoading, router]);

@@ -231,74 +231,99 @@ async def sweep_orphaned_notifications() -> dict:
 async def reconcile_diary_counters() -> dict:
     """Set each diary's like/bookmark/comment counts to the true row counts."""
     db = _db()
-    diary_ids = [d["_id"] for d in await db.diaries.find({}, {"_id": 1}).to_list(length=100000)]
-
-    async def _counts(collection, field, match_extra=None):
-        query: dict = {field: {"$in": diary_ids}}
-        if match_extra:
-            query.update(match_extra)
-        return {
-            row["_id"]: row["count"]
-            for row in await collection.aggregate(
-                [{"$match": query}, {"$group": {"_id": f"${field}", "count": {"$sum": 1}}}]
-            ).to_list(length=len(diary_ids))
-        }
-
-    like_map = await _counts(db.likes, "diary_id")
-    bookmark_map = await _counts(db.bookmarks, "diary_id")
-    comment_map = await _counts(
-        db.comments,
-        "diary_id",
-        {"is_deleted": {"$ne": True}, "parent_comment_id": None},
-    )
-
     updated = 0
-    for did in diary_ids:
-        patch = {
-            "like_count": like_map.get(did, 0),
-            "bookmark_count": bookmark_map.get(did, 0),
-            "comment_count": comment_map.get(did, 0),
-        }
-        res = await db.diaries.update_one(
-            {"_id": did}, {"$set": {f"stats.{k}": v for k, v in patch.items()}}
+    batch: list = []
+
+    async def _reconcile_batch(diary_ids: list) -> int:
+        if not diary_ids:
+            return 0
+
+        async def _counts(collection, field, match_extra=None):
+            query: dict = {field: {"$in": diary_ids}}
+            if match_extra:
+                query.update(match_extra)
+            return {
+                row["_id"]: row["count"]
+                for row in await collection.aggregate(
+                    [{"$match": query}, {"$group": {"_id": f"${field}", "count": {"$sum": 1}}}]
+                ).to_list(length=len(diary_ids))
+            }
+
+        like_map = await _counts(db.likes, "diary_id")
+        bookmark_map = await _counts(db.bookmarks, "diary_id")
+        comment_map = await _counts(
+            db.comments,
+            "diary_id",
+            {"is_deleted": {"$ne": True}, "parent_comment_id": None},
         )
-        if res.modified_count:
-            updated += 1
+        changed = 0
+        for did in diary_ids:
+            res = await db.diaries.update_one(
+                {"_id": did},
+                {
+                    "$set": {
+                        "stats.like_count": like_map.get(did, 0),
+                        "stats.bookmark_count": bookmark_map.get(did, 0),
+                        "stats.comment_count": comment_map.get(did, 0),
+                    }
+                },
+            )
+            changed += int(res.modified_count > 0)
+        return changed
+
+    async for diary in db.diaries.find({}, {"_id": 1}).batch_size(1000):
+        batch.append(diary["_id"])
+        if len(batch) >= 1000:
+            updated += await _reconcile_batch(batch)
+            batch = []
+    updated += await _reconcile_batch(batch)
     return {"diaries_updated": updated}
 
 
 async def reconcile_user_counters() -> dict:
     """Set each user's follower/following/diary counts to the true row counts."""
     db = _db()
-    user_ids = [u["_id"] for u in await db.users.find({}, {"_id": 1}).to_list(length=100000)]
-
-    async def _counts(collection, field):
-        match = {field: {"$in": user_ids}}
-        pipeline = [
-            {"$match": match},
-            {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
-        ]
-        return {
-            row["_id"]: row["count"]
-            for row in await collection.aggregate(pipeline).to_list(length=len(user_ids))
-        }
-
-    follower_map = await _counts(db.follows, "following_id")
-    following_map = await _counts(db.follows, "follower_id")
-    diary_map = await _counts(db.diaries, "user_id")
-
     updated = 0
-    for uid in user_ids:
-        patch = {
-            "follower_count": follower_map.get(uid, 0),
-            "following_count": following_map.get(uid, 0),
-            "diary_count": diary_map.get(uid, 0),
-        }
-        res = await db.users.update_one(
-            {"_id": uid}, {"$set": {f"stats.{k}": v for k, v in patch.items()}}
-        )
-        if res.modified_count:
-            updated += 1
+    batch: list = []
+
+    async def _reconcile_batch(user_ids: list) -> int:
+        if not user_ids:
+            return 0
+
+        async def _counts(collection, field):
+            pipeline = [
+                {"$match": {field: {"$in": user_ids}}},
+                {"$group": {"_id": f"${field}", "count": {"$sum": 1}}},
+            ]
+            return {
+                row["_id"]: row["count"]
+                for row in await collection.aggregate(pipeline).to_list(length=len(user_ids))
+            }
+
+        follower_map = await _counts(db.follows, "following_id")
+        following_map = await _counts(db.follows, "follower_id")
+        diary_map = await _counts(db.diaries, "user_id")
+        changed = 0
+        for uid in user_ids:
+            res = await db.users.update_one(
+                {"_id": uid},
+                {
+                    "$set": {
+                        "stats.follower_count": follower_map.get(uid, 0),
+                        "stats.following_count": following_map.get(uid, 0),
+                        "stats.diary_count": diary_map.get(uid, 0),
+                    }
+                },
+            )
+            changed += int(res.modified_count > 0)
+        return changed
+
+    async for user in db.users.find({}, {"_id": 1}).batch_size(1000):
+        batch.append(user["_id"])
+        if len(batch) >= 1000:
+            updated += await _reconcile_batch(batch)
+            batch = []
+    updated += await _reconcile_batch(batch)
     return {"users_updated": updated}
 
 
@@ -314,6 +339,11 @@ async def run_cleanup() -> dict:
         summary["notifications"] = await sweep_orphaned_notifications()
         summary["diaries"] = await reconcile_diary_counters()
         summary["users"] = await reconcile_user_counters()
+        from app.services.account_service import cleanup_expired_export_jobs
+
+        summary["account_exports"] = {
+            "expired_removed": await cleanup_expired_export_jobs()
+        }
     except Exception:
         logger.exception("MED-2 cleanup run failed")
         raise

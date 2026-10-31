@@ -23,13 +23,6 @@ fi
 # shellcheck source=/dev/null
 set -a; source "$ENV_FILE"; set +a
 
-echo "==> Deploying $(git rev-parse --short HEAD) ($GIT_REF)"
-
-# Export deployment metadata for health endpoint
-export APP_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.1.0')"
-export COMMIT_HASH="$(git rev-parse --short HEAD)"
-export DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
 # Save the current deployment SHA for rollback (best-effort).
 PREV_SHA="$(cat .last-deployed-sha 2>/dev/null || echo none)"
 echo "   previous deployment: $PREV_SHA"
@@ -38,25 +31,33 @@ echo "   previous deployment: $PREV_SHA"
 # 1. Pull the requested ref and verify it builds.
 # ---------------------------------------------------------------------------
 git fetch --all --tags
-git checkout "$GIT_REF" --force
+TARGET_SHA="$(git rev-parse "$GIT_REF^{commit}")"
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  echo "FAIL: deployment checkout is dirty; refusing to overwrite local changes." >&2
+  exit 1
+fi
+git checkout "$TARGET_SHA"
+
+echo "==> Deploying $(git rev-parse --short=12 HEAD) ($GIT_REF)"
+
+# Export deployment metadata only after the requested ref is checked out.
+export APP_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo '0.1.0')"
+export COMMIT_HASH="$(git rev-parse --short=12 HEAD)"
+export DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 echo "==> Migration / index preparation stage"
 # Runs inside the backend container: ensures required indexes and any pending
 # data migrations exist BEFORE the new version serves traffic. Idempotent.
-if docker compose "${COMPOSE_ARGS[@]}" ps --services | grep -q backend; then
-  docker compose "${COMPOSE_ARGS[@]}" run --rm backend \
-    python -m app.migrations.run_migrations || {
-      echo "FAIL: migration stage failed. Aborting rollout." >&2
-      exit 1
-    }
-else
-  echo "   backend not currently running; migration deferred to startup."
-fi
+docker compose "${COMPOSE_ARGS[@]}" run --rm backend \
+  python -m app.migrations.run_migrations || {
+    echo "FAIL: migration stage failed. Aborting rollout." >&2
+    exit 1
+  }
 
 # ---------------------------------------------------------------------------
 # 2. Build the new images (immutable by commit tag).
 # ---------------------------------------------------------------------------
-TAG="$(git rev-parse --short HEAD)"
+TAG="$(git rev-parse --short=12 HEAD)"
 docker compose "${COMPOSE_ARGS[@]}" build
 
 # ---------------------------------------------------------------------------

@@ -3,14 +3,15 @@
 **Purpose:** durable, checked-in context for future Codex chats and human
 contributors.
 
-**Last reconciled:** 2026-10-21
+**Last reconciled:** 2026-10-30
 
-**Last prompt synchronization:** 2026-10-30 — Completed a repository-wide
-security, scalability, UX, and privacy audit; see the session summary.
+**Last prompt synchronization:** 2026-10-30 — Implemented and validated the
+repository-wide security, scalability, UX, and privacy hardening pass; see the
+session summary.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
-**Working branch at reconciliation:** `chore/footer-tagline`
+**Working branch at reconciliation:** `codex/prompt-context-sync`
 
 This is a high-signal map, not a substitute for reading affected source and
 tests. Historical plans can be stale; verify important claims against the
@@ -20,19 +21,23 @@ current tree.
 
 The security/scalability hardening branch makes moderation history retention
 explicit, adds bounded Account Standing history pagination, requires password
-confirmation for account deletion, rate-limits account export, uses atomic
-Redis limiting with fail-closed behavior for security-critical outages, and
-removes obsolete moderation-history TTL indexes. Large deletion paths use
-cursor-based cleanup; deployment configuration requires the public application
-origin and the active repository CI workflow owns automatic deployment.
+confirmation for account deletion and export, uses atomic Redis limiting with
+fail-closed behavior for security-critical outages, and removes obsolete
+moderation-history TTL indexes. Large deletion paths use cursor-based cleanup;
+exports are leased background archives; mutable media is always served through
+an authorization-aware proxy with range/ETag support; deployment configuration
+requires the public application origin and the active repository CI workflow
+owns automatic deployment.
 
-The 2026-10-28 hardening pass keeps private metadata inside encrypted payloads,
-validates and bounds encrypted key material, uses Redis-backed token-revocation
-caching and leased maintenance/outbox work, bounds uploads/exports/pagination,
-removes plaintext browser draft persistence, serves mutable media as no-store,
-and enables production MongoDB authentication with a dedicated application
-user. Production search rebuilds are explicit rather than automatic startup
-work.
+The 2026-10-30 hardening pass keeps private metadata inside encrypted payloads,
+validates and bounds encrypted key material, detects refresh-token reuse,
+uses Redis-backed token-revocation caching and leased maintenance/outbox/export
+work, bounds uploads/exports/pagination, removes plaintext browser draft
+persistence, serves mutable media as no-store, and enables production
+MongoDB authentication with a dedicated `readWrite` application user.
+Production search rebuilds publish through a temporary index swap rather than
+clearing the live index first. Backups are authenticated with encrypt-then-MAC
+sidecars and account deletion cancels and cleans up export artifacts.
 
 ## 1. Product identity
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Encrypted, rotation-aware backup of MongoDB + MinIO for DiaryArchive.
 #
-#   - MongoDB is dumped (oplog/archive) then AES-256-CBC encrypted at rest.
-#   - MinIO object data is tar'd then encrypted at rest.
+#   - MongoDB is dumped (oplog/archive) then encrypt-then-MAC protected.
+#   - MinIO object data is tar'd then encrypt-then-MAC protected.
 #   - Retention: keeps the latest N daily / weekly / monthly backups, removing
 #     older ones safely (never deletes the newest backup).
 #   - Meilisearch is NOT backed up: it is a rebuildable index and is reindexed
@@ -22,11 +22,15 @@
 #   ./docker/scripts/backup.sh [backup_root_dir]
 #
 # Env (from .env.production unless overridden):
-#   BACKUP_ENCRYPTION_KEY  AES-256-CBC passphrase (base64-able, any length)
+#   BACKUP_ENCRYPTION_KEY  backup encryption passphrase (>=32 random chars)
 #   BACKUP_RETENTION_DAILY, _WEEKLY, _MONTHLY   counts to retain
 #   BACKUP_REMOTE          rclone remote (e.g. "s3:my-bucket"). Empty = skip.
 #   BACKUP_REMOTE_PATH     remote subdirectory (default: "diaryarchive")
 set -euo pipefail
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/backup-crypto.sh"
 
 BACKUP_ROOT="${1:-./backups}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -50,6 +54,7 @@ MONGO_USER="${MONGO_ROOT_USER:?set MONGO_ROOT_USER}"
 MONGO_PASS="${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}"
 
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 echo "==> Backing up MongoDB -> $BACKUP_DIR/mongo.archive.enc"
 docker exec "$MONGO_CONTAINER" mongodump \
@@ -60,16 +65,19 @@ docker exec "$MONGO_CONTAINER" mongodump \
   | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
       -pass env:BACKUP_ENCRYPTION_KEY \
       -out "$BACKUP_DIR/mongo.archive.enc"
+write_backup_mac "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/mongo.archive.mac"
 
 echo "==> Backing up MinIO -> $BACKUP_DIR/minio.tar.enc"
 docker exec "$MINIO_CONTAINER" tar -C /data -cf - . \
   | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
       -pass env:BACKUP_ENCRYPTION_KEY \
       -out "$BACKUP_DIR/minio.tar.enc"
+write_backup_mac "$BACKUP_DIR/minio.tar.enc" "$BACKUP_DIR/minio.tar.mac"
 
 # ---- Checksum ----------------------------------------------------------------
 echo "==> Calculating checksums"
-sha256sum "$BACKUP_DIR"/*.enc > "$BACKUP_DIR/checksums.sha256"
+sha256sum "$BACKUP_DIR"/*.enc "$BACKUP_DIR"/*.mac > "$BACKUP_DIR/checksums.sha256"
+chmod 600 "$BACKUP_DIR/checksums.sha256"
 
 for artifact in "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/minio.tar.enc"; do
   if [[ ! -s "$artifact" ]]; then
@@ -91,7 +99,7 @@ if [[ -n "$BACKUP_REMOTE" ]]; then
   else
     echo "==> Uploading encrypted backup to $BACKUP_REMOTE/$BACKUP_REMOTE_PATH/$STAMP"
     REMOTE_UPLOAD_FAILED=0
-    for f in "$BACKUP_DIR"/*.enc "$BACKUP_DIR"/checksums.sha256 "$BACKUP_DIR"/backup-timestamp.txt; do
+    for f in "$BACKUP_DIR"/*.enc "$BACKUP_DIR"/*.mac "$BACKUP_DIR"/checksums.sha256 "$BACKUP_DIR"/backup-timestamp.txt; do
       if [[ -f "$f" ]]; then
         if ! rclone copyto "$f" "$BACKUP_REMOTE/$BACKUP_REMOTE_PATH/$STAMP/$(basename "$f")" --progress; then
           echo "ERROR: Failed to upload $(basename "$f") to remote." >&2

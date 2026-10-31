@@ -89,10 +89,20 @@ class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         raw_length = request.headers.get("content-length")
         if raw_length and raw_length.isdigit():
-            limit = 52 * 1024 * 1024 if request.url.path.endswith("/media/upload") else 512 * 1024
+            if request.url.path.endswith("/media/upload"):
+                limit = 52 * 1024 * 1024
+            elif request.url.path.endswith("/users/me/avatar"):
+                limit = 6 * 1024 * 1024
+            else:
+                limit = 512 * 1024
             if int(raw_length) > limit:
                 return JSONResponse(
-                    {"error": {"code": "payload_too_large", "message": "Request body is too large"}},
+                    {
+                        "error": {
+                            "code": "payload_too_large",
+                            "message": "Request body is too large",
+                        }
+                    },
                     status_code=413,
                 )
         return await call_next(request)

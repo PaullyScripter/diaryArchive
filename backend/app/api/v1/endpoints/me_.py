@@ -8,7 +8,7 @@ router = APIRouter(prefix="/me", tags=["me"])
 
 @router.get("/diaries")
 async def my_diaries(
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     privacy: str | None = Query(None),
     sort: str = Query("created_at"),

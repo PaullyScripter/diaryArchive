@@ -31,12 +31,12 @@ async def create(
 
 @router.get("")
 async def list_diaries(
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     sort: str = Query("latest"),
     order: str = Query("desc"),
-    tags: str | None = Query(None),
-    emotion: str | None = Query(None),
+    tags: str | None = Query(None, max_length=500),
+    emotion: str | None = Query(None, max_length=50),
     year: int | None = Query(None),
     month: int | None = Query(None, ge=1, le=12),
     current_user: dict | None = Depends(_optional_user),

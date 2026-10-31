@@ -18,6 +18,10 @@
 #   BACKUP_ENCRYPTION_KEY   must match the backup's key
 set -euo pipefail
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/backup-crypto.sh"
+
 BACKUP_DIR="${1:?usage: verify-restore.sh <backup_dir>}"
 ENV_FILE="${ENV_FILE:-.env.production}"
 VERIFY_CONTAINER="diaryarchive-verify-mongo"
@@ -37,7 +41,7 @@ if [[ ! -f "$BACKUP_DIR/mongo.archive.enc" ]]; then
   echo "FAIL: no encrypted Mongo archive: $BACKUP_DIR/mongo.archive.enc" >&2
   exit 1
 fi
-for artifact in "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/minio.tar.enc" "$BACKUP_DIR/checksums.sha256"; do
+for artifact in "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/mongo.archive.mac" "$BACKUP_DIR/minio.tar.enc" "$BACKUP_DIR/minio.tar.mac" "$BACKUP_DIR/checksums.sha256"; do
   if [[ ! -s "$artifact" ]]; then
     echo "FAIL: missing or empty backup artifact: $artifact" >&2
     exit 1
@@ -47,6 +51,7 @@ done
   cd "$BACKUP_DIR"
   sha256sum -c checksums.sha256
 )
+verify_backup_mac "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/mongo.archive.mac"
 
 cleanup() {
   docker rm -f "$VERIFY_CONTAINER" >/dev/null 2>&1 || true
@@ -76,6 +81,7 @@ if [[ "$READY" -ne 1 ]]; then
 fi
 
 echo "==> Restoring encrypted archive into scratch (NO --drop needed; empty DB)"
+verify_backup_mac "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/mongo.archive.mac"
 openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 200000 \
   -pass env:BACKUP_ENCRYPTION_KEY \
   -in "$BACKUP_DIR/mongo.archive.enc" \
@@ -159,6 +165,7 @@ fi
 # ---------------------------------------------------------------------------
 echo "==> Verifying MinIO media is present in the tar"
 mkdir -p "$SCRATCH_MINIO"
+verify_backup_mac "$BACKUP_DIR/minio.tar.enc" "$BACKUP_DIR/minio.tar.mac"
 openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 200000 \
   -pass env:BACKUP_ENCRYPTION_KEY \
   -in "$BACKUP_DIR/minio.tar.enc" \

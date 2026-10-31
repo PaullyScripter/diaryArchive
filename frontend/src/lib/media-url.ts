@@ -85,6 +85,7 @@ export function normalizeMediaReferencesInHtml(html: string): string {
  */
 export async function hydrateMediaUrlsInHtml(
   html: string,
+  signal?: AbortSignal,
 ): Promise<{ html: string; objectUrls: string[] }> {
   if (!html || typeof DOMParser === "undefined" || !html.includes("data-media-id")) {
     return { html, objectUrls: [] };
@@ -93,27 +94,34 @@ export async function hydrateMediaUrlsInHtml(
   const objectUrls: string[] = [];
   const elements = Array.from(doc.querySelectorAll<HTMLElement>("[data-media-id]"));
 
-  await Promise.all(
-    elements.map(async (element) => {
-      const mediaId = element.getAttribute("data-media-id") || "";
-      if (!MEDIA_ID_RE.test(mediaId)) return;
-      const stableUrl = stableMediaUrl(mediaId);
-      const resolvedUrl = resolveMediaUrl(stableUrl) || stableUrl;
-      try {
-        // apiClient already has /api/v1 as its base URL. Passing the full
-        // stable path here would duplicate that prefix in Axios.
-        const apiPath = stableUrl.replace(/^\/api\/v1/, "") || "/";
-        const response = await apiClient.get(apiPath, { responseType: "blob" });
-        const objectUrl = URL.createObjectURL(response.data as Blob);
-        objectUrls.push(objectUrl);
-        element.setAttribute("src", objectUrl);
-      } catch {
+  const hydrateOne = async (element: HTMLElement) => {
+    if (signal?.aborted) return;
+    const mediaId = element.getAttribute("data-media-id") || "";
+    if (!MEDIA_ID_RE.test(mediaId)) return;
+    const stableUrl = stableMediaUrl(mediaId);
+    const resolvedUrl = resolveMediaUrl(stableUrl) || stableUrl;
+    try {
+      // apiClient already has /api/v1 as its base URL. Passing the full
+      // stable path here would duplicate that prefix in Axios.
+      const apiPath = stableUrl.replace(/^\/api\/v1/, "") || "/";
+      const response = await apiClient.get(apiPath, { responseType: "blob", signal });
+      const objectUrl = URL.createObjectURL(response.data as Blob);
+      objectUrls.push(objectUrl);
+      element.setAttribute("src", objectUrl);
+    } catch {
+      if (!signal?.aborted) {
         // Stable URL remains the fallback: public media can render it, while
         // private media remains an authorization-checked 404.
         element.setAttribute("src", resolvedUrl);
       }
-    }),
-  );
+    }
+  };
+
+  // Bound concurrent authenticated fetches so a long diary cannot create an
+  // unbounded burst of requests and browser object URLs.
+  for (let i = 0; i < elements.length; i += 4) {
+    await Promise.all(elements.slice(i, i + 4).map(hydrateOne));
+  }
 
   return { html: serializeHtmlDocument(doc), objectUrls };
 }
@@ -124,18 +132,21 @@ export function useHydratedMediaHtml(html: string): string {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     let objectUrls: string[] = [];
     setHydratedHtml(html);
-    hydrateMediaUrlsInHtml(html).then((result) => {
-      objectUrls = result.objectUrls;
-      if (active) {
-        setHydratedHtml(result.html);
-      } else {
-        objectUrls.forEach((url) => URL.revokeObjectURL(url));
-      }
-    });
+    hydrateMediaUrlsInHtml(html, controller.signal)
+      .then((result) => {
+        objectUrls = result.objectUrls;
+        if (active) setHydratedHtml(result.html);
+        else objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      })
+      .catch(() => {
+        // Aborted hydration is expected during navigation or replacement.
+      });
     return () => {
       active = false;
+      controller.abort();
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [html]);
@@ -153,5 +164,28 @@ export function resolveMediaUrlsInHtml(html: string): string {
   if (!html || !html.includes("/api/")) return html;
   const origin = apiOrigin();
   if (!origin) return html;
-  return html.replace(/(\b(?:src|poster)=["'])\/api\//g, `$1${origin}/api/`);
+  if (typeof DOMParser === "undefined") {
+    return html.replace(/(\b(?:src|poster)=["'])\/api\//g, `$1${origin}/api/`);
+  }
+  if (!html.includes("srcset=")) {
+    return html.replace(/(\b(?:src|poster)=["'])\/api\//g, `$1${origin}/api/`);
+  }
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  for (const element of Array.from(doc.querySelectorAll<HTMLElement>("[src], [poster], [srcset]"))) {
+    for (const attribute of ["src", "poster"]) {
+      const value = element.getAttribute(attribute);
+      if (value?.startsWith("/api/")) element.setAttribute(attribute, `${origin}${value}`);
+    }
+    const srcset = element.getAttribute("srcset");
+    if (srcset) {
+      element.setAttribute(
+        "srcset",
+        srcset
+          .split(",")
+          .map((candidate) => candidate.trim().replace(/^\/api\//, `${origin}/api/`))
+          .join(", "),
+      );
+    }
+  }
+  return serializeHtmlDocument(doc);
 }

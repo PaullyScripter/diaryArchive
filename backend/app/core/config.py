@@ -17,15 +17,16 @@ class Settings(BaseSettings):
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "diaryarchive"
     minio_region: str = "us-east-1"
-    # Publicly reachable base URL for public media (e.g. a MinIO/nginx route that
-    # serves the bucket over HTTPS). When unset, responses use the stable
-    # same-origin media proxy; private media always uses that proxy.
+    # Public media origin used only for sanitizer/CSP allowlisting. Media
+    # responses themselves always use the authorization-aware proxy.
     public_media_base_url: str | None = None
 
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = ""
 
     secret_key: str = ""
+    jwt_issuer: str = "diaryarchive"
+    jwt_audience: str = "diaryarchive-api"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
@@ -56,6 +57,10 @@ class Settings(BaseSettings):
     max_media_per_diary: int = 20
     max_daily_uploads: int = 50
     max_export_records_per_collection: int = 10_000
+    max_export_archive_bytes: int = 100 * 1024 * 1024
+    export_job_retention_hours: int = 24
+    export_job_lease_minutes: int = 30
+    export_job_poll_interval_seconds: int = 15
 
     # Privacy: client IP address retention.
     #   - If true, request logs store a truncated/anon IP (first three octets).
@@ -149,6 +154,9 @@ class Settings(BaseSettings):
         if len(self.secret_key) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
 
+        if not self.jwt_issuer.strip() or not self.jwt_audience.strip():
+            raise ValueError("JWT_ISSUER and JWT_AUDIENCE must be configured")
+
         if not self.email_encryption_key or len(self.email_encryption_key) != 64:
             raise ValueError("EMAIL_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes)")
         if self.email_encryption_key.lower() != self.email_encryption_key or any(
@@ -160,8 +168,10 @@ class Settings(BaseSettings):
 
         if self.minio_access_key == "minioadmin":
             raise ValueError("MINIO_ACCESS_KEY must not use the default 'minioadmin' value")
-        if self.meilisearch_api_key == "dev-master-key":
-            raise ValueError("MEILISEARCH_API_KEY must not use the 'dev-master-key' value")
+        if not self.minio_secret_key or self.minio_secret_key == "minioadmin":
+            raise ValueError("MINIO_SECRET_KEY must not use a default value")
+        if not self.meilisearch_api_key or self.meilisearch_api_key == "dev-master-key":
+            raise ValueError("MEILISEARCH_API_KEY must be configured in production")
 
         if not self.debug:
             if "*" in self.cors_origins:
@@ -169,6 +179,17 @@ class Settings(BaseSettings):
             for origin in self.cors_origins:
                 if origin.startswith("http://") and "localhost" not in origin:
                     raise ValueError(f"CORS_ORIGINS must not use http:// in production: {origin}")
+            for name, origin in (
+                ("PUBLIC_APP_URL", self.public_app_url),
+                ("PUBLIC_API_URL", self.public_api_url),
+            ):
+                if origin:
+                    if not origin.startswith("https://"):
+                        raise ValueError(f"{name} must use https:// in production")
+                    if "localhost" in origin or "127.0.0.1" in origin:
+                        raise ValueError(f"{name} must not point to localhost in production")
+            if self.email_provider and not self.smtp_host:
+                raise ValueError("SMTP_HOST is required when EMAIL_PROVIDER is configured")
 
         return self
 

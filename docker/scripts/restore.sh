@@ -20,6 +20,10 @@
 #   BACKUP_ENCRYPTION_KEY   must match the one used to create the backup
 set -euo pipefail
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/backup-crypto.sh"
+
 BACKUP_DIR="${1:?usage: restore.sh <backup_dir>}"
 MONGO_CONTAINER="${MONGO_CONTAINER:-diaryarchive-mongodb-1}"
 MINIO_CONTAINER="${MINIO_CONTAINER:-diaryarchive-minio-1}"
@@ -40,6 +44,7 @@ if [[ ! -f "$BACKUP_DIR/mongo.archive.enc" ]]; then
   echo "error: no encrypted Mongo archive found: $BACKUP_DIR/mongo.archive.enc" >&2
   exit 1
 fi
+verify_backup_mac "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/mongo.archive.mac"
 
 # Destructive restore requires explicit human confirmation.
 DESTRUCTIVE="${CONFIRM_PRODUCTION_RESTORE:-no}"
@@ -67,8 +72,12 @@ if [[ -f "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive" ]]; then
     -pass env:BACKUP_ENCRYPTION_KEY \
     -in "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive" \
     -out "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.enc"
+  write_backup_mac \
+    "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.enc" \
+    "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.mac"
   rm -f "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive"
-  sha256sum "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.enc" > "$SAFETY_SNAPSHOT_DIR/checksums.sha256"
+  sha256sum "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.enc" \
+    "$SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.mac" > "$SAFETY_SNAPSHOT_DIR/checksums.sha256"
   echo "   Safety snapshot saved: $SAFETY_SNAPSHOT_DIR/mongo-pre-restore.archive.enc"
 else
   echo "   WARNING: could not create safety snapshot; proceeding anyway" >&2
@@ -78,6 +87,7 @@ fi
 # Restore MongoDB
 # ---------------------------------------------------------------------------
 echo "==> Restoring MongoDB from $BACKUP_DIR/mongo.archive.enc (with --drop)"
+verify_backup_mac "$BACKUP_DIR/mongo.archive.enc" "$BACKUP_DIR/mongo.archive.mac"
 openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 200000 \
   -pass env:BACKUP_ENCRYPTION_KEY \
   -in "$BACKUP_DIR/mongo.archive.enc" \
@@ -91,6 +101,7 @@ openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 200000 \
 # ---------------------------------------------------------------------------
 if [[ -f "$BACKUP_DIR/minio.tar.enc" ]]; then
   echo "==> Restoring MinIO from $BACKUP_DIR/minio.tar.enc"
+  verify_backup_mac "$BACKUP_DIR/minio.tar.enc" "$BACKUP_DIR/minio.tar.mac"
   openssl enc -d -aes-256-cbc -salt -pbkdf2 -iter 200000 \
     -pass env:BACKUP_ENCRYPTION_KEY \
     -in "$BACKUP_DIR/minio.tar.enc" \

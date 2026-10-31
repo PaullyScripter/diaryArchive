@@ -45,13 +45,26 @@ def create_access_token(user_id: str, username: str) -> str:
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
         "iat": now,
         "jti": secrets.token_hex(16),
+        "iss": settings.jwt_issuer,
+        "aud": settings.jwt_audience,
     }
     return jwt.encode(payload, settings.secret_key, algorithm="HS256")
 
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=["HS256"])
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=["HS256"],
+            issuer=settings.jwt_issuer,
+            audience=settings.jwt_audience,
+            options={"require_sub": True, "require_exp": True, "require_iat": True},
+        )
+        if not isinstance(payload.get("sub"), str) or not payload["sub"]:
+            raise JWTError("missing subject")
+        if not isinstance(payload.get("jti"), str) or not payload["jti"]:
+            raise JWTError("missing token id")
         return payload
     except JWTError:
         from app.core.exceptions import AuthenticationException
@@ -103,6 +116,14 @@ def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple
     with _fallback_lock:
         # Evict oldest keys if at capacity
         if len(_fallback_hits) >= _MAX_FALLBACK_KEYS:
+            stale_keys = [
+                candidate
+                for candidate, candidate_hits in _fallback_hits.items()
+                if not candidate_hits or candidate_hits[-1] < window_start
+            ]
+            for candidate in stale_keys[:10_000]:
+                _fallback_hits.pop(candidate, None)
+        if len(_fallback_hits) >= _MAX_FALLBACK_KEYS:
             sorted_keys = sorted(
                 _fallback_hits.keys(),
                 key=lambda k: _fallback_hits[k][0] if _fallback_hits[k] else 0,
@@ -115,8 +136,6 @@ def _fallback_consume(key: str, max_attempts: int, window_seconds: int) -> tuple
         if len(hits) >= max_attempts:
             return True, 0
         hits.append(now_ms)
-        if not hits:
-            del _fallback_hits[key]
         return False, max(0, max_attempts - len(hits))
 
 
@@ -168,12 +187,18 @@ def get_client_ip(request) -> str:
 
     real_ip = request.headers.get("x-real-ip")
     if real_ip and real_ip.strip():
-        return real_ip.strip()
+        try:
+            return str(ipaddress.ip_address(real_ip.strip()))
+        except ValueError:
+            logger.warning("Ignoring invalid X-Real-IP header")
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         parts = [p.strip() for p in forwarded.split(",") if p.strip()]
         if parts:
-            return parts[-1]
+            try:
+                return str(ipaddress.ip_address(parts[-1]))
+            except ValueError:
+                logger.warning("Ignoring invalid X-Forwarded-For header")
     return direct_ip
 
 
@@ -262,9 +287,12 @@ async def check_rate_limit(key: str, max_attempts: int, window_seconds: int) -> 
             member,
         )
         return bool(limited), int(remaining)
-    except Exception:  # Redis down: fail closed.
-        logger.error("Redis rate limiter unavailable; failing closed for %s", key)
-        return True, 0
+    except Exception:
+        # Security-critical account lockouts fail closed above. General request
+        # limits use a bounded local fallback so a transient Redis outage does
+        # not take the entire application offline.
+        logger.error("Redis rate limiter unavailable; using local fallback for %s", key)
+        return _fallback_consume(key, max_attempts, window_seconds)
 
 
 # ---------------------------------------------------------------------------
