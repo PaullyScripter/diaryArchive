@@ -21,7 +21,7 @@ export function FollowButton({ username, initialIsFollowing, size = "default" }:
     const prev = isFollowing;
     setOptimisticFollowing(!prev);
 
-    toggleFollow.mutate(undefined, {
+    toggleFollow.mutate(!prev, {
       onError: () => {
         setOptimisticFollowing(prev);
       },

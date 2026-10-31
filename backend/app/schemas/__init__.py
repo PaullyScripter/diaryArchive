@@ -1,8 +1,10 @@
+from app.schemas.account_job import account_deletion_job_indexes, account_export_job_indexes
 from app.schemas.achievement import achievement_indexes
 from app.schemas.audit_log import audit_log_indexes
 from app.schemas.bookmark import bookmark_indexes
 from app.schemas.comment import comment_indexes, comment_like_indexes
 from app.schemas.diary import diary_indexes
+from app.schemas.email_verification_token import email_verification_token_indexes
 from app.schemas.follow import follow_indexes
 from app.schemas.like import like_indexes
 from app.schemas.media import media_indexes
@@ -14,6 +16,8 @@ from app.schemas.ticket import ticket_indexes
 from app.schemas.user import user_indexes
 
 ALL_INDEXES: dict[str, list[tuple[dict, dict]]] = {
+    "account_deletion_jobs": account_deletion_job_indexes,
+    "account_export_jobs": account_export_job_indexes,
     "achievements": achievement_indexes,
     "users": user_indexes,
     "diaries": diary_indexes,
@@ -29,4 +33,5 @@ ALL_INDEXES: dict[str, list[tuple[dict, dict]]] = {
     "media": media_indexes,
     "refresh_tokens": refresh_token_indexes,
     "password_reset_tokens": password_reset_token_indexes,
+    "email_verification_tokens": email_verification_token_indexes,
 }

@@ -14,9 +14,13 @@
 #     options:
 #       max-size: "10m"
 #       max-file: "5"
+secrets:
+  metrics_token:
+    file: ${METRICS_TOKEN_FILE:?set METRICS_TOKEN_FILE to a root-readable secret file}
+
 services:
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     ports:
       - "80:80"
       - "443:443"
@@ -78,9 +82,11 @@ services:
         reservations:
           memory: 1G
     restart: always
+    security_opt:
+      - no-new-privileges:true
 
   mongo-app-user:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
     restart: "no"
     environment:
       MONGO_ROOT_USER: ${MONGO_ROOT_USER:?set MONGO_ROOT_USER}
@@ -95,7 +101,7 @@ services:
     entrypoint: ["/bin/sh", "/usr/local/bin/create-app-user.sh"]
 
   redis:
-    image: redis:7.2-alpine
+    image: redis:7.2-alpine@sha256:2c933526722b4126a61d5c170f766dc159adf97682f0b1cbbc27b1666ba96d84
     volumes:
       - ./docker/redis/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
     entrypoint: ["/bin/sh", "/usr/local/bin/entrypoint.sh"]
@@ -118,9 +124,11 @@ services:
       timeout: 5s
       retries: 5
     restart: always
+    security_opt:
+      - no-new-privileges:true
 
   meilisearch:
-    image: getmeili/meilisearch:v1.12
+    image: getmeili/meilisearch:v1.12@sha256:c9fac23131cca4db95173d41cc50fd5639121ee381795528fdd7522d7978a7b8
     command: meilisearch --env production --master-key ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY}
     environment:
       MEILI_ENV: production
@@ -137,10 +145,12 @@ services:
         reservations:
           memory: 512M
     restart: always
+    security_opt:
+      - no-new-privileges:true
 
   minio:
     image: minio/minio:RELEASE.2024-06-13T22-53-53Z
-    command: server /data --console-address ":9001"
+    command: server /data
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
@@ -156,6 +166,8 @@ services:
         reservations:
           memory: 512M
     restart: always
+    security_opt:
+      - no-new-privileges:true
 
   backend:
     read_only: true
@@ -164,6 +176,8 @@ services:
       - /tmp
     cap_drop:
       - ALL
+    secrets:
+      - metrics_token
     security_opt:
       - no-new-privileges:true
     depends_on:
@@ -214,6 +228,7 @@ services:
       PUBLIC_API_URL: ${PUBLIC_API_URL:-https://api.diaryarchive.com}
       CORS_ORIGINS: '["https://diaryarchive.com"]'
       TRUSTED_PROXY_CIDRS: '["172.16.0.0/12"]'
+      METRICS_TOKEN_FILE: /run/secrets/metrics_token
 
   frontend:
     read_only: true

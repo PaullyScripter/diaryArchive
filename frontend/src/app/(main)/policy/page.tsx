@@ -487,8 +487,7 @@ export default function PolicyPage() {
           rows={[
             { label: "What you can write", value: "HTML and CSS only, using a documented set of safe tags and properties" },
             { label: "Scripts", value: "JavaScript, embedded scripts, and event handlers are removed for security" },
-            { label: "External images in Public diaries", value: "Allowed only over https:, served from third-party hosts at your discretion" },
-            { label: "External images in Private diaries", value: "Blocked entirely - reader data must never leak to a third-party host" },
+            { label: "External images", value: "Blocked in all diaries so readers are not sent to third-party tracking hosts" },
             { label: "Images overall", value: "Uploaded media from your library is always allowed and served from DiaryArchive" },
             { label: "Rendering", value: "Isolated per-page sandbox so your code cannot affect the rest of the site" },
           ]}

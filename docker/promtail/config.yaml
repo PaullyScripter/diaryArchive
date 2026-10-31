@@ -21,7 +21,6 @@ scrape_configs:
           expression: '^(?P<level>\w+)\s+(?P<msg>.*)'
       - labels:
           level:
-          msg:
 
   - job_name: system
     static_configs:

@@ -80,10 +80,10 @@ def test_style_block_drops_unapproved_properties():
     assert "scroll-behavior" not in result
     assert "animation" not in result
     assert "color:red" in result
-    assert "position:fixed" in result
+    assert "position:fixed" not in result
 
 
-def test_style_block_keeps_new_semantic_properties():
+def test_style_block_drops_high_impact_properties():
     html = (
         "<style>"
         '.hero{backdrop-filter:blur(8px);box-sizing:border-box;content:"x";'
@@ -91,12 +91,12 @@ def test_style_block_keeps_new_semantic_properties():
         '</style><p class="hero">hi</p>'
     )
     result = sanitize_html(html)
-    assert "backdrop-filter:blur(8px)" in result
+    assert "backdrop-filter:blur(8px)" not in result
     assert "box-sizing:border-box" in result
-    assert 'content:"x"' in result
-    assert "inset:0" in result
+    assert 'content:"x"' not in result
+    assert "inset:0" not in result
     assert "place-items:center" in result
-    assert "filter:drop-shadow(0 2px 4px #000)" in result
+    assert "filter:drop-shadow(0 2px 4px #000)" not in result
 
 
 def test_style_block_keeps_css_custom_properties_and_var():
@@ -209,9 +209,9 @@ def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
     result = sanitize.sanitize_html(html)
     assert "/api/v1/media/file/abc" in result
     assert "media.diaryarchive.com" in result
-    # Secure https: external images are allowed for public diaries.
-    assert "evil.example/y.png" in result
-    # Plain http: external images remain blocked.
+    # Arbitrary remote images are blocked regardless of scheme: public diary
+    # readers must not be sent to author-controlled tracking hosts.
+    assert "evil.example/y.png" not in result
     assert "evil.example/z.png" not in result
 
 

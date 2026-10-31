@@ -11,13 +11,22 @@ from app.repositories.user_repo import UserRepository
 logger = logging.getLogger(__name__)
 
 
+def _bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    parts = authorization.strip().split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+    return parts[1]
+
+
 async def _optional_user(
     authorization: str = Header(None, alias="Authorization"),
 ) -> dict | None:
-    if not authorization or not authorization.startswith("Bearer "):
+    token = _bearer_token(authorization)
+    if not token:
         return None
     try:
-        token = authorization.split(" ", 1)[1]
         payload = await validate_access_token(token)
         user_id = payload.get("sub")
         if user_id:
@@ -51,10 +60,10 @@ async def get_current_user(
     authorization: str = Header(None, alias="Authorization"),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
+    token = _bearer_token(authorization)
+    if not token:
         raise AuthenticationException("Not authenticated")
 
-    token = authorization.split(" ", 1)[1]
     payload = await validate_access_token(token)
     user_id = payload.get("sub")
 

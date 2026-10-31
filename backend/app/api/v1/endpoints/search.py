@@ -19,7 +19,7 @@ async def search(
     year: int | None = Query(None),
     month: int | None = Query(None, ge=1, le=12),
     sort: str = Query("created_at:desc"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=50),
     author: str | None = Query(None),
     current_user: dict | None = Depends(_optional_user),

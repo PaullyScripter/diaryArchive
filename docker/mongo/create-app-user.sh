@@ -8,14 +8,17 @@ mongosh --host mongodb \
   --eval '
     const dbName = "diaryarchive";
     const dbRef = db.getSiblingDB(dbName);
-    if (!dbRef.getUser(process.env.MONGO_APP_USER)) {
+    const user = process.env.MONGO_APP_USER;
+    const roles = [{ role: "readWrite", db: dbName }];
+    if (dbRef.getUser(user)) {
+      // Reconcile legacy deployments too: the API never needs dbAdmin or
+      // root-equivalent privileges to read/write its own database.
+      dbRef.updateUser(user, { pwd: process.env.MONGO_APP_PASSWORD, roles });
+    } else {
       dbRef.createUser({
-        user: process.env.MONGO_APP_USER,
+        user,
         pwd: process.env.MONGO_APP_PASSWORD,
-        roles: [
-          { role: "readWrite", db: dbName },
-          { role: "dbAdmin", db: dbName }
-        ]
+        roles
       });
     }
   '

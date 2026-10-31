@@ -1,7 +1,9 @@
 import asyncio
+import hmac
 import os
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Request, Response
 
@@ -19,8 +21,46 @@ _COMMIT_HASH = os.getenv("COMMIT_HASH", "unknown")
 _DEPLOYED_AT = os.getenv("DEPLOYED_AT", "")
 
 
+def _metrics_token_is_valid(request: Request) -> bool | None:
+    """Validate the internal metrics bearer token.
+
+    ``True`` means authorized, ``False`` means a bad token, and ``None``
+    means the production secret is unavailable. The latter is deliberately
+    distinct so the endpoint can fail closed without logging the secret or
+    returning it in an error response.
+    """
+    if settings.debug:
+        return True
+    token_path = settings.metrics_token_file.strip()
+    if not token_path:
+        return None
+    try:
+        expected = Path(token_path).read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    if not expected:
+        return None
+    authorization = request.headers.get("authorization", "")
+    scheme, separator, supplied = authorization.partition(" ")
+    if not separator or scheme.lower() != "bearer" or not supplied.strip():
+        return False
+    return hmac.compare_digest(supplied.strip(), expected)
+
+
 @router.get("/metrics")
 async def metrics(request: Request, response: Response):
+    auth_state = _metrics_token_is_valid(request)
+    if auth_state is None:
+        # A missing control-plane secret must never silently make metrics
+        # public. 503 gives operators a visible deployment failure while
+        # keeping the actual secret path/value out of the response.
+        response.status_code = 503
+        return {"error": "metrics unavailable"}
+    if not auth_state:
+        # Avoid confirming that a protected observability route exists to an
+        # unauthenticated caller. Nginx also returns 404 for public requests.
+        response.status_code = 404
+        return {"error": "not found"}
     is_limited, _ = await check_rate_limit(
         "rate_limit:health:" + get_client_ip(request),
         60,

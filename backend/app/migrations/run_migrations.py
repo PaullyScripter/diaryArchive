@@ -16,11 +16,43 @@ Usage (inside the backend container):
 
 import asyncio
 import logging
+import uuid
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 
 from app.core.database import DatabaseManager
 from app.core.indexes import create_indexes, remove_obsolete_media_indexes
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _migration_lock(db):
+    """Serialize migration runners across deploys and backend instances."""
+    owner = uuid.uuid4().hex
+    now = datetime.now(UTC)
+    expiry = now + timedelta(minutes=15)
+    try:
+        result = await db.migration_locks.update_one(
+            {
+                "_id": "schema",
+                "$or": [
+                    {"expires_at": {"$lte": now}},
+                    {"owner": owner},
+                    {"expires_at": {"$exists": False}},
+                ],
+            },
+            {"$set": {"owner": owner, "expires_at": expiry}},
+            upsert=True,
+        )
+    except Exception as exc:
+        raise RuntimeError("Could not acquire the MongoDB migration lock") from exc
+    if result.matched_count == 0 and not result.upserted_id:
+        raise RuntimeError("Another migration runner currently holds the migration lock")
+    try:
+        yield
+    finally:
+        await db.migration_locks.delete_one({"_id": "schema", "owner": owner})
 
 
 class Migration:
@@ -49,6 +81,12 @@ async def run_migrations(collection_name: str | None = None) -> dict:
     """
     await DatabaseManager.connect_mongo()
     db = DatabaseManager.get_db()
+
+    async with _migration_lock(db):
+        return await _run_migrations_locked(db, collection_name)
+
+
+async def _run_migrations_locked(db, collection_name: str | None = None) -> dict:
 
     await _ensure_schema_migration_collection(db)
     applied = await _applied_versions(db)

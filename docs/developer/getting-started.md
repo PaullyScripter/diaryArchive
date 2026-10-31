@@ -188,9 +188,10 @@ docker compose -f docker-compose.infra.yml exec redis redis-cli ping
 
 | Error | Cause | Fix |
 |-------|-------|------|
-| `Failed to start Docker containers` | Docker Desktop not running | Open Docker Desktop, wait for it to be ready |
+| `Failed to start Docker containers` | Docker Compose cannot pull a configured image | Run `docker compose -f docker-compose.infra.yml up -d` directly to see the image/registry error; verify `docker info` first |
 | `MongoDB failed to start` | Port conflict on 27017 | Check `Get-NetTCPConnection -LocalPort 27017`, stop the conflicting process |
 | `Redis failed to start` | Port conflict on 6379 | Same as above for port 6379 |
+| `Required MongoDB indexes could not be reconciled` | A compatible legacy index has a different name | Update the backend and restart; compatible key/options are reused without resetting the database |
 
 ### Step 5: Stop Infrastructure
 

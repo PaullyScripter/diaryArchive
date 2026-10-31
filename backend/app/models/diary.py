@@ -36,9 +36,9 @@ class DiaryCreate(BaseModel):
     encrypted_data: EncryptedData | None = None
     media_ids: list[str] = Field(default_factory=list, max_length=20)
     tags: list[str] = Field(default_factory=list, max_length=50)
-    emotion: str | None = None
+    emotion: str | None = Field(None, max_length=50)
     comments_enabled: bool = True
-    content_warnings: list[str] = Field(default_factory=list)
+    content_warnings: list[str] = Field(default_factory=list, max_length=4)
     fixed_width: int | None = Field(None, ge=320, le=2000)
     fixed_height: int | None = Field(None, ge=240, le=2000)
 
@@ -50,10 +50,10 @@ class DiaryUpdate(BaseModel):
     content_text: str | None = Field(None, max_length=51200)
     encrypted_data: EncryptedData | None = None
     media_ids: list[str] | None = Field(None, max_length=20)
-    tags: list[str] | None = None
-    emotion: str | None = None
+    tags: list[str] | None = Field(None, max_length=50)
+    emotion: str | None = Field(None, max_length=50)
     comments_enabled: bool | None = None
-    content_warnings: list[str] | None = None
+    content_warnings: list[str] | None = Field(None, max_length=4)
     fixed_width: int | None = Field(None, ge=320, le=2000)
     fixed_height: int | None = Field(None, ge=240, le=2000)
 

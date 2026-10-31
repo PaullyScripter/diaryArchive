@@ -91,12 +91,21 @@ export async function decryptMasterKey(
   const saltBytes = hexToBuffer(salt);
   const ivBytes = hexToBuffer(iv);
   const passwordKey = await deriveKeyFromPassword(password, saltBytes);
-  const plainBytes = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: ivBytes as BufferSource },
-    passwordKey,
-    hexToBuffer(encryptedMasterKey) as BufferSource
-  );
-  return new Uint8Array(plainBytes);
+  try {
+    const plainBytes = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: ivBytes as BufferSource },
+      passwordKey,
+      hexToBuffer(encryptedMasterKey) as BufferSource
+    );
+    const result = new Uint8Array(plainBytes);
+    if (result.length !== MASTER_KEY_BYTES) {
+      throw new Error("Invalid master key length");
+    }
+    return result;
+  } finally {
+    zeroize(saltBytes);
+    zeroize(ivBytes);
+  }
 }
 
 // --- Per-Diary Key Derivation ---
@@ -168,7 +177,27 @@ export async function decryptDiary(
     hexToBuffer(payload.ciphertext) as BufferSource
   );
   const decoder = new TextDecoder();
-  return JSON.parse(decoder.decode(plaintext));
+  const parsed: unknown = JSON.parse(decoder.decode(plaintext));
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Invalid encrypted diary payload");
+  }
+  const candidate = parsed as Record<string, unknown>;
+  if (
+    typeof candidate.title !== "string" ||
+    candidate.title.length > 200 ||
+    typeof candidate.contentHtml !== "string" ||
+    candidate.contentHtml.length > 102400 ||
+    !Array.isArray(candidate.tags) ||
+    candidate.tags.length > 50 ||
+    candidate.tags.some((tag) => typeof tag !== "string" || tag.length > 50)
+  ) {
+    throw new Error("Invalid encrypted diary shape");
+  }
+  return {
+    title: candidate.title,
+    contentHtml: candidate.contentHtml,
+    tags: candidate.tags as string[],
+  };
 }
 
 // --- Helpers ---
@@ -181,6 +210,9 @@ function bufferToHex(buf: ArrayBuffer | Uint8Array): string {
 }
 
 function hexToBuffer(hex: string): Uint8Array {
+  if (typeof hex !== "string" || hex.length === 0 || hex.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(hex)) {
+    throw new Error("Invalid hexadecimal crypto payload");
+  }
   const len = hex.length / 2;
   const buf = new ArrayBuffer(len);
   const bytes = new Uint8Array(buf);

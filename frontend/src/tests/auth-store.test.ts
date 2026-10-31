@@ -62,6 +62,8 @@ describe("auth-store", () => {
       data: {
         data: { access_token: "new-token", id: "new-id", username: "newuser" },
       },
+    }).mockResolvedValueOnce({
+      data: { data: { access_token: "refreshed-token" } },
     });
     (apiClient.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       data: {
@@ -71,6 +73,6 @@ describe("auth-store", () => {
 
     await useAuthStore.getState().register("newuser", "Password1!");
 
-    expect(useAuthStore.getState().accessToken).toBe("new-token");
+    expect(useAuthStore.getState().accessToken).toBe("refreshed-token");
   });
 });

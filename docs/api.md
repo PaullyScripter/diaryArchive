@@ -859,48 +859,52 @@ intended for the banned login/appeal flow.
 
 ---
 
-### GET /api/v1/users/me/export
+### POST /api/v1/users/me/export
 
-Export a self-contained snapshot of every piece of data the current account
+Queue a self-contained snapshot of every piece of data the current account
 owns (profile, diaries, comments, social rows, notifications, achievements,
-tickets).
+tickets, and media files). The request requires password confirmation and is
+rate-limited to one request per day. The archive is prepared in the background
+and stored temporarily in MinIO; it is never included in the API response.
 
 **Auth:** Bearer access token
 
-**Success (200):**
+**Request:**
+```json
+{ "password": "..." }
+```
+
+**Success (202):**
 ```json
 {
   "data": {
-    "profile": { "id": "...", "username": "user", "stats": {}, "preferences": {} },
-    "diaries": [ { "id": "...", "title": "...", "privacy": "private", "encrypted_data": {} } ],
-    "comments": [],
-    "likes": [],
-    "bookmarks": [],
-    "follows": [],
-    "notifications": [],
-    "achievements": [],
-    "tickets": []
+    "id": "job-id",
+    "status": "queued",
+    "created_at": "2026-10-30T00:00:00+00:00"
   }
 }
 ```
 
-Private diary ciphertext is returned opaque (server cannot decrypt it); the
-client holds the decryption keys.
+Poll `GET /api/v1/users/me/export/{job_id}` for `queued`, `running`,
+`completed`, or `failed`. When completed, download the private archive from
+`GET /api/v1/users/me/export/{job_id}/download`. Private diary ciphertext is
+included opaque; the server cannot decrypt it and the client holds the keys.
 
 **Errors:**
 
 | Code | Status | Condition |
 |------|--------|-----------|
 | `not_authenticated` | 401 | No/invalid access token |
+| `validation_error` | 422 | Password confirmation failed or export limits were exceeded |
+| `rate_limited` | 429 | An export was already requested in the current day |
 
 ---
 
 ### DELETE /api/v1/users/me
 
 Permanently delete the current account and its user-owned data across the
-application. Moderation reports are retained as historical evidence and may
-remain with an anonymized/orphaned reporter or target; tickets owned by the
-account are deleted as part of account deletion.
+application. Moderation reports and support tickets are retained as historical
+evidence and may remain with an anonymized/orphaned reporter or target.
 
 **Auth:** Bearer access token
 

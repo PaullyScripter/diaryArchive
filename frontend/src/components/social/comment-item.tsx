@@ -71,7 +71,7 @@ export function CommentItem({ comment, diaryId, parentAuthor, parentContent, isR
     const prevLikes = optimisticLikes;
     setOptimisticLiked(!prevLiked);
     setOptimisticLikes(prevLiked ? prevLikes - 1 : prevLikes + 1);
-    toggleCommentLike.mutate(undefined, {
+    toggleCommentLike.mutate(!prevLiked, {
       onError: () => {
         setOptimisticLiked(prevLiked);
         setOptimisticLikes(prevLikes);

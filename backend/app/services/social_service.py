@@ -128,7 +128,9 @@ async def _sync_comment_counts(diaries: list[dict]) -> None:
         d["stats"]["comment_count"] = count_map.get(str(d["_id"]), 0)
 
 
-async def toggle_like(diary_id: str, current_user: dict) -> dict:
+async def toggle_like(
+    diary_id: str, current_user: dict, desired: bool | None = None
+) -> dict:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
@@ -144,6 +146,46 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
     user_id = str(current_user["_id"])
 
     async with await _toggle_guard(("like", user_id, diary_id)):
+        if desired is True:
+            added = await like_repo.ensure_liked(user_id, diary_id, datetime.now(UTC))
+            if added:
+                await diary_repo._collection.update_one(
+                    {"_id": diary["_id"]}, {"$inc": {"stats.like_count": 1}}
+                )
+                diary = await diary_repo.get_by_id(diary_id)
+                if diary:
+                    from app.services.diary_service import _index_diary_async
+
+                    _index_diary_async(diary)
+                    from app.services.notification_service import _send_notification_async
+
+                    _send_notification_async(
+                        recipient_id=str(diary["user_id"]),
+                        actor_id=user_id,
+                        notification_type="like",
+                        target_id=diary_id,
+                        metadata={"diary_title": diary.get("title")},
+                    )
+                _check_likes_achievement_async(str(diary["user_id"]))
+            else:
+                diary = await diary_repo.get_by_id(diary_id)
+            return {
+                "is_liked": True,
+                "like_count": diary["stats"]["like_count"] if diary else 0,
+            }
+
+        if desired is False:
+            removed = await like_repo.ensure_unliked(user_id, diary_id)
+            if removed:
+                await diary_repo._collection.update_one(
+                    {"_id": diary["_id"]}, {"$inc": {"stats.like_count": -1}}
+                )
+            diary = await diary_repo.get_by_id(diary_id)
+            return {
+                "is_liked": False,
+                "like_count": diary["stats"]["like_count"] if diary else 0,
+            }
+
         # Atomic toggle: delete first; if a like was actually removed the state
         # flipped to unliked. Otherwise insert (upsert with $setOnInsert); the
         # unique index + upserted_id guarantees a single like and a single
@@ -189,7 +231,9 @@ async def toggle_like(diary_id: str, current_user: dict) -> dict:
         }
 
 
-async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
+async def toggle_bookmark(
+    diary_id: str, current_user: dict, desired: bool | None = None
+) -> dict:
     diary_repo = DiaryRepository()
     diary = await diary_repo.get_by_id(diary_id)
     if diary is None:
@@ -205,6 +249,32 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
     user_id = str(current_user["_id"])
 
     async with await _toggle_guard(("bookmark", user_id, diary_id)):
+        if desired is True:
+            added = await bookmark_repo.ensure_bookmarked(user_id, diary_id, datetime.now(UTC))
+            if added:
+                await diary_repo._collection.update_one(
+                    {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": 1}}
+                )
+                diary = await diary_repo.get_by_id(diary_id)
+            else:
+                diary = await diary_repo.get_by_id(diary_id)
+            return {
+                "is_bookmarked": True,
+                "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
+            }
+
+        if desired is False:
+            removed = await bookmark_repo.ensure_unbookmarked(user_id, diary_id)
+            if removed:
+                await diary_repo._collection.update_one(
+                    {"_id": diary["_id"]}, {"$inc": {"stats.bookmark_count": -1}}
+                )
+            diary = await diary_repo.get_by_id(diary_id)
+            return {
+                "is_bookmarked": False,
+                "bookmark_count": diary["stats"]["bookmark_count"] if diary else 0,
+            }
+
         removed = await bookmark_repo.ensure_unbookmarked(user_id, diary_id)
         if removed:
             await diary_repo._collection.update_one(
@@ -245,7 +315,9 @@ async def toggle_bookmark(diary_id: str, current_user: dict) -> dict:
         }
 
 
-async def toggle_follow(username: str, current_user: dict) -> dict:
+async def toggle_follow(
+    username: str, current_user: dict, desired: bool | None = None
+) -> dict:
     user_repo = UserRepository()
     target = await user_repo.get_by_username(username)
     if target is None:
@@ -265,14 +337,32 @@ async def toggle_follow(username: str, current_user: dict) -> dict:
     following_id = str(target["_id"])
 
     async with await _toggle_guard(("follow", follower_id, following_id)):
-        removed = await follow_repo.ensure_unfollowed(follower_id, following_id)
-        if removed:
-            await user_repo.update_stats(following_id, "follower_count", -1)
-            await user_repo.update_stats(follower_id, "following_count", -1)
-            target = await user_repo.get_by_id(following_id)
+        if desired is not True:
+            removed = await follow_repo.ensure_unfollowed(follower_id, following_id)
+            if removed:
+                await user_repo.update_stats(following_id, "follower_count", -1)
+                await user_repo.update_stats(follower_id, "following_count", -1)
+                target = await user_repo.get_by_id(following_id)
+                if desired is None:
+                    return {
+                        "is_following": False,
+                        "follower_count": target["stats"]["follower_count"] if target else 0,
+                    }
+                if desired is False:
+                    return {
+                        "is_following": False,
+                        "follower_count": target["stats"]["follower_count"] if target else 0,
+                    }
+            elif desired is False:
+                return {
+                    "is_following": False,
+                    "follower_count": target.get("stats", {}).get("follower_count", 0),
+                }
+
+        if desired is False:
             return {
                 "is_following": False,
-                "follower_count": target["stats"]["follower_count"] if target else 0,
+                "follower_count": target.get("stats", {}).get("follower_count", 0),
             }
 
         # P3.1: Transactional follow + counter update.

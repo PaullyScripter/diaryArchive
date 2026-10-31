@@ -90,11 +90,12 @@ def test_public_media_url_never_uses_internal_host(monkeypatch):
     assert "minio" not in result["url"]
     assert "localhost" not in result["url"]
 
-    # When configured, use the public base URL.
+    # A configured public base URL must not bypass the authorization-aware
+    # proxy while diary visibility remains mutable.
     monkeypatch.setattr(settings, "public_media_base_url", "https://media.diaryarchive.com")
     result = media_service._build_media_response(media)
-    assert result["url"] == "https://media.diaryarchive.com/diaryarchive/users/x/abc.webp"
-    assert "minio" not in result["url"]
+    assert result["url"].startswith("/api/v1/media/file/")
+    assert "media.diaryarchive.com" not in result["url"]
 
 
 def test_fastapi_docs_disabled_in_production(monkeypatch):

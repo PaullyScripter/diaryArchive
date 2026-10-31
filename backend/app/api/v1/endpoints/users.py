@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import _optional_user, get_current_user
 from app.core.exceptions import NotFoundException, RateLimitException, ValidationException
@@ -25,6 +26,7 @@ from app.services.user_service import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
+MAX_AVATAR_SIZE = 5 * 1024 * 1024
 
 
 @router.get("/{username}")
@@ -64,7 +66,25 @@ async def upload_my_avatar(
     if is_limited:
         raise RateLimitException("Too many profile picture upload attempts")
 
-    file_data = await file.read()
+    content_length = request.headers.get("content-length")
+    if (
+        content_length
+        and content_length.isdigit()
+        and int(content_length) > MAX_AVATAR_SIZE + 512 * 1024
+    ):
+        raise ValidationException("Profile picture exceeds the 5 MB limit")
+
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_AVATAR_SIZE:
+            raise ValidationException("Profile picture exceeds the 5 MB limit")
+        chunks.append(chunk)
+    file_data = b"".join(chunks)
     if not file_data:
         raise ValidationException("Empty file not allowed")
 
@@ -148,9 +168,9 @@ async def get_encryption_key(
     }
 
 
-@router.get("/me/export")
+@router.post("/me/export", status_code=202)
 async def export_my_data(
-    request: Request,
+    body: PasswordConfirmation,
     current_user: dict = Depends(get_current_user),
 ):
     is_limited, _ = await check_rate_limit(
@@ -158,17 +178,62 @@ async def export_my_data(
     )
     if is_limited:
         raise RateLimitException("Only one account export may be requested per day")
-    from app.services.account_service import export_user_data
+    if not await verify_password_async(body.password, current_user["password_hash"]):
+        raise ValidationException("Password confirmation failed")
+    from app.services.account_service import create_export_job
 
-    data = await export_user_data(str(current_user["_id"]))
-    return {"data": data}
+    job = await create_export_job(str(current_user["_id"]))
+    return {"data": job}
+
+
+@router.get("/me/export/{job_id}")
+async def get_my_export(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    from app.services.account_service import get_export_job
+
+    return {"data": await get_export_job(str(current_user["_id"]), job_id)}
+
+
+@router.get("/me/export/{job_id}/download")
+async def download_my_export(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    from app.services.account_service import open_export_download
+
+    obj = await open_export_download(str(current_user["_id"]), job_id)
+
+    def iter_chunks():
+        try:
+            yield from obj.stream(64 * 1024)
+        finally:
+            obj.close()
+            obj.release_conn()
+
+    return StreamingResponse(
+        iter_chunks(),
+        media_type="application/gzip",
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": f'attachment; filename="diaryarchive-export-{job_id}.tar.gz"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.delete("/me")
 async def delete_my_account(
     body: PasswordConfirmation,
+    request: Request,
     current_user: dict = Depends(get_current_user),
 ):
+    is_limited, _ = await check_rate_limit(
+        f"rate_limit:account_delete:{current_user['_id']}", 3, 86400
+    )
+    if is_limited:
+        raise RateLimitException("Too many account deletion attempts")
     if not await verify_password_async(body.password, current_user["password_hash"]):
         raise ValidationException("Password confirmation failed")
     from app.services.account_service import delete_account
@@ -182,7 +247,7 @@ async def delete_my_account(
 @router.get("/{username}/diaries")
 async def get_user_diaries(
     username: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     sort: str = Query("created_at"),
     order: str = Query("desc"),

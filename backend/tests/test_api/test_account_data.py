@@ -30,6 +30,8 @@ async def clear_db():
         "refresh_tokens",
         "password_reset_tokens",
         "email_verification_tokens",
+        "account_export_jobs",
+        "account_deletion_jobs",
     ):
         await db[coll].delete_many({})
 
@@ -87,20 +89,24 @@ async def _make_diary(db, user_id, privacy: str):
 
 class TestDataExport:
     async def test_export_requires_auth(self, client: AsyncClient):
-        response = await client.get("/api/v1/users/me/export")
+        response = await client.post("/api/v1/users/me/export", json={"password": "ValidPass123!"})
         assert response.status_code == 401
 
     async def test_export_empty(self, client: AsyncClient, auth_user):
-        response = await client.get(
+        response = await client.post(
             "/api/v1/users/me/export",
+            json={"password": auth_user["password"]},
             headers={"Authorization": f"Bearer {auth_user['access_token']}"},
         )
-        assert response.status_code == 200
+        assert response.status_code == 202
         data = response.json()["data"]
-        assert data["profile"]["username"] == "exportuser"
-        assert data["diaries"] == []
-        assert data["comments"] == []
-        assert data["likes"] == []
+        assert data["status"] == "queued"
+        status = await client.get(
+            f"/api/v1/users/me/export/{data['id']}",
+            headers={"Authorization": f"Bearer {auth_user['access_token']}"},
+        )
+        assert status.status_code == 200
+        assert status.json()["data"]["status"] == "queued"
 
     async def test_export_includes_diaries_and_comments(self, client: AsyncClient, auth_user):
         db = DatabaseManager.get_db()
@@ -121,12 +127,9 @@ class TestDataExport:
             }
         )
 
-        response = await client.get(
-            "/api/v1/users/me/export",
-            headers={"Authorization": f"Bearer {auth_user['access_token']}"},
-        )
-        assert response.status_code == 200
-        data = response.json()["data"]
+        from app.services.account_service import export_user_data
+
+        data = await export_user_data(auth_user["id"])
         assert len(data["diaries"]) == 2
         priv = next(d for d in data["diaries"] if d["privacy"] == "private")
         assert priv["encrypted_data"]["ciphertext"] == "cc"

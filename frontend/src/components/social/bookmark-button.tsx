@@ -17,7 +17,7 @@ export function BookmarkButton({ diaryId, initialIsBookmarked }: BookmarkButtonP
     const prev = optimisticIsBookmarked;
     setOptimisticIsBookmarked(!prev);
 
-    toggleBookmark.mutate(undefined, {
+    toggleBookmark.mutate(!prev, {
       onError: () => {
         setOptimisticIsBookmarked(prev);
       },

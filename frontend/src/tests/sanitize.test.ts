@@ -119,9 +119,9 @@ describe("sanitizeHtml", () => {
     const result = sanitizeHtml(input);
     expect(result).toContain("--accent:#9b7657");
     expect(result).toContain("var(--value)");
-    expect(result).toContain("backdrop-filter");
+    expect(result).toContain("DISABLED-backdrop-filter");
     expect(result).toContain("box-sizing");
-    expect(result).toContain("inset:0");
+    expect(result).toContain("DISABLED-inset:0");
     expect(result).toContain("place-items");
   });
 
@@ -157,7 +157,7 @@ describe("sanitizeHtml", () => {
     const result = sanitizeHtml(input);
     // The decoded "</style>" inside the value is re-encoded to "\3c /style\3e "
     // so it cannot close the <style> element; the <script> is stripped.
-    expect(result).toContain(String.raw`content:"\3c /style\3e "`);
+    expect(result).toContain(String.raw`DISABLED-content:"\3c /style\3e "`);
     expect(result).not.toContain(String.raw`content:"</style>"`);
     expect(result).not.toContain("<script>");
     expect(result).not.toContain("alert");
@@ -190,16 +190,16 @@ describe("sanitizeHtml", () => {
     expect(() => sanitizeHtml(undefined as unknown as string)).not.toThrow();
   });
 
-  it("keeps external https: images only when opted in (public diaries)", () => {
+  it("blocks external https: images even when a legacy opt-in is supplied", () => {
     const input =
       '<p>hi</p><img src="https://images.unsplash.com/photo-123.jpg" alt="p">';
     // Default (private): stripped.
     expect(sanitizeHtml(input)).not.toContain("images.unsplash.com");
     expect(sanitizeHtml(input)).not.toContain("<img");
-    // Public: https: external kept.
+    // The former public opt-in is intentionally ignored.
     const result = sanitizeHtml(input, { allowExternalImages: true });
-    expect(result).toContain("images.unsplash.com");
-    expect(result).toContain("<img");
+    expect(result).not.toContain("images.unsplash.com");
+    expect(result).not.toContain("<img");
   });
 
   it("strips ALL external images in private diaries, including https:", () => {
@@ -214,6 +214,12 @@ describe("sanitizeHtml", () => {
     const input = '<img src="/api/v1/media/file/abc?v=original" alt="m">';
     const result = sanitizeHtml(input);
     expect(result).toContain("/api/v1/media/file/abc");
+  });
+
+  it("keeps browser object URLs used by authenticated media hydration", () => {
+    const input = '<img src="blob:https://diaryarchive.example/9c2f" alt="m">';
+    const result = sanitizeHtml(input);
+    expect(result).toContain("blob:https://diaryarchive.example/9c2f");
   });
 
   it("keeps the app-owned media id on uploaded images", () => {

@@ -340,7 +340,7 @@ async def create_diary(user: dict, data: dict) -> dict:
     try:
         from app.core.cache import cache
 
-        await cache.delete_pattern("feed:*")
+        await cache.bump_version("feed")
     except Exception:
         pass
 
@@ -491,7 +491,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
         try:
             from app.core.cache import cache
 
-            await cache.delete_pattern("feed:*")
+            await cache.bump_version("feed")
         except Exception:
             pass
     elif "privacy" in updates and updates["privacy"] is not None:
@@ -499,7 +499,7 @@ async def update_diary(diary_id: str, updates: dict, current_user: dict) -> dict
         try:
             from app.core.cache import cache
 
-            await cache.delete_pattern("feed:*")
+            await cache.bump_version("feed")
         except Exception:
             pass
 
@@ -550,7 +550,7 @@ async def delete_diary(
         try:
             from app.core.cache import cache
 
-            await cache.delete_pattern("feed:*")
+            await cache.bump_version("feed")
         except Exception:
             pass
 
@@ -568,14 +568,16 @@ async def list_public_diaries(
 ) -> dict:
     import json
 
-    cache_key = f"feed:{page}:{per_page}:{sort}:{order}:{tags}:{emotion}:{year}:{month}"
+    from app.core.cache import cache, get_feed_cache_key
+
+    feed_version = await cache.get_version("feed")
+    cache_key = get_feed_cache_key(
+        page, per_page, sort, order, feed_version, tags, emotion, year, month
+    )
 
     if current_user is None:
         try:
-            from app.core.database import DatabaseManager
-
-            redis = DatabaseManager.get_redis()
-            cached = await redis.get(cache_key)
+            cached = await cache.get(cache_key)
             if cached:
                 return json.loads(cached)
         except Exception:
@@ -672,10 +674,7 @@ async def list_public_diaries(
 
     if current_user is None:
         try:
-            from app.core.database import DatabaseManager
-
-            redis = DatabaseManager.get_redis()
-            await redis.setex(cache_key, 30, json.dumps(result, default=str))
+            await cache.set(cache_key, json.dumps(result, default=str), ttl=30)
         except Exception:
             pass
 

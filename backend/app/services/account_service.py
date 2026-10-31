@@ -15,17 +15,20 @@ Two user-facing capabilities built on the existing repository primitives:
    A structured audit log entry is written for the deletion event.
 """
 
+import asyncio
+import json
 import logging
 import re
 import tarfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from app.core.config import settings
 from app.core.database import DatabaseManager
-from app.core.exceptions import ValidationException
+from app.core.exceptions import NotFoundException, ValidationException
 from app.core.minio_client import get_minio_client
 from app.core.utils import fmt_dt
 from app.repositories.audit_log_repo import AuditLogRepository
@@ -69,7 +72,17 @@ async def export_user_data(user_id: str) -> dict:
     # Keep the synchronous compatibility endpoint bounded. Large accounts
     # must use the future asynchronous export worker rather than exhausting
     # backend memory with a single request.
-    collections = ("diaries", "comments", "likes", "bookmarks", "follows", "notifications", "achievements", "tickets", "media")
+    collections = (
+        "diaries",
+        "comments",
+        "likes",
+        "bookmarks",
+        "follows",
+        "notifications",
+        "achievements",
+        "tickets",
+        "media",
+    )
     counts = {
         name: await db[name].count_documents({"user_id": uid})
         for name in collections
@@ -79,7 +92,8 @@ async def export_user_data(user_id: str) -> dict:
     ]
     if over_limit:
         raise ValidationException(
-            "This account is too large for an inline export. Please use the asynchronous export workflow."
+            "This account is too large for an inline export. Please use the "
+            "asynchronous export workflow."
         )
 
     diaries = await db.diaries.find(
@@ -90,9 +104,15 @@ async def export_user_data(user_id: str) -> dict:
         {"user_id": uid},
     ).to_list(length=settings.max_export_records_per_collection)
 
-    likes = await db.likes.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
-    bookmarks = await db.bookmarks.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
-    follows = await db.follows.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
+    likes = await db.likes.find({"user_id": uid}, {"_id": 0}).to_list(
+        length=settings.max_export_records_per_collection
+    )
+    bookmarks = await db.bookmarks.find({"user_id": uid}, {"_id": 0}).to_list(
+        length=settings.max_export_records_per_collection
+    )
+    follows = await db.follows.find({"user_id": uid}, {"_id": 0}).to_list(
+        length=settings.max_export_records_per_collection
+    )
     notifications = await db.notifications.find(
         {"user_id": uid},
         {"_id": 0},
@@ -101,7 +121,9 @@ async def export_user_data(user_id: str) -> dict:
         {"user_id": uid},
         {"_id": 0},
     ).to_list(length=settings.max_export_records_per_collection)
-    tickets = await db.tickets.find({"user_id": uid}, {"_id": 0}).to_list(length=settings.max_export_records_per_collection)
+    tickets = await db.tickets.find({"user_id": uid}, {"_id": 0}).to_list(
+        length=settings.max_export_records_per_collection
+    )
 
     # P2.7: Include media metadata and download actual files from MinIO.
     media_records = await db.media.find(
@@ -208,9 +230,188 @@ async def export_user_data(user_id: str) -> dict:
     }
 
 
+async def create_export_job(user_id: str) -> dict:
+    """Queue a bounded, authenticated export for background processing."""
+    db = _db()
+    now = datetime.now(UTC)
+    result = await db.account_export_jobs.insert_one(
+        {
+            "user_id": _oid(user_id),
+            "status": "queued",
+            "created_at": now,
+            "updated_at": now,
+            "expires_at": now + timedelta(hours=settings.export_job_retention_hours),
+        }
+    )
+    return {"id": str(result.inserted_id), "status": "queued", "created_at": now.isoformat()}
+
+
+async def process_export_job() -> dict | None:
+    """Claim and complete one export job.
+
+    The lease makes this safe when multiple backend replicas run the periodic
+    worker. The archive is written to MinIO, never returned through the API
+    response, and is deleted by the retention sweep after expiry.
+    """
+    db = _db()
+    now = datetime.now(UTC)
+    await db.account_export_jobs.update_many(
+        {"status": "running", "lease_until": {"$lt": now}},
+        {"$set": {"status": "queued", "updated_at": now}, "$unset": {"lease_until": ""}},
+    )
+    job = await db.account_export_jobs.find_one_and_update(
+        {"status": "queued"},
+        {
+            "$set": {
+                "status": "running",
+                "updated_at": now,
+                "lease_until": now + timedelta(minutes=settings.export_job_lease_minutes),
+            }
+        },
+        sort=[("created_at", 1)],
+        return_document=ReturnDocument.AFTER,
+    )
+    if not job:
+        return None
+
+    job_id = job["_id"]
+    user_id = job["user_id"]
+    try:
+        data = await export_user_data(str(user_id))
+        media_files = data.pop("media_files", None)
+        json_payload = json.dumps(data, ensure_ascii=False, default=str).encode("utf-8")
+
+        archive_buffer = BytesIO()
+        with tarfile.open(fileobj=archive_buffer, mode="w:gz") as archive:
+            metadata = tarfile.TarInfo(name="data.json")
+            metadata.size = len(json_payload)
+            archive.addfile(metadata, BytesIO(json_payload))
+            if media_files:
+                media_entry = tarfile.TarInfo(name="media.tar.gz")
+                media_entry.size = len(media_files)
+                archive.addfile(media_entry, BytesIO(media_files))
+        archive_bytes = archive_buffer.getvalue()
+        if len(archive_bytes) > settings.max_export_archive_bytes:
+            raise ValidationException("The export is too large to prepare safely")
+
+        if not await db.account_export_jobs.find_one(
+            {"_id": job_id, "status": "running"}, {"_id": 1}
+        ):
+            return {"id": str(job_id), "status": "cancelled"}
+
+        object_path = f"exports/{user_id}/{job_id}.tar.gz"
+        client = get_minio_client()
+        await asyncio.to_thread(
+            client.put_object,
+            settings.minio_bucket,
+            object_path,
+            BytesIO(archive_bytes),
+            len(archive_bytes),
+            "application/gzip",
+        )
+        completed_at = datetime.now(UTC)
+        update_result = await db.account_export_jobs.update_one(
+            {"_id": job_id, "status": "running"},
+            {
+                "$set": {
+                    "status": "completed",
+                    "object_path": object_path,
+                    "size_bytes": len(archive_bytes),
+                    "completed_at": completed_at,
+                    "updated_at": completed_at,
+                    "expires_at": completed_at
+                    + timedelta(hours=settings.export_job_retention_hours),
+                },
+                "$unset": {"lease_until": ""},
+            },
+        )
+        if update_result.modified_count == 0:
+            await _delete_object_async(object_path)
+            return {"id": str(job_id), "status": "cancelled"}
+        return {"id": str(job_id), "status": "completed"}
+    except Exception as exc:
+        logger.warning("Account export job %s failed", job_id, exc_info=True)
+        await db.account_export_jobs.update_one(
+            {"_id": job_id, "status": "running"},
+            {
+                "$set": {
+                    "status": "failed",
+                    "error": str(exc)[:500],
+                    "updated_at": datetime.now(UTC),
+                },
+                "$unset": {"lease_until": ""},
+            },
+        )
+        return {"id": str(job_id), "status": "failed"}
+
+
+async def get_export_job(user_id: str, job_id: str) -> dict:
+    if not ObjectId.is_valid(job_id):
+        raise NotFoundException("Export job not found")
+    job = await _db().account_export_jobs.find_one(
+        {"_id": ObjectId(job_id), "user_id": _oid(user_id)},
+        {"user_id": 0, "_id": 0, "object_path": 0, "error": 0},
+    )
+    if not job:
+        raise NotFoundException("Export job not found or expired")
+    for key in ("created_at", "updated_at", "completed_at", "expires_at"):
+        if isinstance(job.get(key), datetime):
+            job[key] = job[key].isoformat()
+    return job
+
+
+async def open_export_download(user_id: str, job_id: str):
+    if not ObjectId.is_valid(job_id):
+        raise NotFoundException("Export job not found")
+    job = await _db().account_export_jobs.find_one(
+        {"_id": ObjectId(job_id), "user_id": _oid(user_id), "status": "completed"}
+    )
+    if not job or not job.get("object_path"):
+        raise NotFoundException("Export is not ready or has expired")
+    client = get_minio_client()
+    try:
+        return await asyncio.to_thread(
+            client.get_object, settings.minio_bucket, job["object_path"]
+        )
+    except Exception as exc:
+        raise NotFoundException("Export is no longer available") from exc
+
+
+async def cleanup_expired_export_jobs() -> int:
+    db = _db()
+    removed = 0
+    cursor = db.account_export_jobs.find(
+        {"expires_at": {"$lte": datetime.now(UTC)}}, {"_id": 1, "object_path": 1}
+    ).batch_size(100)
+    async for job in cursor:
+        path = job.get("object_path")
+        if path and not await _delete_object_async(path):
+            continue
+        result = await db.account_export_jobs.delete_one({"_id": job["_id"]})
+        removed += result.deleted_count
+    return removed
+
+
 async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     db = _db()
     uid = _oid(user_id)
+
+    job = await db.account_deletion_jobs.insert_one(
+        {
+            "user_id": uid,
+            "status": "running",
+            "phase": "storage_preflight",
+            "created_at": datetime.now(UTC),
+            "updated_at": datetime.now(UTC),
+        }
+    )
+    job_id = job.inserted_id
+
+    async def mark_job(status: str, phase: str, error: str | None = None) -> None:
+        fields = {"status": status, "phase": phase, "updated_at": datetime.now(UTC)}
+        if error:
+            fields["error"] = error[:500]
+        await db.account_deletion_jobs.update_one({"_id": job_id}, {"$set": fields})
 
     # Capture counts before deletion for audit logging.
     diary_count = await db.diaries.count_documents({"user_id": uid})
@@ -218,36 +419,67 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
     like_count = await db.likes.count_documents({"user_id": uid})
     media_count = await db.media.count_documents({"user_id": uid})
 
-    # Diaries (cascade removes comments, likes, bookmarks, notifications,
-    # reports and MinIO objects for each diary).
+    # Delete every object before deleting its database metadata. A failed
+    # object deletion leaves the account intact and the durable job marked for
+    # retry instead of silently creating an unrecoverable privacy leak.
+    user_doc = await db.users.find_one({"_id": uid})
+    await db.account_export_jobs.update_many(
+        {"user_id": uid, "status": {"$in": ["queued", "running"]}},
+        {"$set": {"status": "cancelled", "updated_at": datetime.now(UTC)}},
+    )
+    object_paths: set[str] = set()
+    async for media in db.media.find(
+        {"user_id": uid},
+        {"stored_path": 1, "standard_path": 1, "thumbnail_path": 1},
+    ).batch_size(500):
+        object_paths.update(
+            path
+            for path in (
+                media.get("stored_path"),
+                media.get("standard_path"),
+                media.get("thumbnail_path"),
+            )
+            if path
+        )
+    async for export_job in db.account_export_jobs.find(
+        {"user_id": uid}, {"object_path": 1}
+    ).batch_size(100):
+        if export_job.get("object_path"):
+            object_paths.add(export_job["object_path"])
+    avatar_path = user_doc.get("avatar_path") if user_doc else None
+    if avatar_path and not str(avatar_path).startswith("/api/v1/media/file/"):
+        object_paths.add(str(avatar_path))
+    try:
+        for path in object_paths:
+            if not await _delete_object_async(path):
+                raise RuntimeError(f"object deletion failed for {path}")
+    except Exception as exc:
+        await mark_job("failed", "storage_preflight", str(exc))
+        raise ValidationException(
+            "Account deletion is temporarily unavailable because media storage "
+            "could not be verified. Please retry."
+        ) from exc
+
+    await mark_job("running", "database_cleanup")
+
+    # Diaries (cascade removes comments, likes, bookmarks, notifications, and
+    # diary rows; media metadata is removed below after all diary rows finish).
     diary_repo = DiaryRepository()
     diary_cursor = db.diaries.find({"user_id": uid}, {"_id": 1})
     async for d in diary_cursor:
         try:
             await diary_repo.delete_cascade(str(d["_id"]))
-        except Exception:
+        except Exception as exc:
             logger.exception("PHASE 9: failed to cascade-delete diary %s", d["_id"])
+            await mark_job("failed", "database_cleanup", str(exc))
+            raise ValidationException(
+                "Account deletion could not complete safely. Please retry."
+            ) from exc
 
-    # Standalone media owned by the user (avatar-adjacent / not tied to a diary).
-    media_cursor = db.media.find({"user_id": uid})
-    async for m in media_cursor:
-        for path_key in ("stored_path", "standard_path", "thumbnail_path"):
-            path_val = m.get(path_key)
-            if path_val:
-                try:
-                    await _delete_object_async(path_val)
-                except Exception:
-                    logger.warning("PHASE 9: failed to delete object %s", path_val)
+    # Standalone and diary-associated media metadata is now safe to remove
+    # because all corresponding objects passed the preflight above.
     await db.media.delete_many({"user_id": uid})
-
-    # Remove the user's avatar file if stored in MinIO.
-    user_doc = await db.users.find_one({"_id": uid})
-    avatar_path = user_doc.get("avatar_path") if user_doc else None
-    if avatar_path and not str(avatar_path).startswith("/api/v1/media/file/"):
-        try:
-            await _delete_object_async(avatar_path)
-        except Exception:
-            logger.warning("PHASE 9: failed to delete avatar object %s", avatar_path)
+    await db.account_export_jobs.delete_many({"user_id": uid})
 
     # Comments authored by the user and the likes on those comments.
     comment_cursor = db.comments.find({"user_id": uid}, {"_id": 1})
@@ -290,6 +522,7 @@ async def delete_account(user_id: str, reason: str = "user_request") -> bool:
         logger.warning("PHASE 9: failed to refresh banned-user cache", exc_info=True)
 
     result = await db.users.delete_one({"_id": uid})
+    await mark_job("completed", "complete")
 
     # P2.8: Structured audit log entry for account deletion.
     try:
@@ -325,25 +558,44 @@ async def _download_media_files(uid: ObjectId, media_records: list[dict]) -> byt
         client = get_minio_client()
         bucket = settings.minio_bucket
         tar_buffer = BytesIO()
+        total_bytes = 0
         with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
             for m in media_records:
                 for key in (m.get("stored_path"), m.get("standard_path"), m.get("thumbnail_path")):
                     if not key:
                         continue
                     try:
-                        response = client.get_object(bucket, key)
-                        data = response.read()
-                        response.close()
-                        response.release_conn()
+                        def _read_object() -> bytes:
+                            response = client.get_object(bucket, key)
+                            try:
+                                return response.read()
+                            finally:
+                                response.close()
+                                response.release_conn()
+
+                        data = await asyncio.to_thread(_read_object)
+                        total_bytes += len(data)
+                        if total_bytes > settings.max_export_archive_bytes:
+                            raise ValidationException(
+                                "The export media exceeds the configured size limit"
+                            )
                         safe_name = re.sub(r"[^\w.\-/]", "_", key)
+                        safe_name = safe_name.replace("/", "_").replace("\\", "_")
                         info = tarfile.TarInfo(name=safe_name)
                         info.size = len(data)
                         tar.addfile(info, BytesIO(data))
-                    except Exception:
+                    except ValidationException:
+                        raise
+                    except Exception as exc:
                         logger.warning("Failed to download MinIO object %s", key)
+                        raise ValidationException(
+                            "The export could not read all account media"
+                        ) from exc
         tar_buffer.seek(0)
         payload = tar_buffer.getvalue()
         return payload or None
-    except Exception:
+    except ValidationException:
+        raise
+    except Exception as exc:
         logger.warning("Failed to connect to MinIO for media export", exc_info=True)
-        return None
+        raise ValidationException("The export could not read account media") from exc

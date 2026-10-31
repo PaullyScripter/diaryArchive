@@ -27,6 +27,10 @@ const ALLOWED_ATTR = [
 // Constructs that must never survive inside a CSS value or <style> block.
 // The DISABLED- prefix neuters the token while keeping surrounding CSS intact.
 const CSS_DANGEROUS_PATTERNS: RegExp[] = [
+  // Prevent author CSS from creating overlays or UI-redress surfaces inside
+  // rendered diary containers. Layout and typography remain available, but
+  // positioning/layering/filtering is controlled by the application shell.
+  /(^|[;{]\s*)(position|top|right|bottom|left|inset|z-index|filter|backdrop-filter|content|transform|transform-origin)\s*:/gim,
   /url\s*\(/gi,
   /expression\s*\(/gi,
   /@import/gi,
@@ -63,7 +67,14 @@ export function scrubCssText(css: string): string {
   // Decode escapes first so the blocklist sees "url(", "javascript:", etc.
   // even when the author wrote them escaped.
   let out = decodeCssEscapes(css);
-  for (const pattern of CSS_DANGEROUS_PATTERNS) {
+  // Keep the declaration delimiter in place and prefix the property itself.
+  // Prefixing the whole match would produce `DISABLED-;position:` and leave
+  // the dangerous declaration active in the browser.
+  out = out.replace(
+    CSS_DANGEROUS_PATTERNS[0],
+    (_match, delimiter: string, property: string) => `${delimiter}DISABLED-${property}:`,
+  );
+  for (const pattern of CSS_DANGEROUS_PATTERNS.slice(1)) {
     out = out.replace(pattern, (match) => `DISABLED-${match}`);
   }
   // Decoding can turn an escape like "\3c/style\3e" into "</style>". Re-encode
@@ -75,6 +86,11 @@ export function scrubCssText(css: string): string {
 }
 
 const STYLE_BLOCK_RE = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+
+// Keep DOMPurify's safe URI schemes and add only the http(s)-backed blob URLs
+// created by URL.createObjectURL for authenticated media hydration. The later
+// image-source policy still decides whether a retained image may render.
+const ALLOWED_URI_REGEXP = /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|matrix):|blob:https?:\/\/|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
 
 // Inline style="" attributes are allowed through DOMPurify but are NOT covered
 // by the <style> block scrub above. Scrub them with the same blocklist so a
@@ -106,13 +122,10 @@ function apiOrigin(): string | null {
 /**
  * Options controlling image-source policy for a rendered diary.
  *
- * `allowExternalImages` permits https: images from arbitrary external hosts —
- * the app's own media (same-origin relative paths and the configured API
- * origin) is always allowed regardless of this flag. Public diaries opt in to
- * external images (reader-IP exposure is an explicit author choice). Private /
- * encrypted diaries never set it, so every external image is stripped: the
- * reader's IP, referrer, and timing must not leak to a third-party image host
- * from a diary the author marked private.
+ * `allowExternalImages` is retained as a source-compatible, deprecated option
+ * for callers compiled against older releases. It is intentionally ignored:
+ * both public and private diaries use application-hosted media only, so a
+ * diary cannot silently turn every reader into a third-party tracking request.
  */
 export interface SanitizeOptions {
   allowExternalImages?: boolean;
@@ -123,22 +136,22 @@ export interface SanitizeOptions {
  *
  * Policy: allow (a) same-origin relative paths, (b) the configured API origin
  * (which is where the app serves uploaded media — this may be http in local
- * dev), and (c) any https: URL only when `allowExternalImages` is true.
- * Reject everything else: javascript:, data:, vbscript:, file:, and plain http:
- * external hosts. No plaintext or payload-exfil channel is opened.
- *
- * Note: allowing arbitrary https images means the reader's IP is visible to the
- * image host (a tracking/identification vector). This is the explicit author
- * preference for public diaries; the trade-off is documented here rather than
- * silently applied.
+ * dev), and (c) transient blob URLs created by authenticated media hydration.
+ * Reject everything else: javascript:, data:, vbscript:, file:, and external
+ * http(s) hosts. No plaintext or payload-exfil channel is opened.
  */
 export function isAllowedImageSource(
   value: string,
-  allowExternalImages = false
+  _allowExternalImages = false,
 ): boolean {
   const v = (value ?? "").trim();
   if (!v) return false;
   if (v.startsWith("/")) return true; // same-origin relative
+  // Authenticated media is fetched with Axios and rendered through a browser
+  // object URL. These URLs are transient, browser-local references created by
+  // the app; rejecting them here makes images flash once and then disappear
+  // when the hydrated HTML is sanitized.
+  if (/^blob:https?:\/\//i.test(v)) return true;
   const origin = apiOrigin();
   if (origin) {
     try {
@@ -148,7 +161,9 @@ export function isAllowedImageSource(
       return false;
     }
   }
-  if (/^https:\/\//i.test(v)) return allowExternalImages; // external https: only when opted in
+  // Arbitrary remote images are blocked even when a legacy caller passes the
+  // former opt-in flag. This is a product-wide privacy invariant.
+  if (/^https?:\/\//i.test(v)) return false;
   return false;
 }
 
@@ -160,6 +175,7 @@ export function sanitizeHtml(html: string, options?: SanitizeOptions): string {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
+    ALLOWED_URI_REGEXP,
     FORCE_BODY: true,
   });
 

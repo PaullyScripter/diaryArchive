@@ -6,10 +6,12 @@
 # or an SSH tunnel.
 services:
   prometheus:
-    image: prom/prometheus:v2.53.0
+    image: prom/prometheus:v2.53.0@sha256:075b1ba2c4ebb04bc3a6ab86c06ec8d8099f8fda1c96ef6d104d9bb1def1d8bc
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    secrets:
+      - metrics_token
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -31,7 +33,7 @@ services:
         max-file: "5"
 
   loki:
-    image: grafana/loki:3.1.0
+    image: grafana/loki:3.1.0@sha256:d947e68a84d9e44915dfa08c3bec27e2124efd5ba6c83443eb53578101ec69e3
     volumes:
       - ./docker/loki/config.yaml:/etc/loki/config.yaml:ro
       - loki_data:/loki
@@ -57,7 +59,7 @@ services:
         max-file: "5"
 
   promtail:
-    image: grafana/promtail:3.1.0
+    image: grafana/promtail:3.1.0@sha256:b3db8e7b1cba0e8c45ce2ae72ebddfd88ebdcae86383f1680edf0074e9010ff6
     volumes:
       - ./docker/promtail/config.yaml:/etc/promtail/config.yaml:ro
       - /var/log:/var/log:ro
@@ -79,7 +81,7 @@ services:
         max-file: "5"
 
   grafana:
-    image: grafana/grafana:11.1.0
+    image: grafana/grafana:11.1.0@sha256:079600c9517b678c10cda6006b4487d3174512fd4c6cface37df7822756ed7a5
     volumes:
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro

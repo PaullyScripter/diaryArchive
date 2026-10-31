@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { apiClient } from "@/lib/api/client";
 import { clearAllMasterKeys } from "@/lib/master-key-cache";
+import { queryClient } from "@/lib/query-client";
 
 export interface User {
   id: string;
@@ -48,6 +49,7 @@ interface AuthState {
   setAccessToken: (token: string) => void;
   setLoading: (loading: boolean) => void;
   clearBan: () => void;
+  clearSession: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -89,11 +91,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           last_login_at: null,
         },
         isAuthenticated: true,
-        isLoading: false,
+        isLoading: true,
         isBanned: false,
         banReason: "",
       });
-      get().refreshAuth();
+      await get().refreshAuth();
     } catch (err: unknown) {
       if (
         err &&
@@ -152,22 +154,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         last_login_at: null,
       },
       isAuthenticated: true,
-      isLoading: false,
+      isLoading: true,
     });
+    await get().refreshAuth();
   },
 
   logout: async () => {
-    clearAllMasterKeys();
-    // Clear drafts from localStorage
-    const userId = get().user?.id;
-    if (userId) {
-      localStorage.removeItem(`diaryarchive-draft:${userId}`);
-    }
     try {
       await apiClient.post("/auth/logout");
     } catch {
       // ignore errors on logout
     }
+    get().clearSession();
+  },
+
+  clearSession: () => {
+    clearAllMasterKeys();
+    const userId = get().user?.id;
+    if (userId && typeof window !== "undefined") {
+      window.localStorage.removeItem(`diaryarchive-draft:${userId}`);
+    }
+    queryClient.clear();
     set({
       user: null,
       accessToken: null,
@@ -186,12 +193,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const meData = meResponse.data.data || meResponse.data;
       set({ user: meData, isAuthenticated: true, isLoading: false });
     } catch {
-      set({
-        isLoading: false,
-        isAuthenticated: false,
-        user: null,
-        accessToken: null,
-      });
+      get().clearSession();
     }
   },
 

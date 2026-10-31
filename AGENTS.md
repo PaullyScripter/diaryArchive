@@ -1,8 +1,8 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-28 — Implemented the requested
-security, scalability, privacy, operations, and UX hardening pass; see the
-dated session summary.
+**Last prompt synchronization:** 2026-10-31 — Completed local startup repair:
+fresh compatible MinIO volume, preserved Compose diagnostics, legacy MongoDB
+index reconciliation, direct Node frontend launch, and a longer backend wait.
 
 ## Read this first
 

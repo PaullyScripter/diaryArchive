@@ -35,10 +35,12 @@ Write-Host ""
 # === Start containers =============================================
 Write-Info "Starting MongoDB, Redis, Meilisearch, and MinIO..."
 $ErrorActionPreference = "Continue"
-docker compose -f $composeFile up -d 2>&1 | Out-Null
+$composeOutput = @(docker compose -f $composeFile up -d 2>&1)
 $upCode = $LASTEXITCODE
 $ErrorActionPreference = "Stop"
 if ($upCode -ne 0) {
+  Write-Host "  Compose output:" -ForegroundColor Yellow
+  $composeOutput | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkYellow }
   Write-Fail "Failed to start Docker containers. Is Docker Desktop running?"
   Write-Host "  Start Docker Desktop from the Start Menu and try again." -ForegroundColor Yellow
   exit 1

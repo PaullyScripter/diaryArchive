@@ -61,18 +61,18 @@ async function deleteComment(diaryId: string, commentId: string, adminDeleteReas
   await apiClient.delete(`/diaries/${diaryId}/comments/${commentId}`, { data: payload });
 }
 
-async function toggleLike(diaryId: string) {
-  const response = await apiClient.post(`/diaries/${diaryId}/like`);
+async function setLike(diaryId: string, active: boolean) {
+  const response = await apiClient.put(`/diaries/${diaryId}/like`, { active });
   return response.data.data;
 }
 
-async function toggleBookmark(diaryId: string) {
-  const response = await apiClient.post(`/diaries/${diaryId}/bookmark`);
+async function setBookmark(diaryId: string, active: boolean) {
+  const response = await apiClient.put(`/diaries/${diaryId}/bookmark`, { active });
   return response.data.data;
 }
 
-async function toggleFollow(username: string) {
-  const response = await apiClient.post(`/users/${username}/follow`);
+async function setFollow(username: string, active: boolean) {
+  const response = await apiClient.put(`/users/${username}/follow`, { active });
   return response.data.data;
 }
 
@@ -111,8 +111,8 @@ async function fetchReplies(commentId: string, pageParam = 1, highlightId?: stri
   return response.data;
 }
 
-async function toggleCommentLike(commentId: string) {
-  const response = await apiClient.post(`/comments/${commentId}/like`);
+async function setCommentLike(commentId: string, active: boolean) {
+  const response = await apiClient.put(`/comments/${commentId}/like`, { active });
   return response.data.data;
 }
 
@@ -159,7 +159,7 @@ export function useDeleteComment(diaryId: string) {
 export function useToggleLike(diaryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => toggleLike(diaryId),
+    mutationFn: (active: boolean) => setLike(diaryId, active),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diary", diaryId] });
       queryClient.invalidateQueries({ queryKey: ["diaries"] });
@@ -170,7 +170,7 @@ export function useToggleLike(diaryId: string) {
 export function useToggleBookmark(diaryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => toggleBookmark(diaryId),
+    mutationFn: (active: boolean) => setBookmark(diaryId, active),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["diary", diaryId] });
       queryClient.invalidateQueries({ queryKey: ["diaries"] });
@@ -181,7 +181,7 @@ export function useToggleBookmark(diaryId: string) {
 export function useToggleFollow(username: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => toggleFollow(username),
+    mutationFn: (active: boolean) => setFollow(username, active),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user", username] });
       queryClient.invalidateQueries({ queryKey: ["followers", username] });
@@ -246,7 +246,7 @@ export function useReplies(commentId: string, highlightId?: string | null) {
 export function useToggleCommentLike(commentId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => toggleCommentLike(commentId),
+    mutationFn: (active: boolean) => setCommentLike(commentId, active),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comments"] });
       queryClient.invalidateQueries({ queryKey: ["replies"] });

@@ -56,7 +56,7 @@ def _format_notification(n: dict) -> dict:
 @router.get("/notifications")
 async def list_notifications(
     request: Request,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=50),
     current_user: dict = Depends(get_current_user),
 ):

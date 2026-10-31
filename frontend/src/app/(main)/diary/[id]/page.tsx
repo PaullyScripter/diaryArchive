@@ -469,7 +469,7 @@ export default function DiaryReaderPage() {
         >
           {hasCustomCss ? (
             <IsolatedDiary
-              html={sanitizeHtml(hydratedDisplayHtml, { allowExternalImages: !isPrivate })}
+              html={sanitizeHtml(hydratedDisplayHtml)}
               className="mt-6"
               onContentWidth={handleContentWidth}
             />
@@ -477,7 +477,7 @@ export default function DiaryReaderPage() {
             <article
               className={`mt-6 ${PROSE_CLASSES} [&_hr]:border-border [&_hr]:my-4 max-w-prose`}
               dangerouslySetInnerHTML={{
-                __html: sanitizeHtml(hydratedDisplayHtml, { allowExternalImages: !isPrivate }),
+                __html: sanitizeHtml(hydratedDisplayHtml),
               }}
             />
           )}

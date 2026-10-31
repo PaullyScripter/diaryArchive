@@ -3,15 +3,15 @@
 **Purpose:** durable, checked-in context for future Codex chats and human
 contributors.
 
-**Last reconciled:** 2026-10-21
+**Last reconciled:** 2026-10-30
 
-**Last prompt synchronization:** 2026-10-28 — Implemented the requested
-security, scalability, privacy, operations, and UX hardening pass; see the
-dated session summary.
+**Last prompt synchronization:** 2026-10-31 — Completed local startup repair:
+fresh compatible MinIO volume, preserved Compose diagnostics, legacy MongoDB
+index reconciliation, direct Node frontend launch, and a longer backend wait.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
-**Working branch at reconciliation:** `chore/footer-tagline`
+**Working branch at reconciliation:** `codex/prompt-context-sync`
 
 This is a high-signal map, not a substitute for reading affected source and
 tests. Historical plans can be stale; verify important claims against the
@@ -21,19 +21,37 @@ current tree.
 
 The security/scalability hardening branch makes moderation history retention
 explicit, adds bounded Account Standing history pagination, requires password
-confirmation for account deletion, rate-limits account export, uses atomic
-Redis limiting with fail-closed behavior for security-critical outages, and
-removes obsolete moderation-history TTL indexes. Large deletion paths use
-cursor-based cleanup; deployment configuration requires the public application
-origin and the active repository CI workflow owns automatic deployment.
+confirmation for account deletion and export, uses atomic Redis limiting with
+fail-closed behavior for security-critical outages, and removes obsolete
+moderation-history TTL indexes. Large deletion paths use cursor-based cleanup;
+exports are leased background archives; mutable media is always served through
+an authorization-aware proxy with range/ETag support; deployment configuration
+requires the public application origin and the active repository CI workflow
+owns automatic deployment.
 
-The 2026-10-28 hardening pass keeps private metadata inside encrypted payloads,
-validates and bounds encrypted key material, uses Redis-backed token-revocation
-caching and leased maintenance/outbox work, bounds uploads/exports/pagination,
-removes plaintext browser draft persistence, serves mutable media as no-store,
-and enables production MongoDB authentication with a dedicated application
-user. Production search rebuilds are explicit rather than automatic startup
-work.
+The 2026-10-30 hardening pass keeps private metadata inside encrypted payloads,
+validates and bounds encrypted key material, detects refresh-token reuse,
+uses Redis-backed token-revocation caching and leased maintenance/outbox/export
+work, bounds uploads/exports/pagination, removes plaintext browser draft
+persistence, serves mutable media as no-store, and enables production
+MongoDB authentication with a dedicated `readWrite` application user.
+Production search rebuilds publish through a temporary index swap rather than
+clearing the live index first. New backups use an age authenticated-encryption
+path with isolated restore verification; legacy CBC+HMAC archives remain
+readable only for migration. Account deletion cancels and cleans up export
+artifacts.
+
+Production metrics are blocked at both public Nginx hosts and require a bearer
+token mounted from a Docker secret for direct backend scraping. Arbitrary
+remote diary images are rejected by CSP and both sanitizers; uploaded media is
+served through stable authorization-aware proxy URLs. Upload buffering and
+image processing are bounded by per-user/daily quotas, Nginx connection/rate
+limits, and a per-process processing semaphore. Python and npm application
+dependencies are exact-version pinned, Dependabot covers package ecosystems,
+and CI uses current Node-compatible action majors pinned to reviewed full
+commit SHAs; all resolvable production Docker base/service images are pinned to
+reviewed immutable digests. The MinIO release remains a version tag until its
+registry manifest can be resolved, and is a pre-deploy gate.
 
 ## 1. Product identity
 
@@ -54,6 +72,9 @@ Core product areas:
 - public-diary comments, likes, bookmarks, follows, notifications, and feeds;
 - full-text discovery/search for eligible public diaries through Meilisearch;
 - achievements and badges, including the Bug Catcher badge;
+- a static pseudonymous donation page with copyable BTC, ETH, LTC, Ethereum
+  USDC, and Ethereum USDT addresses; it collects no donor information, does
+  not custody funds, and intentionally omits XMR for now;
 - reports, support tickets, appeals, warnings, bans, audit logs, roles, admin
   statistics, and health views;
 - production-oriented deployment, rate limiting, caching, monitoring, backup,
@@ -212,6 +233,10 @@ Never persist a short-lived signed URL as the permanent diary image source.
 Public images may use the stable proxy directly. Private images may need an
 authenticated fetch, a browser object URL, and hydration in both the editor and
 preview dialog. Compatibility helpers still handle legacy direct URLs.
+
+The reader sanitizer preserves the transient `blob:https://...` image URLs
+created by authenticated hydration, while continuing to reject other image
+schemes through its source policy.
 
 Recent image work fixed a long-lived failure mode involving obsolete media TTL
 indexes and expiring/unauthenticated references, and fixed preview-dialog image

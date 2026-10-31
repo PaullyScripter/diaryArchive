@@ -150,13 +150,6 @@ ALLOWED_CSS_PROPERTIES = frozenset(
         "overflow",
         "overflow-x",
         "overflow-y",
-        "position",
-        "top",
-        "right",
-        "bottom",
-        "left",
-        "inset",
-        "z-index",
         "flex",
         "flex-direction",
         "flex-wrap",
@@ -196,12 +189,7 @@ ALLOWED_CSS_PROPERTIES = frozenset(
         "object-fit",
         "object-position",
         "opacity",
-        "transform",
-        "transform-origin",
         "transition",
-        "content",
-        "filter",
-        "backdrop-filter",
         "cursor",
         "user-select",
         "visibility",
@@ -384,9 +372,8 @@ def _is_allowed_image_src(value: str) -> bool:
     diary's readers.
 
     Loading remote <img> content can track readers (pixel beacons) or probe
-    internal resources, so arbitrary http: hosts are dropped. https: images
-    from any host are allowed, matching the frontend's public-diaries policy
-    (reader-IP exposure is an explicit author choice for public diaries).
+    internal resources, so arbitrary http: and https: hosts are dropped.
+    Uploaded media must use the app's stable media reference and proxy.
 
     Note: private diaries are end-to-end encrypted and their content_html is
     never sent to the backend, so this sanitizer only ever sees public/draft
@@ -403,9 +390,6 @@ def _is_allowed_image_src(value: str) -> bool:
         # bundled assets. Never attacker-controlled remote content.
         return True
     parsed = urllib.parse.urlparse(v)
-    if parsed.scheme == "https":
-        # Secure external images: allowed for public diaries.
-        return True
     if parsed.scheme not in ("http", "https"):
         return False
     host = (parsed.hostname or "").lower()

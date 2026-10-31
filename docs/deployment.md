@@ -32,7 +32,9 @@ applied to the prod overlay includes `read_only`, `no-new-privileges`,
   committed. `deploy.sh` and `provision.sh` refuse to run without it.
 - `docker/nginx/certs/{fullchain,privkey}.pem` hold TLS certificates.
 - Key variables include: `MONGODB_URI`, `REDIS_URI`, `MEILISEARCH_URL` /
-  `MEILISEARCH_API_KEY`, `MINIO_*`, `SECRET_KEY`, `BACKUP_ENCRYPTION_KEY`,
+  `MEILISEARCH_API_KEY`, `MINIO_*`, `SECRET_KEY`, `METRICS_TOKEN_FILE`,
+  `BACKUP_AGE_RECIPIENT_FILE` (and offline `BACKUP_AGE_IDENTITY_FILE` for
+  restores),
   `PUBLIC_API_URL`, `PUBLIC_MEDIA_BASE_URL`, `MONGO_ROOT_USER` /
   `MONGO_ROOT_PASSWORD`, `MONGO_APP_USER` / `MONGO_APP_PASSWORD`, and the log-retention / backup-retention knobs in
   `backend/app/core/config.py`.
@@ -67,12 +69,15 @@ Deployments are identified by an **immutable git commit SHA**:
 
 `deploy.sh` performs, in order:
 
-1. Fetches and checks out the target ref.
-2. Runs the **migration/index stage** (`python -m app.migrations.run_migrations`)
+1. Runs the fail-closed production security preflight: metrics secret,
+   age-recipient backup configuration, private token permissions, TLS files,
+   and HTTPS public origin.
+2. Fetches and checks out the target ref.
+3. Runs the **migration/index stage** (`python -m app.migrations.run_migrations`)
    inside the backend container before the new version serves traffic.
-3. Builds the new images, tagged by commit SHA.
-4. Brings the stack up and health-checks `/api/v1/health`.
-5. On health failure, **rolls back** to the previous known-good SHA
+4. Builds the new images, tagged by commit SHA.
+5. Brings the stack up and health-checks `/api/v1/health`.
+6. On health failure, **rolls back** to the previous known-good SHA
    (`.last-deployed-sha`) and reports the failure loudly.
 
 ## Migrations
@@ -104,11 +109,13 @@ independently of the application containers.
   Meilisearch) and returns 503 when any dependency is unreachable.
 - `GET /api/v1/metrics` exposes lightweight Prometheus-formatted counters
   (request totals/errors by normalized route, request latency, periodic-task
-  summaries) without user-controlled identifier cardinality.
-  for scraping by Prometheus/Grafana.
+  summaries) without user-controlled identifier cardinality. It is blocked at
+  both public Nginx hosts and requires the mounted metrics bearer token on the
+  private backend network for Prometheus/Grafana scraping.
 
 ## Related
 
 - [Backup, restore & encryption rotation](ops/backup-restore.md)
 - [Architecture](architecture.md)
 - [Security audit](security-audit-2026.md)
+- [Production security checklist](ops/production-security-checklist.md)

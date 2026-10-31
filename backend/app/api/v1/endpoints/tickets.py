@@ -46,7 +46,7 @@ async def create_ticket_endpoint(
 
 @router.get("")
 async def list_my_tickets(
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):
@@ -60,7 +60,7 @@ async def list_my_tickets(
 @router.get("/{ticket_id}")
 async def get_ticket_detail(
     ticket_id: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(50, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
 ):
@@ -109,7 +109,7 @@ async def close_my_ticket(
 @admin_router.get("")
 async def admin_list_tickets(
     status: str = Query("open", description="open, closed, all"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(20, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):
@@ -119,7 +119,7 @@ async def admin_list_tickets(
 @admin_router.get("/{ticket_id}")
 async def admin_get_ticket(
     ticket_id: str,
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=1000),
     per_page: int = Query(50, ge=1, le=100),
     current_admin: dict = Depends(get_current_admin),
 ):

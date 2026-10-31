@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        useAuthStore.getState().logout();
+        useAuthStore.getState().clearSession();
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }

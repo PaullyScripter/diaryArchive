@@ -349,11 +349,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   };
 
   // Debounce the live preview so sanitize doesn't re-run on every keystroke.
-  // External https: images are allowed only for non-private (public/draft)
-  // diaries; private diaries strip every external image (privacy: a reader's
-  // IP/referrer must never leak to a third-party image host from a diary the
-  // author marked private).
-  const allowExternalImages = privacy !== "private";
+  // Remote images are never fetched from diary HTML. Uploaded media is
+  // represented by an application media ID and hydrated through our proxy;
+  // this keeps public and private entries free of reader-tracking requests.
+  const allowExternalImages = false;
   const previewSourceHtml = customCss
     ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
     : contentHtml;
@@ -423,10 +422,10 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
   const doSave = async (publishPrivacy?: string) => {
     const finalPrivacy = publishPrivacy ?? privacy;
     setSaveStatus("saving");
-    // Strip external images when saving anything private (and never for the
-    // encrypted payload — the browser is the only sanitizer for E2E data).
-    // Non-private diaries may keep https: external images.
-    const finalAllowExternalImages = finalPrivacy !== "private";
+    // Strip all external images before saving. Private entries still receive
+    // the same browser-side sanitization before encryption, while public
+    // entries cannot create reader-tracking requests.
+    const finalAllowExternalImages = false;
     const sanitizedContent = sanitizeHtml(
       customCss
         ? `<style>${sanitizeCss(customCss)}</style>${contentHtml}`
@@ -685,7 +684,6 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
             {!imagesWarningDismissed && (
               <ExternalImagesWarning
                 count={blockedExternalImages.length}
-                isPrivate={privacy === "private"}
                 onDismiss={() => setImagesWarningDismissed(true)}
                 className="mt-2"
               />
@@ -753,7 +751,6 @@ function EditorPageContent({ diaryId }: EditorPageProps) {
               {!imagesWarningDismissed && (
                 <ExternalImagesWarning
                   count={blockedExternalImages.length}
-                  isPrivate={privacy === "private"}
                   onDismiss={() => setImagesWarningDismissed(true)}
                   className="mt-1"
                 />
