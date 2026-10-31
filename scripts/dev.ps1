@@ -73,13 +73,19 @@ $backendProcess = Start-Process -FilePath $venvPython `
 Write-Info "Starting frontend on port $FRONTEND_PORT..."
 $frontendLogDir = "$root\frontend"
 
-# Resolve npm.cmd so Start-Process works on PowerShell 5.1 (where "npm" alone
-# resolves to npm.ps1, which Start-Process cannot launch directly).
-$npmCmd = (Get-Command "npm.cmd" -ErrorAction SilentlyContinue).Source
-if (-not $npmCmd) { $npmCmd = "npm.cmd" }
+# Start Next directly with node.exe instead of keeping an npm.cmd/cmd.exe
+# wrapper alive. On Windows, a terminated npm batch child can leave that
+# wrapper behind and make the dashboard report a frontend that is not listening.
+$nodeCmd = (Get-Command "node.exe" -ErrorAction SilentlyContinue).Source
+if (-not $nodeCmd) { $nodeCmd = "node.exe" }
+$nextCli = "$root\frontend\node_modules\next\dist\bin\next"
+if (-not (Test-Path $nextCli)) {
+  Write-Fail "Next.js CLI not found at $nextCli"
+  exit 1
+}
 
-$frontendProcess = Start-Process -FilePath $npmCmd `
-  -ArgumentList "run dev" `
+$frontendProcess = Start-Process -FilePath $nodeCmd `
+  -ArgumentList @($nextCli, "dev") `
   -WorkingDirectory "$root\frontend" `
   -NoNewWindow -PassThru `
   -RedirectStandardOutput "$frontendLogDir\.dev-stdout.log" `
@@ -88,7 +94,7 @@ $frontendProcess = Start-Process -FilePath $npmCmd `
 # === Step 6: Wait for backend health ===========================
 Write-Info "Waiting for backend to be ready..."
 $backendReady = $false
-for ($i = 0; $i -lt 30; $i++) {
+for ($i = 0; $i -lt 60; $i++) {
   try {
     $response = Invoke-WebRequest -Uri "http://localhost:$BACKEND_PORT/api/v1/health" -UseBasicParsing -TimeoutSec 2
     if ($response.StatusCode -eq 200) {

@@ -1,9 +1,8 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-30 — Closed the maximum feasible
-residual-risk controls: metrics isolation, no-tracking media policy, bounded
-uploads, age backup migration, immutable dependency/image pins, and production
-preflight; MinIO digest resolution remains a documented deploy gate.
+**Last prompt synchronization:** 2026-10-31 — Completed local startup repair:
+fresh compatible MinIO volume, preserved Compose diagnostics, legacy MongoDB
+index reconciliation, direct Node frontend launch, and a longer backend wait.
 
 ## Read this first
 

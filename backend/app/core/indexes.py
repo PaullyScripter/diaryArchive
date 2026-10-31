@@ -19,6 +19,29 @@ _OBSOLETE_RETENTION_INDEXES = {
     "reports": frozenset({"idx_created_at_ttl"}),
     "notifications": frozenset({"idx_created_at_ttl"}),
 }
+_INDEX_INFO_METADATA = frozenset({"key", "name", "ns", "v"})
+
+
+def _index_spec_matches(existing: dict, model: IndexModel) -> bool:
+    """Return whether an existing Mongo index satisfies an IndexModel.
+
+    Index names are not part of an index's behavior. Older installations may
+    therefore have a valid index under a historical name; trying to create the
+    same key/options under the newer name produces ``IndexOptionsConflict`` and
+    prevents the application from starting.
+    """
+    existing_keys = tuple(tuple(item) for item in existing.get("key", []))
+    desired_keys = tuple(model.document.get("key", {}).items())
+    if existing_keys != desired_keys:
+        return False
+
+    existing_options = {
+        key: value for key, value in existing.items() if key not in _INDEX_INFO_METADATA
+    }
+    desired_options = {
+        key: value for key, value in model.document.items() if key not in {"key", "name"}
+    }
+    return existing_options == desired_options
 
 
 async def remove_incompatible_report_indexes() -> list[str]:
@@ -90,10 +113,38 @@ async def create_indexes() -> None:
             existing = await db[collection_name].index_information()
             models: list[IndexModel] = []
             for keys, kwargs in indexes:
-                index_name = kwargs.get("name", "")
-                if index_name and index_name in existing:
-                    continue
                 model = IndexModel(keys, **kwargs)
+                index_name = kwargs.get("name", "")
+                if (
+                    index_name
+                    and index_name in existing
+                    and not _index_spec_matches(existing[index_name], model)
+                ):
+                    await db[collection_name].drop_index(index_name)
+                    del existing[index_name]
+                    logger.warning(
+                        "Replaced incompatible index %s on %s",
+                        index_name,
+                        collection_name,
+                    )
+                matching_name = next(
+                    (
+                        existing_name
+                        for existing_name, existing_info in existing.items()
+                        if _index_spec_matches(existing_info, model)
+                    ),
+                    None,
+                )
+                if matching_name is not None:
+                    desired_name = kwargs.get("name", "")
+                    if desired_name != matching_name:
+                        logger.info(
+                            "Using compatible existing index %s on %s for required name %s",
+                            matching_name,
+                            collection_name,
+                            desired_name,
+                        )
+                    continue
                 models.append(model)
             if models:
                 await db[collection_name].create_indexes(models)

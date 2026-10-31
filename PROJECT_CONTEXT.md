@@ -5,11 +5,9 @@ contributors.
 
 **Last reconciled:** 2026-10-30
 
-**Last prompt synchronization:** 2026-10-30 — Implemented and validated the
-maximum-feasible residual-risk hardening pass: metrics isolation, no-tracking
-media, upload concurrency bounds, age backups, immutable dependency/image pins,
-and production preflight; MinIO digest resolution remains a documented deploy
-gate.
+**Last prompt synchronization:** 2026-10-31 — Completed local startup repair:
+fresh compatible MinIO volume, preserved Compose diagnostics, legacy MongoDB
+index reconciliation, direct Node frontend launch, and a longer backend wait.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
