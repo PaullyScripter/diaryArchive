@@ -8,6 +8,7 @@ rule_files:
 scrape_configs:
   - job_name: "diaryarchive-backend"
     metrics_path: "/api/v1/metrics"
+    bearer_token_file: "/run/secrets/metrics_token"
     static_configs:
       - targets: ["backend:8000"]
         labels:

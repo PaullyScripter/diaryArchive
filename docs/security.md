@@ -12,11 +12,14 @@ This document covers production security configuration for DiaryArchive.
 - [ ] Cloudflare SSL mode: Full (Strict)
 
 ### Security Headers
-- [ ] `X-Content-Type-Options: nosniff`
-- [ ] `X-Frame-Options: DENY`
-- [ ] `Referrer-Policy: strict-origin-when-cross-origin`
-- [ ] `Permissions-Policy: camera=(), microphone=(), geolocation=()`
-- [ ] Content-Security-Policy (via application, not Nginx)
+- [x] `X-Content-Type-Options: nosniff`
+- [x] `X-Frame-Options: DENY`
+- [x] `Referrer-Policy: strict-origin-when-cross-origin`
+- [x] `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- [x] Content-Security-Policy (via application, not Nginx); arbitrary remote
+  images are excluded from both CSP and the client/server HTML sanitizers
+- [x] Cross-origin opener, agent-cluster, DNS-prefetch, and permitted-domain
+  headers are set by the frontend/backend and Nginx
 
 ### Authentication & Authorization
 - [ ] JWT tokens expire in 15 minutes
@@ -31,9 +34,10 @@ This document covers production security configuration for DiaryArchive.
 ### Data Protection
 - [ ] End-to-end encryption for private diaries
 - [ ] AES-256-GCM for email encryption
-- [ ] MinIO bucket not publicly accessible
-- [ ] MongoDB authentication enabled
-- [ ] Redis password required
+- [x] MinIO bucket not publicly accessible in the production compose overlay;
+  the MinIO browser console is disabled there
+- [x] MongoDB authentication enabled in the production compose overlay
+- [x] Redis password required in the production compose overlay
 - [x] Private diary metadata is contained inside the client-encrypted payload
 - [x] Mutable media is authorization-proxied with `private, no-store` caching
 
@@ -42,10 +46,10 @@ This document covers production security configuration for DiaryArchive.
 - [ ] fail2ban installed and configured
 - [ ] SSH key-only authentication (no password login)
 - [ ] Unattended security upgrades enabled
-- [ ] Docker containers run as non-root
-- [ ] Docker containers have `no-new-privileges`
-- [ ] Docker containers have `read_only` filesystem
-- [ ] Docker containers drop all capabilities
+- [x] Application containers run as non-root
+- [x] Production services use `no-new-privileges` where supported
+- [x] Application containers have `read_only` filesystems
+- [x] Frontend/backend containers drop all capabilities
 - [x] Backend uses a dedicated MongoDB application user with only `readWrite`;
   root credentials are
   reserved for database administration
@@ -58,10 +62,17 @@ This document covers production security configuration for DiaryArchive.
 - [ ] Secret scanning enabled (Gitleaks in CI)
 
 ### Dependencies
-- [ ] Python dependencies audited (`pip-audit`)
-- [ ] npm dependencies audited (`npm audit`)
+- [x] Python dependencies are version-pinned and audited (`pip-audit`)
+- [x] npm dependencies use the committed lockfile and are audited (`npm audit`)
 - [ ] No known critical vulnerabilities
-- [ ] Dependabot or Renovate configured
+- [x] Dependabot configured for Actions, npm, pip, and Docker manifests
+- [x] Every third-party GitHub Action pinned to a reviewed full commit SHA;
+  Dependabot should propose reviewed updates rather than floating tags
+- [x] Production Docker base/service images are pinned to reviewed registry
+  digests where the registry exposes a resolvable manifest
+- [ ] MinIO production image still needs an immutable registry digest; its
+  version tag is an explicit pre-deploy gate because manifest lookup was denied
+  by the available registries
 
 ## Rate Limiting
 
@@ -81,6 +92,16 @@ The Content-Security-Policy is managed by the application layers:
 - **Backend:** `CSPSecurityMiddleware`
 
 Nginx does NOT set CSP headers to avoid conflicts with application-configured CSP.
+The frontend still permits `style-src 'unsafe-inline'` because the product
+supports sanitized author CSS and React runtime style attributes. The residual
+risk is bounded by CSS parsing/blocklists, URL removal, selector scoping, and
+Shadow DOM isolation; replacing it with per-response nonces requires a larger
+editor/rendering redesign. Treat this as an explicit accepted residual, not as
+proof that CSP alone protects a compromised browser or frontend bundle.
+
+Metrics are not a public observability API: Nginx returns 404 for the metrics
+path on both public hosts, and the backend requires a bearer token from the
+mounted `METRICS_TOKEN_FILE` secret when `DEBUG=false`.
 
 ## Incident Response
 
@@ -132,7 +153,9 @@ cd /opt/diaryarchive
 - **Meilisearch:** Search indices
 
 ### Backup Encryption
-- All backups use an authenticated encrypt-then-MAC envelope (AES-256-CBC/PBKDF2 plus HMAC-SHA256); migrate to a managed AEAD/envelope-encryption service when available
+- New production backups should use `BACKUP_AGE_RECIPIENT_FILE`, which routes
+  through age's authenticated encryption; `backup.sh`/`restore.sh` retain the
+  old CBC+HMAC path only to migrate existing archives
 - Encryption keys stored separately from backups
 - Off-site backup storage (R2/S3)
 - Daily automated backups with 30-day retention

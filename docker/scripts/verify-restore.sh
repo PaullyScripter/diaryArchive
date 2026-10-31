@@ -33,6 +33,10 @@ if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
 
+if [[ -f "$BACKUP_DIR/mongo.archive.age" ]]; then
+  exec "$SCRIPT_DIR/verify-restore-age.sh" "$BACKUP_DIR"
+fi
+
 : "${BACKUP_ENCRYPTION_KEY:?set BACKUP_ENCRYPTION_KEY}"
 MONGO_USER="${MONGO_ROOT_USER:?set MONGO_ROOT_USER}"
 MONGO_PASS="${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}"
@@ -62,7 +66,8 @@ trap cleanup EXIT
 echo "==> Starting scratch Mongo container (isolated, ephemeral)"
 docker rm -f "$VERIFY_CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$VERIFY_CONTAINER" -e MONGO_INITDB_ROOT_USERNAME="$MONGO_USER" \
-  -e MONGO_INITDB_ROOT_PASSWORD="$MONGO_PASS" mongo:7 >/dev/null
+  -e MONGO_INITDB_ROOT_PASSWORD="$MONGO_PASS" \
+  mongo:7.0@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4 >/dev/null
 
 echo "==> Waiting for scratch Mongo to accept connections"
 READY=0

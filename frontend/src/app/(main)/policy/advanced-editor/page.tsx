@@ -943,7 +943,7 @@ export default function AdvancedEditorPage() {
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
-              <span><strong className="text-foreground">No external images in private diaries.</strong> Private diaries block all images hosted on other websites. External <code className="text-foreground">https:</code> images are allowed only in public diaries.</span>
+              <span><strong className="text-foreground">No external images.</strong> All diaries block images hosted on other websites so readers are never sent to third-party tracking hosts.</span>
             </li>
             <li className="flex gap-2">
               <span className="text-accent shrink-0 mt-0.5">&#x2022;</span>
@@ -989,9 +989,8 @@ export default function AdvancedEditorPage() {
           <h3 className="text-sm font-semibold text-foreground mb-2">Privacy for readers</h3>
           <p className="text-sm leading-relaxed text-muted mb-3">
             Loading an image from a third-party website can reveal a reader&apos;s
-            IP address and browsing activity to that outside server. A private
-            diary is meant to be read in confidence, so external images are
-            blocked there entirely. Your own uploaded images are served from
+            IP address and browsing activity to that outside server. External
+            images are therefore blocked in every diary. Your own uploaded images are served from
             DiaryArchive and never leak a reader&apos;s details.
           </p>
           <h3 className="text-sm font-semibold text-foreground mb-2">Preventing data leaks through CSS</h3>

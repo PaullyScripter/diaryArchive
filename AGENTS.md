@@ -1,7 +1,9 @@
 # DiaryArchive — persistent project instructions
 
-**Last prompt synchronization:** 2026-10-30 — Implemented the repository-wide
-security, scalability, UX, and privacy hardening pass; see the session summary.
+**Last prompt synchronization:** 2026-10-30 — Closed the maximum feasible
+residual-risk controls: metrics isolation, no-tracking media policy, bounded
+uploads, age backup migration, immutable dependency/image pins, and production
+preflight; MinIO digest resolution remains a documented deploy gate.
 
 ## Read this first
 

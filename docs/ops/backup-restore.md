@@ -11,28 +11,28 @@ for DiaryArchive. It is the operational companion to the scripts in
 
 | Component | Method | Encryption |
 |-----------|--------|-----------|
-| MongoDB | `mongodump --archive` | AES-256-CBC/PBKDF2 (200k iters), HMAC-SHA256 authenticated |
-| MinIO object data | `tar` of `/data` | AES-256-CBC/PBKDF2 (200k iters), HMAC-SHA256 authenticated |
+| MongoDB | `mongodump --archive` | age authenticated encryption (`.age`) |
+| MinIO object data | `tar` of `/data` | age authenticated encryption (`.age`) |
 | Meilisearch | excluded (rebuildable) | n/a |
 
-Both dumps are piped through `openssl enc -aes-256-cbc` immediately, so
-plaintext never touches disk. Every encrypted artifact also has a `.mac`
-sidecar; restore and verification validate the HMAC before decrypting. OpenSSL
-`enc` does not provide AEAD, so this is an encrypt-then-MAC envelope until a
-managed AEAD/envelope-encryption service is deployed.
+New dumps are piped through `age` immediately, so plaintext never touches
+disk and each artifact is authenticated by the age envelope. The historical
+OpenSSL AES-256-CBC + HMAC format remains readable for migration only; it is
+not the recommended format for new backups.
 
 ## Encryption key
 
-- Set `BACKUP_ENCRYPTION_KEY` in `.env.production` (random, >= 32 chars).
-- It is read from the environment and **never committed** to the repository.
-- Generate one with `openssl rand -hex 32`.
-- **Keep it safe.** Backups are unusable without it. Store a copy offline
-  (e.g. a password manager / cold storage) separate from the server.
+- Generate an age identity offline with `age-keygen` and derive its public
+  recipient with `age-keygen -y identity.txt`.
+- Put only the recipient in the production-readable
+  `BACKUP_AGE_RECIPIENT_FILE`; keep the identity in offline/KMS-controlled
+  recovery storage and never commit either file.
+- Set `BACKUP_AGE_IDENTITY_FILE` only on the isolated restore workstation.
 
 ## Taking a backup
 
 ```bash
-# Creates ./backups/<YYYYmmdd-HHMMSS>/ with encrypted archives
+# Creates ./backups/<YYYYmmdd-HHMMSS>/ with authenticated .age archives
 ./docker/scripts/backup.sh
 ```
 
@@ -74,7 +74,7 @@ human confirmation guard:
 CONFIRM_PRODUCTION_RESTORE=yes ./docker/scripts/restore.sh /mnt/backups/<STAMP>
 ```
 
-`BACKUP_ENCRYPTION_KEY` must match the one used to create the backup. Without
+For an age archive, set `BACKUP_AGE_IDENTITY_FILE`. Without
 `CONFIRM_PRODUCTION_RESTORE=yes` the script refuses to run. After a restore,
 restart the backend so Meilisearch reindexes from MongoDB:
 
@@ -99,18 +99,17 @@ It prints `VERIFY-RESTORE PASSED` on success and cleans up after itself. Run
 this after every backup (or as a scheduled job) to catch corrupt or
 unrestorable archives early.
 
-## Key rotation
+## Migrating legacy archives and rotating keys
 
-Rotating `BACKUP_ENCRYPTION_KEY` does not re-encrypt existing archives — the
-old key remains required to decrypt them. To rotate:
+Set `BACKUP_AGE_RECIPIENT_FILE` and run `backup.sh` to create new `.age`
+archives. Keep the legacy `BACKUP_ENCRYPTION_KEY` only until all old `.enc`
+archives expire or have been intentionally re-encrypted. Do not delete the
+old key before an age restore drill and an offline recovery copy succeed.
 
-1. Stop accepting new backups with the old key (or keep using it for old data).
-2. Set the new `BACKUP_ENCRYPTION_KEY` in `.env.production`.
-3. Take a fresh backup with the new key going forward.
-4. Retain the old key until all archives encrypted under it have expired from
+Rotating an age identity does not re-encrypt existing archives — the old
+identity remains required to decrypt them. To rotate:
+
+1. Generate a new identity and recipient offline.
+2. Update `BACKUP_AGE_RECIPIENT_FILE` and take a fresh backup.
+3. Retain the old identity until all archives encrypted under it have expired from
    retention, then destroy it.
-
-If you must re-encrypt historical archives, verify the old `.mac`, decrypt each
-with the old key, re-encrypt with the new one using the same PBKDF2 parameters
-(`-pbkdf2 -iter 200000`), and regenerate the `.mac` sidecar before deleting
-the old copy.

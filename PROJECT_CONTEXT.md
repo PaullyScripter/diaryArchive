@@ -6,8 +6,10 @@ contributors.
 **Last reconciled:** 2026-10-30
 
 **Last prompt synchronization:** 2026-10-30 — Implemented and validated the
-repository-wide security, scalability, UX, and privacy hardening pass; see the
-session summary.
+maximum-feasible residual-risk hardening pass: metrics isolation, no-tracking
+media, upload concurrency bounds, age backups, immutable dependency/image pins,
+and production preflight; MinIO digest resolution remains a documented deploy
+gate.
 
 **Repository:** `PaullyScripter/diaryArchive`
 
@@ -36,8 +38,22 @@ work, bounds uploads/exports/pagination, removes plaintext browser draft
 persistence, serves mutable media as no-store, and enables production
 MongoDB authentication with a dedicated `readWrite` application user.
 Production search rebuilds publish through a temporary index swap rather than
-clearing the live index first. Backups are authenticated with encrypt-then-MAC
-sidecars and account deletion cancels and cleans up export artifacts.
+clearing the live index first. New backups use an age authenticated-encryption
+path with isolated restore verification; legacy CBC+HMAC archives remain
+readable only for migration. Account deletion cancels and cleans up export
+artifacts.
+
+Production metrics are blocked at both public Nginx hosts and require a bearer
+token mounted from a Docker secret for direct backend scraping. Arbitrary
+remote diary images are rejected by CSP and both sanitizers; uploaded media is
+served through stable authorization-aware proxy URLs. Upload buffering and
+image processing are bounded by per-user/daily quotas, Nginx connection/rate
+limits, and a per-process processing semaphore. Python and npm application
+dependencies are exact-version pinned, Dependabot covers package ecosystems,
+and CI uses current Node-compatible action majors pinned to reviewed full
+commit SHAs; all resolvable production Docker base/service images are pinned to
+reviewed immutable digests. The MinIO release remains a version tag until its
+registry manifest can be resolved, and is a pre-deploy gate.
 
 ## 1. Product identity
 

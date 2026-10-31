@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     max_media_per_user: int = 500
     max_media_per_diary: int = 20
     max_daily_uploads: int = 50
+    # Bound concurrent multipart buffering and image transcoding per backend
+    # process. This is intentionally separate from per-user rate limits so a
+    # burst of distinct accounts cannot exhaust memory/CPU in one process.
+    media_upload_concurrency: int = 4
+    media_upload_acquire_timeout_seconds: float = 5.0
     max_export_records_per_collection: int = 10_000
     max_export_archive_bytes: int = 100 * 1024 * 1024
     export_job_retention_hours: int = 24
@@ -73,6 +78,11 @@ class Settings(BaseSettings):
     # These are consumed by the ops scripts via the production environment.
     backup_dir: str = "/backups"
     backup_encryption_enabled: bool = True
+    # Prometheus is an internal control-plane client. In production the
+    # metrics route requires a bearer token read from this mounted secret.
+    # Keeping the token in a file avoids exposing it through process listings
+    # or ordinary environment inspection.
+    metrics_token_file: str = ""
     backup_retention_daily: int = 14
     backup_retention_weekly: int = 8
     backup_retention_monthly: int = 6
@@ -172,6 +182,8 @@ class Settings(BaseSettings):
             raise ValueError("MINIO_SECRET_KEY must not use a default value")
         if not self.meilisearch_api_key or self.meilisearch_api_key == "dev-master-key":
             raise ValueError("MEILISEARCH_API_KEY must be configured in production")
+        if not self.metrics_token_file.strip():
+            raise ValueError("METRICS_TOKEN_FILE must point to a mounted Prometheus token")
 
         if not self.debug:
             if "*" in self.cors_origins:

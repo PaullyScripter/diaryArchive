@@ -1,4 +1,4 @@
-FROM node:22-alpine AS builder
+FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS builder
 
 WORKDIR /app
 
@@ -6,7 +6,9 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# Lifecycle scripts are not needed to build this bundle. Disabling them keeps
+# a compromised package install hook from executing arbitrary build-host code.
+RUN npm ci --ignore-scripts
 
 COPY tsconfig.json next.config.ts postcss.config.mjs eslint.config.mjs ./
 COPY src ./src
@@ -14,7 +16,7 @@ COPY public ./public
 
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:fe4f6d74e20370acb04ad889077d14d0f64a9c8ea6a42bc60cddf1e844699914 AS runner
 
 WORKDIR /app
 

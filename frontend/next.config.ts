@@ -24,10 +24,12 @@ function apiOrigins(): string[] {
 
 function buildContentSecurityPolicy(): string {
   const extra = apiOrigins();
-  // Custom HTML/CSS diaries may reference external https: images (an explicit
-  // author preference). Allow any https: image while still blocking http:.
-  // data:/blob: stay so the app's own avatars and media previews keep working.
-  const imgSrc = ["'self'", "data:", "blob:", "https:", ...extra].join(" ");
+  // Images are either same-origin or served by the configured application/API
+  // origin. Do not allow arbitrary remote images: a public diary must not
+  // become a reader-tracking beacon or a browser probe.
+  // data:/blob: stay so the app's own previews and authenticated media
+  // hydration keep working; the HTML sanitizer rejects untrusted data URLs.
+  const imgSrc = ["'self'", "data:", "blob:", ...extra].join(" ");
   const connectSrc = ["'self'", ...extra].join(" ");
   // Production must not allow arbitrary inline scripts. Development retains
   // the eval allowance required by the Next dev server only.
@@ -72,6 +74,10 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          { key: "Origin-Agent-Cluster", value: "?1" },
+          { key: "X-DNS-Prefetch-Control", value: "off" },
+          { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
           { key: "Content-Security-Policy", value: buildContentSecurityPolicy() },
         ],
       },

@@ -194,3 +194,52 @@ Validation for this pass: backend `323 passed`, frontend `87 passed`, frontend
 typecheck/lint passed, backend Ruff checks passed. The repository's existing
 Ruff format drift remains outside the touched files; `ruff format --check .`
 reports legacy files that were not reformatted in this change.
+
+## 7. Maximum-residual-risk hardening — 2026-10-30
+
+The follow-up threat-model pass addressed the seven residual areas identified
+after the prior hardening work:
+
+- **Metrics:** Nginx returns 404 for `/api/v1/metrics` on both public hosts;
+  direct production backend access requires a constant-time bearer token from
+  the mounted `metrics_token` secret, and missing token material fails closed.
+- **Reader privacy/CSP:** arbitrary remote diary images are now rejected by
+  the frontend sanitizer, backend sanitizer, and frontend CSP. App-hosted
+  media remains available through stable authorization-aware proxy URLs.
+  Additional cross-origin isolation and privacy headers were added. The
+  product still intentionally uses `style-src 'unsafe-inline'` for sanitized
+  author CSS and React runtime styles; CSS URL/overlay primitives are blocked,
+  but a nonce-based editor/rendering redesign remains the stronger future
+  control.
+- **Backups:** new `backup-age.sh`, `restore-age.sh`, and
+  `verify-restore-age.sh` provide authenticated age encryption, isolated
+  restore verification, checksum validation, retention, and off-site upload.
+  Existing CBC+HMAC archives remain readable only for migration compatibility.
+- **Supply chain:** Python application/dev requirements are exact-version
+  pinned, npm continues to install from its committed lockfile, Dependabot now
+  covers Actions/npm/pip/Docker, and workflow runtime actions were upgraded to
+  current Node-compatible major versions, and every workflow Action is pinned
+  to a reviewed full commit SHA. All resolvable Docker base/service image
+  references are pinned to reviewed registry digests; the MinIO release remains
+  a version tag because manifest lookup was denied by the available registries,
+  so it is an explicit pre-deploy gate.
+- **Exhaustion:** Nginx has per-IP connection caps and explicit 429 behavior;
+  uploads have a bounded in-process processing semaphore in addition to byte,
+  account, daily, and edge limits; production infrastructure services have
+  additional no-new-privileges boundaries.
+- **Browser/device boundary:** COOP/agent-cluster and related headers reduce
+  cross-origin ambient authority, but browser-side encryption cannot protect
+  plaintext from a compromised frontend bundle, dependency, extension, or
+  user device. The operational checklist now calls for WAF/bot controls,
+  MFA/WebAuthn, protected CI, and patched client devices.
+- **Operations:** MinIO's production console is disabled; production compose
+  requires the metrics secret and retains private-only service networking;
+  the new production checklist records firewall, SSH, secret permissions,
+  Redis/Mongo/MinIO/TLS, host patching, backup-drill, and deployment-gate
+  controls that cannot be proven from repository code alone.
+
+Validation for this follow-up: focused backend security/sanitizer/metrics tests
+passed (`40 passed`), and the production compose configuration rendered
+successfully with non-secret placeholder variables. Full suite validation,
+full-SHA workflow pinning, and the remaining MinIO digest gate are recorded in
+the dated session summary.

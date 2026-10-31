@@ -3,6 +3,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.core.config import settings
 from app.core.database import DatabaseManager
 from app.core.metrics import record_request, record_task_run, render_metrics
 from app.main import app
@@ -49,3 +50,29 @@ class TestMetrics:
         assert "text/plain" in response.headers.get("content-type", "")
         assert "# HELP process_uptime_seconds" in response.text
         assert "request_requests_total" in response.text
+
+    async def test_metrics_requires_the_production_bearer_token(
+        self, client: AsyncClient, monkeypatch, tmp_path
+    ):
+        token_file = tmp_path / "metrics-token"
+        token_file.write_text("test-metrics-token\n", encoding="utf-8")
+        monkeypatch.setattr(settings, "debug", False)
+        monkeypatch.setattr(settings, "metrics_token_file", str(token_file))
+
+        unauthorized = await client.get("/api/v1/metrics")
+        assert unauthorized.status_code == 404
+
+        authorized = await client.get(
+            "/api/v1/metrics",
+            headers={"Authorization": "Bearer test-metrics-token"},
+        )
+        assert authorized.status_code == 200
+
+    async def test_metrics_fail_closed_when_the_production_token_is_missing(
+        self, client: AsyncClient, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(settings, "debug", False)
+        monkeypatch.setattr(settings, "metrics_token_file", str(tmp_path / "missing"))
+
+        response = await client.get("/api/v1/metrics")
+        assert response.status_code == 503

@@ -122,13 +122,10 @@ function apiOrigin(): string | null {
 /**
  * Options controlling image-source policy for a rendered diary.
  *
- * `allowExternalImages` permits https: images from arbitrary external hosts —
- * the app's own media (same-origin relative paths and the configured API
- * origin) is always allowed regardless of this flag. Public diaries opt in to
- * external images (reader-IP exposure is an explicit author choice). Private /
- * encrypted diaries never set it, so every external image is stripped: the
- * reader's IP, referrer, and timing must not leak to a third-party image host
- * from a diary the author marked private.
+ * `allowExternalImages` is retained as a source-compatible, deprecated option
+ * for callers compiled against older releases. It is intentionally ignored:
+ * both public and private diaries use application-hosted media only, so a
+ * diary cannot silently turn every reader into a third-party tracking request.
  */
 export interface SanitizeOptions {
   allowExternalImages?: boolean;
@@ -139,18 +136,13 @@ export interface SanitizeOptions {
  *
  * Policy: allow (a) same-origin relative paths, (b) the configured API origin
  * (which is where the app serves uploaded media — this may be http in local
- * dev), and (c) any https: URL only when `allowExternalImages` is true.
- * Reject everything else: javascript:, data:, vbscript:, file:, and plain http:
- * external hosts. No plaintext or payload-exfil channel is opened.
- *
- * Note: allowing arbitrary https images means the reader's IP is visible to the
- * image host (a tracking/identification vector). This is the explicit author
- * preference for public diaries; the trade-off is documented here rather than
- * silently applied.
+ * dev), and (c) transient blob URLs created by authenticated media hydration.
+ * Reject everything else: javascript:, data:, vbscript:, file:, and external
+ * http(s) hosts. No plaintext or payload-exfil channel is opened.
  */
 export function isAllowedImageSource(
   value: string,
-  allowExternalImages = false
+  _allowExternalImages = false,
 ): boolean {
   const v = (value ?? "").trim();
   if (!v) return false;
@@ -169,7 +161,9 @@ export function isAllowedImageSource(
       return false;
     }
   }
-  if (/^https:\/\//i.test(v)) return allowExternalImages; // external https: only when opted in
+  // Arbitrary remote images are blocked even when a legacy caller passes the
+  // former opt-in flag. This is a product-wide privacy invariant.
+  if (/^https?:\/\//i.test(v)) return false;
   return false;
 }
 

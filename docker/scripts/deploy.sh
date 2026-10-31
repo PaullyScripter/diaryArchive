@@ -23,6 +23,8 @@ fi
 # shellcheck source=/dev/null
 set -a; source "$ENV_FILE"; set +a
 
+"$(dirname "$0")/preflight-security.sh"
+
 # Save the current deployment SHA for rollback (best-effort).
 PREV_SHA="$(cat .last-deployed-sha 2>/dev/null || echo none)"
 echo "   previous deployment: $PREV_SHA"

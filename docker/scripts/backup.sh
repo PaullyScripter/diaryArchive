@@ -43,6 +43,13 @@ if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
 
+# New deployments should set BACKUP_AGE_RECIPIENT_FILE. Keep the historical
+# CBC+HMAC implementation available only for existing archives while allowing
+# an explicit, non-destructive migration to age's modern AEAD envelope.
+if [[ -n "${BACKUP_AGE_RECIPIENT_FILE:-}" ]]; then
+  exec "$SCRIPT_DIR/backup-age.sh" "$BACKUP_ROOT"
+fi
+
 : "${BACKUP_ENCRYPTION_KEY:?set BACKUP_ENCRYPTION_KEY (>=32 chars, random)}"
 if [[ ${#BACKUP_ENCRYPTION_KEY} -lt 32 ]]; then
   echo "error: BACKUP_ENCRYPTION_KEY must be at least 32 characters." >&2

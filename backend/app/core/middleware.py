@@ -74,9 +74,11 @@ def _build_csp() -> str:
 class RequestIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         supplied = request.headers.get("X-Request-ID", "")
-        request_id = supplied if len(supplied) <= 64 and all(
-            c.isalnum() or c in "-_." for c in supplied
-        ) else str(uuid.uuid4())
+        request_id = (
+            supplied
+            if len(supplied) <= 64 and all(c.isalnum() or c in "-_." for c in supplied)
+            else str(uuid.uuid4())
+        )
         request.state.request_id = request_id
         response: Response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
@@ -181,5 +183,8 @@ class CSPSecurityMiddleware(BaseHTTPMiddleware):
             )
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Origin-Agent-Cluster"] = "?1"
+        response.headers["X-DNS-Prefetch-Control"] = "off"
         response.headers["Content-Security-Policy"] = _build_csp()
         return response

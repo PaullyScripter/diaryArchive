@@ -35,6 +35,13 @@ if [[ -f "$ENV_FILE" ]]; then
   set -a; source "$ENV_FILE"; set +a
 fi
 
+# A backup directory containing age artifacts is restored through the modern
+# authenticated-encryption path. Legacy CBC+HMAC archives remain readable for
+# migration, but new production backups should never use that path.
+if [[ -f "$BACKUP_DIR/mongo.archive.age" || -n "${BACKUP_AGE_IDENTITY_FILE:-}" ]]; then
+  exec "$SCRIPT_DIR/restore-age.sh" "$BACKUP_DIR"
+fi
+
 : "${BACKUP_ENCRYPTION_KEY:?set BACKUP_ENCRYPTION_KEY (must match backup)}"
 MONGO_USER="${MONGO_ROOT_USER:?set MONGO_ROOT_USER}"
 MONGO_PASS="${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD}"

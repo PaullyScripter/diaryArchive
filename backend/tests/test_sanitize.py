@@ -209,9 +209,9 @@ def test_relative_and_allowlisted_image_src_allowed(monkeypatch):
     result = sanitize.sanitize_html(html)
     assert "/api/v1/media/file/abc" in result
     assert "media.diaryarchive.com" in result
-    # Secure https: external images are allowed for public diaries.
-    assert "evil.example/y.png" in result
-    # Plain http: external images remain blocked.
+    # Arbitrary remote images are blocked regardless of scheme: public diary
+    # readers must not be sent to author-controlled tracking hosts.
+    assert "evil.example/y.png" not in result
     assert "evil.example/z.png" not in result
 
 

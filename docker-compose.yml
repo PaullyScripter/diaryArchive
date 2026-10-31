@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
     # Internal only - never published to the host. External traffic must flow
     # through nginx (see docker-compose.prod.yml). Dev host access is provided
     # by docker-compose.infra.yml / docker-compose.override.yml.
@@ -19,7 +19,7 @@ services:
       retries: 5
 
   mongo-replica-init:
-    image: mongo:7.0
+    image: mongo:7.0@sha256:8bb4442761a63a8dda452744082cdac9644b429807eb977b42324a63cef59ca4
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-dev-password}
@@ -34,7 +34,7 @@ services:
     restart: "no"
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4-alpine@sha256:8da19c7399dca900c6822a1cf30f9d2285585e2c4b457ff4095b0f4500054d3f
     expose:
       - "6379"
     healthcheck:
@@ -44,7 +44,7 @@ services:
       retries: 5
 
   meilisearch:
-    image: getmeili/meilisearch:v1.12
+    image: getmeili/meilisearch:v1.12@sha256:c9fac23131cca4db95173d41cc50fd5639121ee381795528fdd7522d7978a7b8
     expose:
       - "7700"
     environment:

@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import re
 
@@ -22,6 +23,7 @@ from app.services.media_service import (
 router = APIRouter(prefix="/media", tags=["media"])
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+_UPLOAD_SLOTS = asyncio.Semaphore(max(1, settings.media_upload_concurrency))
 
 
 @router.post("/upload", status_code=201)
@@ -52,35 +54,48 @@ async def upload(
             f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
         )
 
-    chunks: list[bytes] = []
-    total = 0
-    while True:
-        chunk = await file.read(1024 * 1024)
-        if not chunk:
-            break
-        total += len(chunk)
-        if total > MAX_UPLOAD_SIZE:
+    try:
+        await asyncio.wait_for(
+            _UPLOAD_SLOTS.acquire(), timeout=settings.media_upload_acquire_timeout_seconds
+        )
+    except TimeoutError as exc:
+        raise RateLimitException("Upload service is busy; please retry") from exc
+
+    try:
+        # Keep the existing bounded chunk read, but perform it only while a
+        # processing slot is held. This caps simultaneous 50 MiB buffers and
+        # image decoder/transcoder work even when attackers rotate accounts.
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_UPLOAD_SIZE:
+                raise ValidationException(
+                    f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
+                )
+            chunks.append(chunk)
+        file_data = b"".join(chunks)
+        if len(file_data) > MAX_UPLOAD_SIZE:
             raise ValidationException(
                 f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
             )
-        chunks.append(chunk)
-    file_data = b"".join(chunks)
-    if len(file_data) > MAX_UPLOAD_SIZE:
-        raise ValidationException(
-            f"File exceeds maximum size of {MAX_UPLOAD_SIZE // (1024 * 1024)} MB"
-        )
-    if len(file_data) == 0:
-        raise ValidationException("Empty file not allowed")
+        if len(file_data) == 0:
+            raise ValidationException("Empty file not allowed")
 
-    result = await upload_media(
-        user=current_user,
-        file_data=file_data,
-        original_filename=file.filename or "untitled",
-        content_type_header=file.content_type,
-        diary_id=diary_id,
-        is_private=is_private,
-    )
-    return {"data": result}
+        result = await upload_media(
+            user=current_user,
+            file_data=file_data,
+            original_filename=file.filename or "untitled",
+            content_type_header=file.content_type,
+            diary_id=diary_id,
+            is_private=is_private,
+        )
+        return {"data": result}
+    finally:
+        _UPLOAD_SLOTS.release()
 
 
 @router.get("")
@@ -110,9 +125,7 @@ async def get_media_file(
     public media (and private media for its owner/admin). Returned URLs are
     baked into diary HTML, so unlike signed URLs they never expire."""
     media, path, _is_private = await resolve_media_file(media_id, variant, current_user)
-    etag = '"' + hashlib.sha256(
-        f"{path}:{media.get('created_at', '')}".encode()
-    ).hexdigest() + '"'
+    etag = '"' + hashlib.sha256(f"{path}:{media.get('created_at', '')}".encode()).hexdigest() + '"'
     if request.headers.get("if-none-match") == etag:
         return Response(
             status_code=304,

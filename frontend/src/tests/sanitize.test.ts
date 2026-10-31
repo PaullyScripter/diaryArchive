@@ -190,16 +190,16 @@ describe("sanitizeHtml", () => {
     expect(() => sanitizeHtml(undefined as unknown as string)).not.toThrow();
   });
 
-  it("keeps external https: images only when opted in (public diaries)", () => {
+  it("blocks external https: images even when a legacy opt-in is supplied", () => {
     const input =
       '<p>hi</p><img src="https://images.unsplash.com/photo-123.jpg" alt="p">';
     // Default (private): stripped.
     expect(sanitizeHtml(input)).not.toContain("images.unsplash.com");
     expect(sanitizeHtml(input)).not.toContain("<img");
-    // Public: https: external kept.
+    // The former public opt-in is intentionally ignored.
     const result = sanitizeHtml(input, { allowExternalImages: true });
-    expect(result).toContain("images.unsplash.com");
-    expect(result).toContain("<img");
+    expect(result).not.toContain("images.unsplash.com");
+    expect(result).not.toContain("<img");
   });
 
   it("strips ALL external images in private diaries, including https:", () => {

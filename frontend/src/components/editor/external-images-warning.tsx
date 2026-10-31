@@ -4,14 +4,12 @@ import { X } from "lucide-react";
 
 interface ExternalImagesWarningProps {
   count: number;
-  isPrivate: boolean;
   onDismiss: () => void;
   className?: string;
 }
 
 export function ExternalImagesWarning({
   count,
-  isPrivate,
   onDismiss,
   className = "",
 }: ExternalImagesWarningProps) {
@@ -25,9 +23,8 @@ export function ExternalImagesWarning({
         <span className="font-medium text-accent">
           External image{count > 1 ? "s" : ""} removed for privacy.
         </span>{" "}
-        {isPrivate
-          ? "Private diaries block all external images so your readers' data never leaks to third-party hosts. "
-          : "Only secure https: images are allowed. "}
+        External images are blocked in every diary so readers are never sent
+        to third-party tracking hosts.
         Upload your image to the media library, then use the gallery or
         drop/paste it here to insert its own link.
       </p>
